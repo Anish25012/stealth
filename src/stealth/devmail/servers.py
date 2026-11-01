@@ -76,7 +76,15 @@ class LocalSmtp:
         options: dict[str, Any] = {}
         if password is not None:
             options = {"authenticator": check, "auth_required": True, "auth_require_tls": False}
-        self._controller = Controller(_Handler(self), hostname=LOCALHOST, port=self.port, **options)
+        # server_hostname stops aiosmtpd calling socket.getfqdn(), which can hang on macOS.
+        self._controller = Controller(
+            _Handler(self),
+            hostname=LOCALHOST,
+            port=self.port,
+            server_hostname="localhost",
+            ready_timeout=30,
+            **options,
+        )
 
     def __enter__(self) -> Self:
         self._controller.start()

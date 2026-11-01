@@ -18,6 +18,9 @@ from stealth.mail.base import IncomingMail
 from stealth.profiles.models import MailAccount
 
 TIMEOUT_SECONDS = 30
+# Sent in EHLO. The default is this computer's own name, which is both personal and, on macOS,
+# slow to look up.
+EHLO_NAME = "localhost"
 
 
 def _connection_error(host: str | None) -> MailConnectionError:
@@ -46,8 +49,8 @@ class SmtpTransport:
         host, port = self.account.smtp_host or "", self.account.smtp_port or 587
         if self.account.smtp_security == "ssl":
             context = ssl.create_default_context()
-            return smtplib.SMTP_SSL(host, port, timeout=TIMEOUT_SECONDS, context=context)
-        server = smtplib.SMTP(host, port, timeout=TIMEOUT_SECONDS)
+            return smtplib.SMTP_SSL(host, port, EHLO_NAME, timeout=TIMEOUT_SECONDS, context=context)
+        server = smtplib.SMTP(host, port, EHLO_NAME, timeout=TIMEOUT_SECONDS)
         if self.account.smtp_security == "starttls":
             server.starttls(context=ssl.create_default_context())
         return server
