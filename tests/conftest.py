@@ -1,0 +1,53 @@
+from collections.abc import Iterator
+from pathlib import Path
+
+import pytest
+
+from stealth.core import clock
+from stealth.core.secrets import MemoryStore
+from stealth.profiles.models import MailAccount, Person
+from stealth.profiles.store import Profile, ProfileStore
+
+
+@pytest.fixture(autouse=True)
+def _real_clock_between_tests() -> Iterator[None]:
+    yield
+    clock.reset()
+
+
+@pytest.fixture
+def store(tmp_path: Path) -> ProfileStore:
+    return ProfileStore(MemoryStore(), home=tmp_path / "home")
+
+
+@pytest.fixture
+def person() -> Person:
+    return Person(
+        display_name="Test Person",
+        names=["Test Person", "T. Person"],
+        emails=["test.person@example.org", "old.address@example.org"],
+        addresses=["1 Example Road, London, SW1A 1AA"],
+        phones=["07700 900123"],
+    )
+
+
+@pytest.fixture
+def profile(store: ProfileStore, person: Person) -> Iterator[Profile]:
+    profile_id, _ = store.create()
+    with store.open(profile_id) as opened:
+        opened.save_person(person)
+        opened.save_mail_account(
+            MailAccount(
+                provider="smtp",
+                address="test.person@example.org",
+                smtp_host="127.0.0.1",
+                smtp_port=1,
+                smtp_security="none",
+                imap_host="127.0.0.1",
+                imap_port=1,
+                imap_security="none",
+                username="test.person@example.org",
+            ),
+            password="pw",
+        )
+        yield opened

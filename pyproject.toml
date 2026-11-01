@@ -1,0 +1,80 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "stealth-privacy"
+version = "0.1.0"
+description = "Open-source, UK-first personal data removal that runs entirely on your own computer."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = [
+    "aiosmtpd>=1.4",        # runtime: `stealth demo` runs a local fake mail server
+    "cryptography>=42",
+    "jinja2>=3.1",
+    "jsonschema>=4.21",
+    "keyring>=25",
+    "platformdirs>=4",
+    "sqlcipher3-wheels>=0.5.7",
+    "typer>=0.12",
+    "tzdata>=2024.1",       # Windows has no system zoneinfo database
+]
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.10",
+    "pytest>=8",
+    "pytest-cov>=5",
+    "pyyaml>=6",
+    "ruff>=0.5",
+    "types-jsonschema",
+    "types-PyYAML",
+]
+
+[project.scripts]
+stealth = "stealth_cli.main:run"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stealth", "src/stealth_cli"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+pythonpath = ["src", "."]
+
+[tool.coverage.run]
+source = ["stealth"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests", "tools"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4", "RUF", "S", "T20", "DTZ"]
+ignore = [
+    "S101",   # assert is fine in tests, and engine asserts are invariants
+    "S311",   # random is used for pacing jitter, not security
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "T20", "DTZ"]
+"tools/**" = ["T20", "S310"]
+"src/stealth_cli/**" = ["B008", "T20"]   # Typer's documented option-default pattern
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = "src"
+packages = ["stealth", "stealth_cli"]
+
+[[tool.mypy.overrides]]
+module = ["sqlcipher3.*", "aiosmtpd.*", "keyring.*"]
+ignore_missing_imports = true

@@ -1,0 +1,46 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Personal data: nothing below may ever be committed
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.eml
+*.wrapped
+stealth-data/
+outbox/
+evidence/
+reports/
+screenshots/
+!docs/screenshots/
+profiles/
+index.json
+brokers_extra.json
+*.log
+logs/
+
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.claude/
