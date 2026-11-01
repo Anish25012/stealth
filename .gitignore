@@ -20,17 +20,18 @@ htmlcov/
 *.sqlite3
 *.eml
 *.wrapped
-stealth-data/
-outbox/
-evidence/
-reports/
-screenshots/
-!docs/screenshots/
-profiles/
-index.json
-brokers_extra.json
 *.log
-logs/
+brokers_extra.json
+index.json
+# Leading slash: anchored to the repo root. Unanchored, these also swallow source packages such as
+# src/stealth/profiles and src/stealth/reports. tests/test_repo.py guards both directions.
+/stealth-data/
+/outbox/
+/evidence/
+/reports/
+/screenshots/
+/profiles/
+/logs/
 
 # Secrets
 .env
