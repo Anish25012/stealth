@@ -256,3 +256,23 @@ def test_unknown_country_is_explained():
     assert for_country("gb") is UK
     with pytest.raises(ProfileError, match="doesn't support"):
         for_country("ZZ")
+
+
+def test_one_letter_per_shared_address_keeping_the_best_entry():
+    shared = {
+        "site-a": broker("site-a", laws=("gdpr",)),
+        "site-b": broker("site-b", laws=("gdpr",)),
+    }
+    shared["site-b"] = loader.Broker(
+        **{**shared["site-b"].__dict__, "email": "P@SITE-A.example", "confidence": 1.0}
+    )
+    chosen = loader.select_brokers(shared, UK, settings())
+    assert [s.broker.id for s in chosen] == ["site-b"]
+    assert loader.counts(shared, UK)["default"] == 1
+
+
+def test_shipped_default_list_never_writes_to_one_address_twice():
+    brokers = loader.load_registry(extra_path=_missing())
+    chosen = loader.select_brokers(brokers, UK, settings(include_extended=True))
+    contacts = [s.broker.email.lower() for s in chosen if s.broker.email]
+    assert len(contacts) == len(set(contacts))

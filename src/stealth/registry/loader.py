@@ -99,6 +99,34 @@ def load_registry(extra_path: Path | None = None) -> dict[str, Broker]:
     return {k: _to_broker(v) for k, v in merged.items()}
 
 
+def _choose(
+    brokers: dict[str, Broker],
+    jurisdiction: Jurisdiction,
+    *,
+    skip: frozenset[str] = frozenset(),
+    include_extended: bool = False,
+) -> list[Selection]:
+    chosen = []
+    seen_contacts: set[str] = set()
+    # Best entries first, so when several share an address the most reliable one represents them.
+    ordered = sorted(brokers.values(), key=lambda b: (b.tier != "core", -b.confidence, b.id))
+    for broker in ordered:
+        if broker.id in skip:
+            continue
+        core = broker.tier == "core" and bool(jurisdiction.law_tags & set(broker.laws))
+        if not core and not include_extended:
+            continue
+        # Networks of sites often share one privacy inbox. One letter covers them all, and twelve
+        # identical letters to the same address would only look like spam.
+        contact = broker.email.lower() if broker.email else None
+        if contact and contact in seen_contacts:
+            continue
+        if contact:
+            seen_contacts.add(contact)
+        chosen.append(Selection(broker, "core" if core else "extended"))
+    return sorted(chosen, key=lambda s: s.broker.id)
+
+
 def select_brokers(
     brokers: dict[str, Broker], jurisdiction: Jurisdiction, settings: Settings
 ) -> list[Selection]:
@@ -108,25 +136,22 @@ def select_brokers(
     is extended: writing to it shares personal details with a company that may owe them nothing,
     so it happens only if they opt in.
     """
-    chosen = []
-    for broker in sorted(brokers.values(), key=lambda b: b.id):
-        if broker.id in settings.skip_brokers:
-            continue
-        applies = bool(jurisdiction.law_tags & set(broker.laws))
-        if broker.tier == "core" and applies:
-            chosen.append(Selection(broker, "core"))
-        elif settings.include_extended:
-            chosen.append(Selection(broker, "extended"))
-    return chosen
+    return _choose(
+        brokers,
+        jurisdiction,
+        skip=frozenset(settings.skip_brokers),
+        include_extended=settings.include_extended,
+    )
 
 
 def counts(brokers: dict[str, Broker], jurisdiction: Jurisdiction) -> dict[str, int]:
-    """The honest numbers the app and README quote."""
-    core = [b for b in brokers.values() if b.tier == "core" and jurisdiction.law_tags & set(b.laws)]
+    """The honest numbers the app and README quote: distinct contacts, not list entries."""
+    default = [s.broker for s in _choose(brokers, jurisdiction)]
+    everything = _choose(brokers, jurisdiction, include_extended=True)
     return {
-        "total": len(brokers),
-        "default": len(core),
-        "default_email": sum(b.method == "email" for b in core),
-        "default_form": sum(b.method == "form" for b in core),
-        "optional": len(brokers) - len(core),
+        "total": len(everything),
+        "default": len(default),
+        "default_email": sum(b.method == "email" for b in default),
+        "default_form": sum(b.method == "form" for b in default),
+        "optional": len(everything) - len(default),
     }

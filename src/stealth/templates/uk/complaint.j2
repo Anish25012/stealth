@@ -1,0 +1,25 @@
+Subject: Formal data protection complaint [Ref {{ ref }}]
+
+To the Data Protection Officer,
+
+This is a formal complaint under section 164A of the Data Protection Act 2018, inserted by section 103 of the Data (Use and Access) Act 2025.
+
+{% if on_behalf %}I am writing on behalf of {{ person_name }}, with their authority. In this letter "I" and "my" refer to {{ person_name }}.
+
+{% endif %}On {{ request_date }} I sent you a request under Articles 17 and 21 of the UK GDPR, reference {{ ref }}. {{ grievance }}
+
+Under section 164A you must acknowledge this complaint within 30 days of receiving it, take appropriate steps to respond to it without undue delay, and tell me the outcome.
+
+Please now do the following:
+
+1. Erase my personal data and stop using it for marketing and profiling, as originally requested.
+2. Confirm in writing that you have done so.
+3. Give me the name of every recipient of my personal data.
+
+If this is not resolved I will complain to the Information Commissioner's Office, which can look at how you have handled this, and I will include this correspondence.
+
+Please reply to this email address, quoting reference {{ ref }}.
+
+Yours faithfully,
+
+{{ sign_off }}
