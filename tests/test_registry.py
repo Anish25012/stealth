@@ -195,6 +195,12 @@ def test_extra_file_overrides_and_adds(tmp_path):
     assert "mine" in brokers
 
 
+def test_extra_file_with_a_byte_order_mark_loads(tmp_path):
+    extra = tmp_path / "brokers_extra.json"
+    extra.write_text('{"version": 1, "brokers": []}', encoding="utf-8-sig")
+    assert loader.load_registry(extra_path=extra)
+
+
 def test_bad_extra_file_gives_a_clear_error(tmp_path):
     extra = tmp_path / "brokers_extra.json"
     extra.write_text('{"version": 1, "brokers": [{"id": "Bad Id"}]}')

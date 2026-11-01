@@ -9,6 +9,12 @@ sending address.
 
 **1. Use a test folder, so your real records stay clean.**
 
+Windows (PowerShell):
+
+```
+$env:STEALTH_HOME = "$env:USERPROFILE\stealth-test"
+```
+
 Windows (Command Prompt):
 
 ```
@@ -23,13 +29,18 @@ export STEALTH_HOME=~/stealth-test
 
 Keep using this same terminal window for the rest of these steps.
 
+If `stealth` isn't recognised, or PowerShell says running scripts is disabled, skip
+`activate` and type `.venv\Scripts\stealth` from the project folder wherever these steps say
+`stealth`.
+
 **2. Set up a test profile.**
 
 ```
 stealth init
 ```
 
-**3. Add yourself as a broker.** Save this as `brokers_extra.json` in the test folder. Replace the
+**3. Add yourself as a broker.** Save this as `brokers_extra.json` in the test folder. In PowerShell,
+`notepad "$env:STEALTH_HOME\brokers_extra.json"` opens the right file. Replace the
 `email` with your second address, and `domain` with that address's domain.
 
 ```json
@@ -77,5 +88,11 @@ The case should say `replied`. Then record what the reply meant:
 ```
 stealth confirm me-test removed
 ```
+
+**If it says it couldn't confirm the provider, or the connection was closed:** antivirus
+email scanning is the usual cause, because it places itself between Stealth and your provider.
+Turn off its email scanning for the test and turn it back on afterwards. Avast and Norton call
+this Mail Shield. Stealth keeps checking certificates, so it will stop rather than connect to
+something it can't verify.
 
 **6. Clean up.** Delete the `stealth-test` folder and close the terminal window.

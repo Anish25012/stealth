@@ -1,7 +1,16 @@
-from datetime import UTC, date, datetime
+import contextlib
+import socket
+import ssl
+import threading
+from dataclasses import replace
+from datetime import UTC, date, datetime, timedelta
 from email.message import EmailMessage
 
 import pytest
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.x509.oid import NameOID
 
 from stealth.core.errors import MailAuthError, MailConnectionError, MailSendError
 from stealth.devmail.servers import LocalImap, LocalSmtp, bounce_of, reply_to
@@ -99,3 +108,79 @@ def test_bounce_helper_builds_a_real_dsn():
     raw = bounce_of(message().as_bytes(), "dead@acme.example", day=DAY)
     assert b"multipart/report" in raw
     assert b"Status: 5.1.1" in raw
+
+
+def _self_signed(folder):
+    """What Stealth sees when antivirus swaps a provider's certificate for one it made itself."""
+    key = ec.generate_private_key(ec.SECP256R1())
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "127.0.0.1")])
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(DAY - timedelta(days=1))
+        .not_valid_after(datetime.now(UTC) + timedelta(days=1))
+        .sign(key, hashes.SHA256())
+    )
+    pem = folder / "local.pem"
+    pem.write_bytes(
+        key.private_bytes(
+            serialization.Encoding.PEM,
+            serialization.PrivateFormat.PKCS8,
+            serialization.NoEncryption(),
+        )
+        + cert.public_bytes(serialization.Encoding.PEM)
+    )
+    return pem
+
+
+def _serve_once(handler):
+    """Run `handler` on one local connection. Returns the port."""
+    listener = socket.create_server(("127.0.0.1", 0))
+
+    def run():
+        with listener, contextlib.suppress(OSError):
+            connection, _ = listener.accept()
+            with connection:
+                handler(connection)
+
+    threading.Thread(target=run, daemon=True).start()
+    return listener.getsockname()[1]
+
+
+def _untrusted_tls_port(tmp_path):
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.load_cert_chain(_self_signed(tmp_path))
+
+    def handshake(connection):
+        context.wrap_socket(connection, server_side=True)
+
+    return _serve_once(handshake)
+
+
+def test_unverifiable_certificate_stops_imap_and_names_antivirus(tmp_path):
+    settings = replace(account(imap_port=_untrusted_tls_port(tmp_path)), imap_security="ssl")
+    with pytest.raises(MailConnectionError, match="couldn't confirm") as err:
+        ImapMailbox(settings, "pw").fetch_since(date(2026, 1, 1))
+    assert "Antivirus" in err.value.hint
+
+
+def test_unverifiable_certificate_stops_smtp_before_any_password_is_sent(tmp_path):
+    settings = replace(account(smtp_port=_untrusted_tls_port(tmp_path)), smtp_security="ssl")
+    with pytest.raises(MailConnectionError, match="couldn't confirm"):
+        SmtpTransport(settings, "pw").send(message())
+
+
+def test_connection_closed_at_login_mentions_antivirus():
+    def closes_at_login(connection):
+        connection.sendall(b"220 ready\r\n")
+        lines = connection.makefile("rb")
+        lines.readline()
+        connection.sendall(b"250-local\r\n250 AUTH LOGIN PLAIN\r\n")
+        lines.readline()
+
+    with pytest.raises(MailConnectionError, match="was closed") as err:
+        SmtpTransport(account(smtp_port=_serve_once(closes_at_login)), "pw").send(message())
+    assert "app password" in err.value.hint

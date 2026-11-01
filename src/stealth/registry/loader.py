@@ -88,7 +88,8 @@ def load_registry(extra_path: Path | None = None) -> dict[str, Broker]:
     extra = extra_path or paths.extra_brokers_file()
     if extra.exists():
         try:
-            extras = json.loads(extra.read_text("utf-8"))
+            # utf-8-sig: PowerShell and some Windows editors start the file with a byte order mark.
+            extras = json.loads(extra.read_text("utf-8-sig"))
         except json.JSONDecodeError as exc:
             raise RegistryError(
                 f"{extra.name} isn't valid JSON.",

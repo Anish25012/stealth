@@ -30,6 +30,22 @@ def _connection_error(host: str | None) -> MailConnectionError:
     )
 
 
+def _network_error(host: str | None, exc: Exception) -> MailConnectionError:
+    """The most useful message for a failed connection. People act on this text alone."""
+    if isinstance(exc, ssl.SSLCertVerificationError):
+        return MailConnectionError(
+            f"Stealth couldn't confirm it was really talking to {host}, so it stopped.",
+            hint="Antivirus email or web scanning is the usual cause. Turn off its email scanning, "
+            "or use a different network, and try again.",
+        )
+    if isinstance(exc, smtplib.SMTPServerDisconnected):
+        return MailConnectionError(
+            f"The connection to {host} was closed before Stealth finished.",
+            hint="Antivirus email scanning can do this. Check your app password, then try again.",
+        )
+    return _connection_error(host)
+
+
 def _auth_error() -> MailAuthError:
     return MailAuthError(
         "Your email provider rejected the sign-in.",
@@ -86,7 +102,7 @@ class SmtpTransport:
                 hint="You may have reached its daily sending limit. Stealth will try again.",
             ) from exc
         except (OSError, smtplib.SMTPException) as exc:
-            raise _connection_error(self.account.smtp_host) from exc
+            raise _network_error(self.account.smtp_host, exc) from exc
 
 
 class ImapMailbox:
@@ -106,7 +122,7 @@ class ImapMailbox:
         try:
             server = self._connect()
         except OSError as exc:
-            raise _connection_error(self.account.imap_host) from exc
+            raise _network_error(self.account.imap_host, exc) from exc
         try:
             server.login(self.account.username or self.account.address, self.password)
             status, _ = server.select(self.folder, readonly=True)
@@ -118,7 +134,7 @@ class ImapMailbox:
                 raise _auth_error() from exc
             raise _connection_error(self.account.imap_host) from exc
         except OSError as exc:
-            raise _connection_error(self.account.imap_host) from exc
+            raise _network_error(self.account.imap_host, exc) from exc
         finally:
             # Already disconnected is fine: the work above has finished or failed by now.
             with contextlib.suppress(imaplib.IMAP4.error, OSError):
