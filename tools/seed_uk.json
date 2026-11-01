@@ -1,0 +1,93 @@
+[
+  {
+    "id": "experian-uk",
+    "name": "Experian Ltd (Marketing Services)",
+    "domain": "experian.co.uk",
+    "reply_domains": ["experian.com"],
+    "region": "UK",
+    "category": "data-aggregator",
+    "method": "email",
+    "email": "uk.dpo@experian.com",
+    "form_url": null,
+    "notes": "Requests erasure from marketing services data only. Credit reference records are separate.",
+    "source": "Project seed list, verified November 2026"
+  },
+  {
+    "id": "equifax-uk",
+    "name": "Equifax Ltd",
+    "domain": "equifax.co.uk",
+    "reply_domains": ["equifax.com"],
+    "region": "UK",
+    "category": "data-aggregator",
+    "method": "email",
+    "email": "UKDPO@equifax.com",
+    "form_url": null,
+    "notes": "",
+    "source": "Project seed list, verified November 2026"
+  },
+  {
+    "id": "transunion-uk",
+    "name": "TransUnion UK (Callcredit Marketing)",
+    "domain": "transunion.co.uk",
+    "reply_domains": ["transunion.com"],
+    "region": "UK",
+    "category": "data-aggregator",
+    "method": "email",
+    "email": "ukconsumer@transunion.com",
+    "form_url": null,
+    "notes": "",
+    "source": "Project seed list, verified November 2026"
+  },
+  {
+    "id": "ukphonebook",
+    "name": "ukphonebook.com (Simunix)",
+    "domain": "ukphonebook.com",
+    "reply_domains": ["simunix.com"],
+    "region": "UK",
+    "category": "people-search",
+    "method": "email",
+    "email": "dpo@simunix.com",
+    "form_url": "https://www.ukphonebook.com/remove-me",
+    "notes": "",
+    "source": "Project seed list, verified November 2026"
+  },
+  {
+    "id": "192-com",
+    "name": "192.com",
+    "domain": "192.com",
+    "reply_domains": [],
+    "region": "UK",
+    "category": "people-search",
+    "method": "form",
+    "email": null,
+    "form_url": "https://www.192.com/c01/new-request/",
+    "notes": "Re-lists people from the open electoral register unless they opt out of it. Do the open register opt-out too.",
+    "source": "Project seed list, verified November 2026"
+  },
+  {
+    "id": "caci",
+    "name": "CACI Ltd",
+    "domain": "caci.co.uk",
+    "reply_domains": [],
+    "region": "UK",
+    "category": "data-aggregator",
+    "method": "form",
+    "email": null,
+    "form_url": "https://www.caci.co.uk/data-privacy/consumer-hub",
+    "notes": "",
+    "source": "Project seed list, verified November 2026"
+  },
+  {
+    "id": "captify",
+    "name": "Captify Technologies",
+    "domain": "captify.co.uk",
+    "reply_domains": [],
+    "region": "UK",
+    "category": "marketing-list",
+    "method": "email",
+    "email": "dpo@captify.co.uk",
+    "form_url": null,
+    "notes": "",
+    "source": "Project seed list, verified November 2026"
+  }
+]
