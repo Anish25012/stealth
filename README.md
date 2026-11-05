@@ -5,8 +5,9 @@ sell your data, tells them to delete it, keeps track of who answered, and helps 
 Information Commissioner's Office (ICO) when they don't. It runs on your own computer. There is no
 account, no server and no telemetry.
 
-**Status: Phase 1 of 4.** The engine and command line work today. The desktop app, setup wizard,
-Google and Microsoft sign-in and installers are Phase 2, so for now you need Python and a terminal.
+**Status: Phase 2 of 4, in progress.** The engine and command line work today. The desktop app
+has started: installers are built and tested on every change, but the window shows only a
+placeholder until the dashboard lands. Until then you need Python and a terminal.
 
 ## What works today
 
@@ -209,6 +210,19 @@ ruff format --check .
 mypy
 ```
 
+To build the desktop app and its installer for your OS (Windows also needs
+[Inno Setup 6](https://jrsoftware.org/isdl.php)):
+
+```
+pip install -e ".[app,build]"
+python packaging/build.py
+dist\Stealth\Stealth.exe --smoke-test --with-window --report smoke.json
+```
+
+`--smoke-test` checks a build without touching your real data: the broker list, the encrypted
+database, the keychain, a full demo cycle, the local server's guards, the tray and a real window.
+CI runs it against the installed app on Windows and macOS, and headless on Linux.
+
 The tests run real SMTP and IMAP code against servers on `127.0.0.1`, and move a controllable clock
 through whole case lifecycles.
 
@@ -216,6 +230,8 @@ through whole case lifecycles.
 |---|---|
 | `src/stealth` | The engine: all logic, with no UI code |
 | `src/stealth_cli` | The command line, which only prompts and prints |
+| `src/stealth_app` | The desktop app: a local server shown in a native window, plus a tray icon |
+| `packaging/` | PyInstaller spec, Windows installer script, icons and `build.py` |
 | `tools/build_brokers.py` | Builds the broker list |
 
 ## Roadmap

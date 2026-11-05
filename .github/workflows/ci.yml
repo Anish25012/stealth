@@ -15,8 +15,84 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m pip install -e ".[dev]"
+      - run: python -m pip install -e ".[dev,app]"
       - run: ruff check .
       - run: ruff format --check .
       - run: mypy
       - run: pytest --cov --cov-report=term-missing
+
+  # Builds the installer, installs it the way a person would, and runs the smoke test against the
+  # installed copy. These runners aren't clean machines, so a real clean install is still manual.
+  package:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+          - os: macos-latest
+          - os: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[app,build]"
+
+      - name: Install Inno Setup
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup --no-progress -y
+          }
+
+      - name: Build
+        run: python packaging/build.py
+
+      - name: Install, smoke test, uninstall (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $setup = Get-Content dist/artifact.txt
+          $p = Start-Process $setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "installer exited $($p.ExitCode)" }
+          $app = "$env:LOCALAPPDATA\Programs\Stealth\Stealth.exe"
+          if (-not (Test-Path $app)) { throw "not installed at $app" }
+          $menu = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Stealth\Stealth.lnk"
+          if (-not (Test-Path $menu)) { throw "no Start menu shortcut" }
+          $report = "$env:RUNNER_TEMP\smoke.json"
+          $s = Start-Process $app -ArgumentList '--smoke-test','--with-window','--report',$report -Wait -PassThru
+          Get-Content $report
+          if ($s.ExitCode -ne 0) { throw "smoke test exited $($s.ExitCode)" }
+          $u = Start-Process "$env:LOCALAPPDATA\Programs\Stealth\unins000.exe" -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES' -Wait -PassThru
+          Start-Sleep 3
+          if (Test-Path $app) { throw "uninstall left the app behind" }
+
+      - name: Mount, smoke test (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          dmg="$(cat dist/artifact.txt)"
+          hdiutil attach "$dmg" -mountpoint /Volumes/Stealth -nobrowse
+          cp -R /Volumes/Stealth/Stealth.app "$RUNNER_TEMP/"
+          hdiutil detach /Volumes/Stealth
+          "$RUNNER_TEMP/Stealth.app/Contents/MacOS/Stealth" --smoke-test --with-window --report "$RUNNER_TEMP/smoke.json"
+
+      # Linux is best effort (see the plan): headless checks only, until a GTK WebKit build is
+      # bundled. xvfb gives the tray backend a display to load against.
+      - name: Unpack, smoke test (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq xvfb
+          mkdir "$RUNNER_TEMP/app" && tar -xzf "$(cat dist/artifact.txt)" -C "$RUNNER_TEMP/app"
+          xvfb-run -a "$RUNNER_TEMP/app/Stealth/Stealth" --smoke-test --report "$RUNNER_TEMP/smoke.json"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stealth-${{ runner.os }}
+          path: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.tar.gz
+          retention-days: 14
