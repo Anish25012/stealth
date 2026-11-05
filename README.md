@@ -9,6 +9,10 @@ account, no server and no telemetry.
 has started: installers are built and tested on every change, but the window shows only a
 placeholder until the dashboard lands. Until then you need Python and a terminal.
 
+**macOS is untested for now.** The Mac build is made and checked in CI, but its window doesn't
+load yet ([#1](https://github.com/Anish25012/stealth/issues/1)) and nobody has tried it on a real
+Mac. Windows is the supported platform.
+
 ## What works today
 
 - Letters citing UK GDPR Articles 17, 19, 21, 12(3) and 12A, stating the exact reply-by date
@@ -221,7 +225,8 @@ dist\Stealth\Stealth.exe --smoke-test --with-window --report smoke.json
 
 `--smoke-test` checks a build without touching your real data: the broker list, the encrypted
 database, the keychain, a full demo cycle, the local server's guards, the tray and a real window.
-CI runs it against the installed app on Windows and macOS, and headless on Linux.
+CI runs it against the installed app on Windows and macOS, and headless on Linux. On macOS the
+window check is allowed to fail until [#1](https://github.com/Anish25012/stealth/issues/1) is fixed.
 
 The tests run real SMTP and IMAP code against servers on `127.0.0.1`, and move a controllable clock
 through whole case lifecycles.
