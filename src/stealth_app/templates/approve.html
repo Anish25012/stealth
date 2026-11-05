@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_macros.html" import help, csrf_field %}
+{% block main %}
+<h1>Waiting for your OK</h1>
+{% if letters %}
+<p class="lead">Stealth has written {{ letters|length }} letter{{ "" if letters|length == 1 else "s" }}.
+Read them, untick any you don't want to send, then approve.</p>
+<form method="post" action="/approve">
+  {{ csrf_field(csrf) }}
+  <fieldset>
+    <legend class="visually-hidden">Letters to approve</legend>
+    {% for case, letter in letters %}
+    <article class="card letter" aria-labelledby="l-{{ loop.index }}">
+      <div class="choice">
+        <input type="checkbox" id="b-{{ loop.index }}" name="broker" value="{{ case.broker_id }}" checked>
+        <label for="b-{{ loop.index }}"><strong id="l-{{ loop.index }}">{{ case.broker_name }}</strong> <span class="muted">to {{ case.contact }}</span></label>
+      </div>
+      <details>
+        <summary>Read the letter</summary>
+        <p class="muted small">From {{ account.address }} · Subject: {{ letter["Subject"] }}</p>
+        <pre class="mail">{{ letter.get_content() }}</pre>
+      </details>
+    </article>
+    {% endfor %}
+  </fieldset>
+  <div class="button-row">
+    <button class="button" type="submit" name="action" value="approve">Approve and send ticked letters</button>
+    <button class="button secondary" type="submit" name="action" value="skip">Skip ticked companies</button>
+  </div>
+  <p class="muted small">Up to {{ daily_limit }} emails go out each day. The rest wait for the next day.</p>
+</form>
+{% else %}
+<section class="card">
+  <h2>Nothing to approve</h2>
+  <p>When Stealth has new letters ready, they'll appear here first. Nothing is ever sent without
+  your OK.</p>
+</section>
+{% endif %}
+{% call help() %}
+<p>Each letter is a formal request under UK data protection law, asking the company to delete
+your personal data and stop using it. It gives them one calendar month to reply, which is the legal
+limit.</p>
+<p><strong>Approve and send</strong> sends the ticked letters from your email account. A copy of
+each is kept as evidence. <strong>Skip</strong> means Stealth won't contact those companies; you
+can change your mind later from the company's page.</p>
+{% endcall %}
+{% endblock %}

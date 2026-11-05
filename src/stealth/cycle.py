@@ -46,8 +46,10 @@ def _due(case: Case, today: date) -> bool:
     return case.next_action_on is not None and case.next_action_on <= today
 
 
-def _update_states(profile: Profile, brokers: dict[str, Broker], report: CycleReport) -> None:
-    """Moves that need no email."""
+def _update_states(
+    profile: Profile, brokers: dict[str, Broker], report: CycleReport, *, hold: bool
+) -> None:
+    """Moves that need no email. With `hold`, letters due again wait for approval as drafts."""
     today = clock.local_date(jurisdiction_of(profile).tz)
     conn = profile.conn
     for case in all_cases(conn):
@@ -63,21 +65,27 @@ def _update_states(profile: Profile, brokers: dict[str, Broker], report: CycleRe
             transition(conn, case, Status.ICO_READY, reason="complaint period ended")
             report.ico_ready.append(case.broker_name)
         elif case.status in (Status.REMOVED, Status.NO_DATA) and _due(case, today):
-            target = Status.AWAITING_FORM if case.method == "form" else Status.QUEUED
+            target = Status.AWAITING_FORM if case.method == "form" else _ready(hold)
             transition(conn, case, target, reason="repeat request due", next_action_on=None)
             report.resends.append(case.broker_name)
         elif case.status is Status.BOUNCED:
-            _retry_if_contact_fixed(profile, case, brokers)
+            _retry_if_contact_fixed(profile, case, brokers, hold=hold)
 
 
-def _retry_if_contact_fixed(profile: Profile, case: Case, brokers: dict[str, Broker]) -> None:
+def _ready(hold: bool) -> Status:
+    return Status.DRAFT if hold else Status.QUEUED
+
+
+def _retry_if_contact_fixed(
+    profile: Profile, case: Case, brokers: dict[str, Broker], *, hold: bool
+) -> None:
     """A registry update may have replaced a dead address, which is how fixes reach everyone."""
     broker = brokers.get(case.broker_id)
     if broker and broker.email and broker.email.lower() != (case.contact or "").lower():
         transition(
             profile.conn,
             case,
-            Status.QUEUED,
+            _ready(hold),
             reason="new contact in broker list",
             contact=broker.email,
         )
@@ -110,13 +118,16 @@ def run_cycle(
     mailbox: Mailbox,
     *,
     sleep: Sleep = time.sleep,
+    hold_for_approval: bool = False,
 ) -> CycleReport:
-    """A live cycle."""
+    """A live cycle. See `engine.send_requests` for what `hold_for_approval` changes."""
     report = CycleReport()
     report.inbox = process_inbox(profile, mailbox, brokers)
-    _update_states(profile, brokers, report)
+    _update_states(profile, brokers, report, hold=hold_for_approval)
     _send_complaints(profile, transport, sleep, report)
-    report.send = engine.send_requests(profile, brokers, transport, sleep=sleep)
+    report.send = engine.send_requests(
+        profile, brokers, transport, sleep=sleep, hold_for_approval=hold_for_approval
+    )
     return report
 
 

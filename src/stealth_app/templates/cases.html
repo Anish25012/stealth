@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, help %}
+{% block main %}
+<h1>{{ group_text[group][0] if group else "All companies" }}</h1>
+{% if group %}<p class="muted">{{ group_text[group][1] }} <a href="/cases">Show all companies</a>.</p>{% endif %}
+
+<nav aria-label="Filter companies" class="filters">
+  <ul>
+    <li><a href="/cases"{% if not group %} aria-current="page"{% endif %}>All</a></li>
+    {% for key, (heading, _t) in group_text.items() %}
+    <li><a href="/cases?group={{ key }}"{% if group == key %} aria-current="page"{% endif %}>{{ heading }}</a></li>
+    {% endfor %}
+  </ul>
+</nav>
+
+{% if rows %}
+<div class="table-wrap">
+<table>
+  <caption class="visually-hidden">Companies and where each one stands</caption>
+  <thead>
+    <tr><th scope="col">Company</th><th scope="col">Status</th><th scope="col">Reply due</th><th scope="col">What's happening</th></tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+    <tr>
+      <th scope="row"><a href="/cases/{{ row.case.broker_id|urlencode }}">{{ row.case.broker_name }}</a></th>
+      <td data-label="Status">{{ badge(row.info) }}{% if row.overdue %} <span class="badge tone-problem">Late</span>{% endif %}</td>
+      <td class="nowrap" data-label="Reply due">{{ row.case.deadline_on|day if row.case.deadline_on and row.info.group == "progress" else "" }}</td>
+      <td data-label="What's happening">{{ row.explanation }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="card">No companies in this list.</p>
+{% endif %}
+
+{% call help() %}
+<p>Every company Stealth has written to, or will write to, is listed here. Select a company's name
+to see its full history, read its replies and download its evidence.</p>
+<p><strong>Reply due</strong> is the legal deadline: one calendar month from when they received
+your request. <strong>Late</strong> means it has passed without a proper answer, so the next cycle
+sends them a formal complaint.</p>
+{% endcall %}
+{% endblock %}

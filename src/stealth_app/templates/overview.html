@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, help, csrf_field %}
+{% block head %}{% if running %}<meta http-equiv="refresh" content="3">{% endif %}{% endblock %}
+{% block main %}
+<div class="page-head">
+  <div>
+    <h1>Overview</h1>
+    <p class="muted">For {{ person.display_name }}. {{ total }} compan{{ "y" if total == 1 else "ies" }} so far.</p>
+  </div>
+  <form method="post" action="/cycle" class="primary-action">
+    {{ csrf_field(csrf) }}
+    <button class="button" type="submit"{% if running %} disabled aria-disabled="true"{% endif %}>Run cycle now</button>
+    <p class="muted small">Checks for replies, chases late companies and sends approved letters.</p>
+  </form>
+</div>
+
+{% if running %}
+<p class="notice" role="status">Stealth is working: <a href="/jobs/{{ running.id }}">{{ running.title }}</a>.</p>
+{% endif %}
+
+<ul class="tiles" aria-label="Summary">
+  {% for key, (heading, _text) in group_text.items() %}
+  <li class="tile tile-{{ key }}">
+    <a href="{{ '/approve' if key == 'approve' else '/cases?group=' ~ key }}">
+      <span class="tile-count">{{ groups[key]|length }}</span>
+      <span class="tile-label">{{ heading }}</span>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+
+{% if groups.approve %}
+<section class="card attention" aria-labelledby="approve-h">
+  <h2 id="approve-h">{{ groups.approve|length }} letter{{ "" if groups.approve|length == 1 else "s" }} waiting for your OK</h2>
+  <p>Stealth never sends a letter you haven't approved.</p>
+  <a class="button" href="/approve">Read and approve</a>
+</section>
+{% endif %}
+
+{% for key in ["you", "problem"] if groups[key] %}
+<section class="card" aria-labelledby="{{ key }}-h">
+  <h2 id="{{ key }}-h">{{ group_text[key][0] }}</h2>
+  <p class="muted">{{ group_text[key][1] }}</p>
+  <ul class="actions">
+    {% for row in groups[key] %}
+    <li>
+      <a href="/cases/{{ row.case.broker_id|urlencode }}"><strong>{{ row.case.broker_name }}</strong></a>
+      {{ badge(row.info) }}
+      <p>{{ row.explanation }}</p>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endfor %}
+
+{% if not groups.approve and not groups.you and not groups.problem %}
+<section class="card">
+  <h2>Nothing needs you right now</h2>
+  <p>Stealth is waiting for companies to answer. You can check for replies any time with
+  <strong>Run cycle now</strong>.</p>
+</section>
+{% endif %}
+
+{% call help() %}
+<p><strong>The boxes</strong> count companies by what's happening with them. Select a box to see
+that list.</p>
+<p><strong>Run cycle now</strong> does everything that's due: it reads your mailbox for replies,
+sends a formal complaint to any company that missed its legal deadline, and sends letters you've
+approved. It sends at most {{ settings.daily_send_limit }} emails a day, so your email provider
+doesn't mistake you for a spammer. Anything over that goes the next day.</p>
+<p><strong>Needs you</strong> lists things only you can do. Stealth never decides on its own that
+a company has removed you: you read their reply and say what it meant.</p>
+{% endcall %}
+{% endblock %}

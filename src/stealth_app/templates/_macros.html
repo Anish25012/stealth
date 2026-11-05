@@ -1,0 +1,11 @@
+{% macro badge(info) %}<span class="badge tone-{{ info.tone }}">{{ info.label }}</span>{% endmacro %}
+
+{# Per-screen help. A closed <details> stays out of the way until someone wants it. #}
+{% macro help() %}
+<details class="help">
+  <summary>Help with this page</summary>
+  <div class="help-body">{{ caller() }}</div>
+</details>
+{% endmacro %}
+
+{% macro csrf_field(csrf) %}<input type="hidden" name="csrf" value="{{ csrf }}">{% endmacro %}

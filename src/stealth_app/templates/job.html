@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block head %}{% if job.state == "running" %}<meta http-equiv="refresh" content="2">{% endif %}{% endblock %}
+{% block main %}
+<h1>{{ job.title }}</h1>
+<section class="card" aria-live="polite">
+  {% if job.state == "running" %}
+  <p class="notice" role="status">Working on it. This page updates by itself.</p>
+  {% elif job.state == "done" %}
+  <p class="notice good" role="status">Finished.</p>
+  {% else %}
+  <div class="notice problem" role="alert">
+    <p><strong>{{ job.error }}</strong></p>
+    {% if job.hint %}<p>{{ job.hint }}</p>{% endif %}
+  </div>
+  {% endif %}
+  {% if job.lines %}
+  <ul>{% for line in job.lines %}<li>{{ line }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if job.state != "running" %}<p><a class="button" href="{{ job.next_url }}">Continue</a></p>{% endif %}
+</section>
+{% endblock %}

@@ -519,3 +519,94 @@ def test_no_mail_account_is_explained(store, person):
         p.save_person(person)
         with pytest.raises(ProfileError, match="No email account"):
             engine.preview_requests(p, registry(email_broker()))
+
+
+# Approve before send ------------------------------------------------------------------------
+
+
+def held_cycle(w):
+    return cycle.run_cycle(
+        w.profile, w.brokers, w.transport, w.mailbox, sleep=NO_SLEEP, hold_for_approval=True
+    )
+
+
+def test_held_letters_wait_as_drafts_and_nothing_is_sent(profile):
+    go_to(START)
+    with LocalSmtp() as smtp, LocalImap("pw") as imap:
+        w = World(
+            profile, smtp, imap, registry(email_broker("a"), email_broker("b"), form_broker())
+        )
+        report = held_cycle(w)
+        assert smtp.delivered == []
+    assert report.send.sent == []
+    assert report.send.forms == ["formco Ltd"]
+    assert {c.broker_id for c in engine.drafts_waiting(profile)} == {"a", "b"}
+    assert find_case(profile.conn, "formco").status is Status.AWAITING_FORM
+
+
+def test_only_approved_drafts_are_sent(profile):
+    go_to(START)
+    with LocalSmtp() as smtp, LocalImap("pw") as imap:
+        w = World(profile, smtp, imap, registry(email_broker("a"), email_broker("b")))
+        held_cycle(w)
+        engine.approve(profile, ["a"])
+        report = held_cycle(w)
+        assert [d.recipients[0] for d in smtp.delivered] == ["privacy@a.example"]
+    assert report.send.sent == ["a Ltd"]
+    assert find_case(profile.conn, "a").status is Status.SENT
+    assert find_case(profile.conn, "b").status is Status.DRAFT
+    approval = [
+        e
+        for e in events.for_case(profile.conn, find_case(profile.conn, "a").id)
+        if e["payload"].get("after") == "queued"
+    ]
+    assert approval[0]["actor"] == "you"
+
+
+def test_approving_a_letter_twice_is_refused(profile):
+    go_to(START)
+    with LocalSmtp() as smtp, LocalImap("pw") as imap:
+        w = World(profile, smtp, imap, registry(email_broker("a")))
+        held_cycle(w)
+    engine.approve(profile, ["a"])
+    with pytest.raises(ProfileError, match="isn't waiting for approval"):
+        engine.approve(profile, ["a"])
+
+
+def test_a_command_line_send_approves_waiting_drafts(profile):
+    """`stealth send --live --yes` is an explicit approval, so drafts made in the app go too."""
+    go_to(START)
+    with LocalSmtp() as smtp, LocalImap("pw") as imap:
+        w = World(profile, smtp, imap, registry(email_broker("a")))
+        held_cycle(w)
+        report = engine.send_requests(profile, w.brokers, w.transport, sleep=NO_SLEEP)
+        assert len(smtp.delivered) == 1
+    assert len(report.sent) == 1
+
+
+def test_held_repeat_requests_wait_for_approval(world):
+    world.cycle()
+    world.reply(text="Erased.")
+    go_to(START + timedelta(days=2))
+    world.cycle()
+    engine.confirm(world.profile, "acme", "removed")
+    go_to(START + timedelta(days=91))
+    report = held_cycle(world)
+    assert report.resends == ["acme Ltd"]
+    assert world.case().status is Status.DRAFT
+    assert len(world.smtp.delivered) == 1  # only the original request
+
+
+def test_draft_letter_is_the_letter_that_would_be_sent(profile):
+    go_to(START)
+    with LocalSmtp() as smtp, LocalImap("pw") as imap:
+        w = World(profile, smtp, imap, registry(email_broker("a")))
+        held_cycle(w)
+        case = find_case(profile.conn, "a")
+        preview = engine.draft_letter(profile, case)
+        engine.approve(profile, ["a"])
+        held_cycle(w)
+        sent = smtp.delivered[0].message
+    assert preview["To"] == sent["To"] == "privacy@a.example"
+    assert preview["Subject"] == sent["Subject"]
+    assert case.ref in preview.get_body().get_content()

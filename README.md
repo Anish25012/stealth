@@ -5,9 +5,9 @@ sell your data, tells them to delete it, keeps track of who answered, and helps 
 Information Commissioner's Office (ICO) when they don't. It runs on your own computer. There is no
 account, no server and no telemetry.
 
-**Status: Phase 2 of 4, in progress.** The engine and command line work today. The desktop app
-has started: installers are built and tested on every change, but the window shows only a
-placeholder until the dashboard lands. Until then you need Python and a terminal.
+**Status: Phase 2 of 4, in progress.** The engine, command line and desktop dashboard work
+today, and installers are built and tested on every change. Setting up a profile and connecting
+email still needs the command line (`stealth init`) until the setup screens arrive.
 
 **macOS is untested for now.** The Mac build is made and checked in CI, but its window doesn't
 load yet ([#1](https://github.com/Anish25012/stealth/issues/1)) and nobody has tried it on a real
@@ -28,6 +28,11 @@ Mac. Windows is the supported platform.
 - A tamper-evident audit log: every email sent and received is kept with a hash
 - A UK checklist of steps only you can do
 - `stealth demo`, a full fake cycle that sends no real email
+- A desktop dashboard: every company and where it stands, each one's full history, replies shown
+  as plain text, a downloadable evidence pack per company, and a "Run cycle now" button
+- Approve before send: in the desktop app, every letter waits for your OK first
+- A demo inside the app ("Try it with made-up data") that sends nothing anywhere
+- Help on every screen, and error screens with details you can copy to whoever helps you
 
 ## How many companies
 

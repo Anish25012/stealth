@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, help, csrf_field %}
+{% block main %}
+<p class="crumbs"><a href="/cases">All companies</a></p>
+<div class="page-head">
+  <div>
+    <h1>{{ case.broker_name }}</h1>
+    <p class="muted">{{ case.broker_domain }} · Reference {{ case.ref }}</p>
+  </div>
+  <div>{{ badge(info) }}</div>
+</div>
+
+<section class="card" aria-labelledby="now-h">
+  <h2 id="now-h">Where this stands</h2>
+  <p class="lead">{{ explanation }}</p>
+  <dl class="facts">
+    {% if case.last_request_on %}<div><dt>Last letter sent</dt><dd>{{ case.last_request_on|day }}</dd></div>{% endif %}
+    {% if case.deadline_on %}<div><dt>Reply due by</dt><dd>{{ case.deadline_on|day }}</dd></div>{% endif %}
+    {% if case.complaint_on %}<div><dt>Complaint sent</dt><dd>{{ case.complaint_on|day }}</dd></div>{% endif %}
+    {% if case.next_action_on and case.next_action_on != case.deadline_on %}<div><dt>Next step</dt><dd>{{ case.next_action_on|day }}</dd></div>{% endif %}
+    <div><dt>Contact</dt><dd>{{ case.contact or "Web form only" }}</dd></div>
+  </dl>
+</section>
+
+{% if case.status.value == "draft" %}
+<section class="card attention">
+  <h2>This letter is waiting for your OK</h2>
+  <a class="button" href="/approve">Read and approve it</a>
+</section>
+{% endif %}
+
+{% if case.status.value == "awaiting_form" %}
+<section class="card attention" aria-labelledby="form-h">
+  <h2 id="form-h">Fill in their web form</h2>
+  <p>This company only accepts removal requests through its own website.
+  {% if form_url %}Open <a href="{{ form_url }}" target="_blank" rel="noopener noreferrer">their removal form</a> (it opens in your web browser), fill it in, then come back here.{% endif %}</p>
+  <form method="post" action="/cases/{{ case.broker_id|urlencode }}/form-done">
+    {{ csrf_field(csrf) }}
+    <button class="button" type="submit">I've filled in their form</button>
+  </form>
+  <p class="muted small">This starts the company's one-month time limit from today.</p>
+</section>
+{% endif %}
+
+{% if outcomes %}
+<section class="card" aria-labelledby="reply-h">
+  <h2 id="reply-h">What did they say?</h2>
+  {% if reply %}
+  <p>Their latest reply, from {{ reply.sender }}:</p>
+  <pre class="mail">{{ reply.body }}</pre>
+  <p>Choose what it meant. Stealth uses your answer to decide what to do next.</p>
+  {% else %}
+  <p>Choose what the company told you. Stealth uses your answer to decide what to do next.</p>
+  {% endif %}
+  <form method="post" action="/cases/{{ case.broker_id|urlencode }}/outcome">
+    {{ csrf_field(csrf) }}
+    <fieldset>
+      <legend class="visually-hidden">Their answer</legend>
+      {% for value, label in outcomes %}
+      <div class="choice">
+        <input type="radio" id="o-{{ value }}" name="outcome" value="{{ value }}" required>
+        <label for="o-{{ value }}">{{ label }}</label>
+      </div>
+      {% endfor %}
+    </fieldset>
+    <button class="button" type="submit">Save answer</button>
+  </form>
+</section>
+{% endif %}
+
+{% if can_complain or can_ico %}
+<section class="card" aria-labelledby="escalate-h">
+  <h2 id="escalate-h">Take it further</h2>
+  {% if can_complain %}
+  <p>Send {{ case.broker_name }} a formal complaint. The law requires them to have a complaints
+  process, and to answer you. If they don't put it right, you can go to the ICO.</p>
+  <form method="post" action="/cases/{{ case.broker_id|urlencode }}/complain">
+    {{ csrf_field(csrf) }}
+    <button class="button" type="submit">Send formal complaint</button>
+  </form>
+  {% endif %}
+  {% if can_ico %}
+  <p>Download a complaint to the ICO, written from this company's history. You send it yourself
+  using the ICO's online form.</p>
+  <form method="post" action="/cases/{{ case.broker_id|urlencode }}/ico">
+    {{ csrf_field(csrf) }}
+    <button class="button" type="submit">Download ICO complaint</button>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="card" aria-labelledby="history-h">
+  <h2 id="history-h">History</h2>
+  {% if timeline %}
+  <ol class="timeline">
+    {% for entry in timeline %}
+    <li>
+      <p class="when">{{ entry.at|when }} · {{ entry.who }}</p>
+      <p class="what">
+        {% if entry.message_id %}<a href="/cases/{{ case.broker_id|urlencode }}/messages/{{ entry.message_id }}">{{ entry.text }}</a>{% else %}{{ entry.text }}{% endif %}
+      </p>
+      {% if entry.detail %}<p class="muted small">{{ entry.detail }}</p>{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p>Nothing has happened yet.</p>
+  {% endif %}
+  <p><a class="button secondary" href="/cases/{{ case.broker_id|urlencode }}/evidence.zip" download>Download evidence pack</a></p>
+  <p class="muted small">A zip with every email exactly as sent or received, and a tamper-evident log.</p>
+</section>
+
+{% if can_skip %}
+<section class="card quiet" aria-labelledby="skip-h">
+  <h2 id="skip-h">Don't contact this company</h2>
+  <form method="post" action="/cases/{{ case.broker_id|urlencode }}/skip">
+    {{ csrf_field(csrf) }}
+    <button class="button secondary" type="submit">Skip {{ case.broker_name }}</button>
+  </form>
+</section>
+{% endif %}
+
+{% call help() %}
+<p><strong>Where this stands</strong> says what's happening now and what Stealth will do next.</p>
+<p><strong>What did they say?</strong> appears when there's a reply to read. Companies sometimes
+say "we're looking into it" without doing anything, so only you can mark a company as having
+removed you.</p>
+<p><strong>History</strong> is every step, in order. Select an email to read it. The evidence pack
+is what you'd attach to a complaint to the ICO.</p>
+{% endcall %}
+{% endblock %}

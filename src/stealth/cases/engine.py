@@ -223,7 +223,8 @@ def preview_requests(profile: Profile, brokers: dict[str, Broker]) -> SendReport
     return report
 
 
-def _create_for(profile: Profile, selection: Selection) -> Case:
+def _create_for(profile: Profile, selection: Selection, *, hold: bool) -> Case:
+    """Open a case for a broker. With `hold`, an email letter waits as a draft for approval."""
     broker = selection.broker
     case = create_case(
         profile.conn,
@@ -239,6 +240,8 @@ def _create_for(profile: Profile, selection: Selection) -> Case:
     )
     if broker.method == "form" or not broker.email:
         return transition(profile.conn, case, Status.AWAITING_FORM, reason="web form only")
+    if hold:
+        return case  # cases start as drafts
     return transition(profile.conn, case, Status.QUEUED, reason="new broker")
 
 
@@ -268,20 +271,28 @@ def send_requests(
     *,
     sleep: Sleep,
     only: str | None = None,
+    hold_for_approval: bool = False,
 ) -> SendReport:
     """Live send to new brokers and anything queued, within today's limit.
 
     With `only`, the rest of the queue is left alone, which is what makes a test send to
     your own inbox safe.
+
+    With `hold_for_approval` (the desktop app), new letters become drafts and only letters the
+    person has approved are sent. Without it (the command line, whose `--live --yes` is itself
+    the approval), any waiting drafts are approved and sent too.
     """
     person, account, jurisdiction = profile.person(), _account(profile), jurisdiction_of(profile)
     settings = profile.settings()
     report = SendReport()
 
     for selection in due_selections(profile, select_brokers(brokers, jurisdiction, settings)):
-        case = _create_for(profile, selection)
+        case = _create_for(profile, selection, hold=hold_for_approval)
         if case.status is Status.AWAITING_FORM:
             report.forms.append(case.broker_name)
+    if not hold_for_approval:
+        drafts = [c.broker_id for c in drafts_waiting(profile) if only in (None, c.broker_id)]
+        approve(profile, drafts, actor="stealth", reason="sent from the command line")
 
     queue = [
         c
@@ -316,6 +327,47 @@ def send_requests(
         mark_sent(profile, case, jurisdiction, actor="stealth")
         report.sent.append(case.broker_name)
     return report
+
+
+# Approval -----------------------------------------------------------------------------------
+
+
+def drafts_waiting(profile: Profile) -> list[Case]:
+    """Letters ready to go that the person hasn't approved yet."""
+    return [c for c in all_cases(profile.conn) if c.status is Status.DRAFT]
+
+
+def approve(
+    profile: Profile,
+    broker_ids: list[str],
+    *,
+    actor: str = "you",
+    reason: str = "approved by you",
+) -> list[Case]:
+    """Let drafts be sent. They join the queue, which still respects the daily limit."""
+    approved = []
+    for broker_id in broker_ids:
+        case = find_case(profile.conn, broker_id)
+        if case.status is not Status.DRAFT:
+            raise ProfileError(f"The letter to {case.broker_name} isn't waiting for approval.")
+        approved.append(transition(profile.conn, case, Status.QUEUED, actor=actor, reason=reason))
+    return approved
+
+
+def draft_letter(profile: Profile, case: Case) -> EmailMessage:
+    """The letter a case would send today, for the person to read before approving it."""
+    person, account, jurisdiction = profile.person(), _account(profile), jurisdiction_of(profile)
+    if not case.contact:
+        raise ProfileError(f"Stealth has no email address for {case.broker_name}.")
+    return request_message(
+        person,
+        account,
+        jurisdiction,
+        contact=case.contact,
+        tier=case.tier,
+        ref=case.ref,
+        today=clock.local_date(jurisdiction.tz),
+    )
 
 
 # Decisions the person makes -----------------------------------------------------------------

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title if title == "Stealth" else title ~ " · Stealth" }}</title>
+<link rel="stylesheet" href="/static/app.css">
+{% block head %}{% endblock %}
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="top">
+  <div class="top-inner">
+    <a class="brand" href="/">Stealth</a>
+    <nav aria-label="Main">
+      <ul>
+        {% for href, label in [("/", "Overview"), ("/cases", "Companies"), ("/approve", "Waiting for your OK"), ("/help", "Help")] %}
+        <li><a href="{{ href }}"{% if path == href or (href != "/" and path.startswith(href)) %} aria-current="page"{% endif %}>{{ label }}</a></li>
+        {% endfor %}
+      </ul>
+    </nav>
+  </div>
+</header>
+{% if demo %}
+<div class="demo-banner" role="note">
+  <div class="top-inner">
+    <p><strong>Demo:</strong> everything here is made up. No email leaves this computer.</p>
+    <form method="post" action="/demo/stop">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="button secondary small" type="submit">Leave the demo</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+<main id="main" tabindex="-1">
+{% block main %}{% endblock %}
+</main>
+<footer class="foot"><p>Stealth {{ version }}. Your data stays on this computer, except the letters you choose to send.</p></footer>
+</body>
+</html>

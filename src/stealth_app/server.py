@@ -5,26 +5,40 @@ listens on 127.0.0.1 only, on a random port, and checks three things:
 
 - the Host header names that exact address, which defeats DNS rebinding;
 - a per-launch token, swapped once for a cookie so it never sits in page URLs;
-- (from Phase 2.2, when forms arrive) a CSRF token on every state-changing request.
+- a CSRF token on every state-changing request (see `dashboard.read_form`).
+
+Errors never show a traceback. Expected failures get their plain-English message; anything else
+gets a friendly page with details, scrubbed of personal data, that the person can copy to a helper.
 """
 
 from __future__ import annotations
 
+import logging
+import platform
 import secrets
 import socket
+import sys
 import threading
+import traceback
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from importlib import resources
+from pathlib import PurePath
 from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
 
 from stealth import __version__
+from stealth.core.errors import StealthError
+from stealth.core.logging_scrub import scrub
+from stealth_app import dashboard
+from stealth_app.workspace import Workspace
+
+log = logging.getLogger("stealth.app.server")
 
 COOKIE = "stealth_session"
 TOKEN_HEADER = "X-Stealth-Token"  # noqa: S105 (a header name, not a secret)
@@ -60,7 +74,10 @@ class GuardMiddleware(BaseHTTPMiddleware):
                 return PlainTextResponse(
                     "Open Stealth from its tray icon or Start menu entry.", status_code=401
                 )
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception as exc:
+            response = error_page(request, exc)
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; img-src 'self' data:; object-src 'none'; "
             "base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
@@ -71,31 +88,62 @@ class GuardMiddleware(BaseHTTPMiddleware):
         return response
 
 
-HOME_PAGE = """<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Stealth</title>
-<link rel="stylesheet" href="/static/app.css">
-</head>
-<body>
-<h1>Stealth is running</h1>
-<p class="muted">Version {version}</p>
-<p>The dashboard arrives in the next update. For now, use the <code>stealth</code> command.</p>
-</body>
-</html>
-"""
-
-
 STATIC_TYPES = {".css": "text/css", ".js": "text/javascript", ".png": "image/png"}
+
+
+def diagnostics(exc: BaseException) -> str:
+    """What a helper needs to see, with personal data scrubbed out. Never local variables."""
+    frames = traceback.extract_tb(exc.__traceback__)[-8:]
+    lines = [
+        f"Stealth {__version__}",
+        f"{platform.platform()}, Python {platform.python_version()}",
+        f"Installed build: {'yes' if getattr(sys, 'frozen', False) else 'no'}",
+        f"Error: {type(exc).__name__}: {exc}",
+        "Where:",
+        # File names only: full paths include the person's user name.
+        *(f"  {PurePath(f.filename).name}:{f.lineno} in {f.name}" for f in frames),
+    ]
+    return scrub("\n".join(lines))
+
+
+def error_page(request: Request, exc: BaseException) -> Response:
+    if isinstance(exc, StealthError):
+        status = 403 if isinstance(exc, dashboard.CsrfError) else 400
+        heading, message, hint, details = "That didn't work", exc.message, exc.hint, ""
+    else:
+        log.exception("page failed: %s", request.url.path, exc_info=exc)
+        status, heading = 500, "Something went wrong"
+        message = "Stealth hit a problem it didn't expect. Your data is safe, and nothing was sent."
+        hint, details = (
+            "Try again. If it keeps happening, copy the details below.",
+            diagnostics(exc),
+        )
+    try:
+        return dashboard.render(
+            request,
+            "error.html",
+            status,
+            title=heading,
+            heading=heading,
+            message=message,
+            hint=hint,
+            details=details,
+        )
+    except Exception:  # the error page itself failed: fall back to plain text
+        log.exception("error page failed")
+        return PlainTextResponse(f"{heading}. {message}", status_code=status)
 
 
 def _has_token(request: Request, token: str) -> bool:
     return secrets.compare_digest(request.headers.get(TOKEN_HEADER, ""), token)
 
 
-def create_app(token: str, port: int, on_show: Callable[[], None] | None = None) -> FastAPI:
+def create_app(
+    token: str,
+    port: int,
+    on_show: Callable[[], None] | None = None,
+    workspace: Workspace | None = None,
+) -> FastAPI:
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
     app.add_middleware(GuardMiddleware, token=token, port=port)
     static = resources.files("stealth_app") / "static"
@@ -132,10 +180,7 @@ def create_app(token: str, port: int, on_show: Callable[[], None] | None = None)
             return PlainTextResponse("Not found.", status_code=404)
         return Response(entry.read_bytes(), media_type=STATIC_TYPES[suffix])
 
-    @app.get("/", response_class=HTMLResponse)
-    def home() -> str:
-        return HOME_PAGE.format(version=__version__)
-
+    dashboard.install(app, workspace)
     return app
 
 
@@ -143,6 +188,7 @@ def create_app(token: str, port: int, on_show: Callable[[], None] | None = None)
 class RunningServer:
     token: str
     port: int
+    dashboard: dashboard.State
     _server: uvicorn.Server
     _thread: threading.Thread = field(repr=False)
 
@@ -156,17 +202,24 @@ class RunningServer:
     def stop(self) -> None:
         self._server.should_exit = True
         self._thread.join(timeout=10)
+        # A demo left open when the app quits still gets its folder and mail servers cleaned up.
+        demo, self.dashboard.demo = self.dashboard.demo, None
+        if demo is not None:
+            demo.close()
 
 
 def start_server(
-    token: str | None = None, on_show: Callable[[], None] | None = None
+    token: str | None = None,
+    on_show: Callable[[], None] | None = None,
+    workspace: Workspace | None = None,
 ) -> RunningServer:
     """Run the server on a background thread and return once it accepts connections."""
     token = token or new_token()
     sock = bind_socket()
     port = sock.getsockname()[1]
+    app = create_app(token, port, on_show, workspace)
     config = uvicorn.Config(
-        create_app(token, port, on_show),
+        app,
         log_config=None,  # our scrubbed logging, not uvicorn's console handlers
         access_log=False,
         lifespan="off",
@@ -184,4 +237,4 @@ def start_server(
         threading.Event().wait(0.05)
     else:
         raise RuntimeError("the local server didn't start within 10 seconds")
-    return RunningServer(token, port, server, thread)
+    return RunningServer(token, port, app.state.dashboard, server, thread)

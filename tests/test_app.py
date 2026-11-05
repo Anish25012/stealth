@@ -61,7 +61,7 @@ def test_the_token_becomes_a_strict_http_only_cookie(client):
     assert "samesite=strict" in header
     page = client.get("/")
     assert page.status_code == 200
-    assert "Stealth is running" in page.text
+    assert "Welcome to Stealth" in page.text
 
 
 def test_pages_carry_a_strict_content_security_policy(client):

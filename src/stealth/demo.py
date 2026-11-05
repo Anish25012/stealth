@@ -22,6 +22,7 @@ from stealth.core.errors import StealthError
 from stealth.core.secrets import MemoryStore
 from stealth.db import events
 from stealth.devmail.servers import Delivered, LocalImap, LocalSmtp, bounce_of, reply_to
+from stealth.inbox.processor import process_inbox
 from stealth.mail.smtp_imap import ImapMailbox, SmtpTransport
 from stealth.profiles.models import MailAccount, Person
 from stealth.profiles.store import Profile, ProfileStore
@@ -83,6 +84,20 @@ def _expect(actual: object, expected: object, what: str) -> None:
         raise DemoFailure(f"Demo check failed: {what}. Expected {expected}, got {actual}.")
 
 
+def demo_account(smtp: LocalSmtp, imap: LocalImap) -> MailAccount:
+    return MailAccount(
+        provider="demo",
+        address=ADDRESS,
+        smtp_host="127.0.0.1",
+        smtp_port=smtp.port,
+        smtp_security="none",
+        imap_host="127.0.0.1",
+        imap_port=imap.port,
+        imap_security="none",
+        username=ADDRESS,
+    )
+
+
 def _sent_to(smtp: LocalSmtp, address: str) -> Delivered:
     return next(d for d in reversed(smtp.delivered) if address in d.recipients)
 
@@ -104,17 +119,7 @@ def run_demo(say: Callable[[str], None], start: date = date(2026, 11, 2)) -> Dem
     ):
         store = ProfileStore(MemoryStore(), home=Path(tmp))
         profile_id, _ = store.create()
-        account = MailAccount(
-            provider="demo",
-            address=ADDRESS,
-            smtp_host="127.0.0.1",
-            smtp_port=smtp.port,
-            smtp_security="none",
-            imap_host="127.0.0.1",
-            imap_port=imap.port,
-            imap_security="none",
-            username=ADDRESS,
-        )
+        account = demo_account(smtp, imap)
         try:
             with store.open(profile_id) as profile:
                 return _story(profile, account, smtp, imap, say, start)
@@ -122,14 +127,7 @@ def run_demo(say: Callable[[str], None], start: date = date(2026, 11, 2)) -> Dem
             clock.reset()
 
 
-def _story(
-    profile: Profile,
-    account: MailAccount,
-    smtp: LocalSmtp,
-    imap: LocalImap,
-    say: Callable[[str], None],
-    start: date,
-) -> DemoResult:
+def _set_up(profile: Profile, account: MailAccount) -> None:
     profile.save_person(
         Person(
             display_name="Alex Example",
@@ -141,6 +139,17 @@ def _story(
     )
     profile.save_mail_account(account, password=PASSWORD)
     profile.save_settings(send_delay_seconds=0)
+
+
+def _story(
+    profile: Profile,
+    account: MailAccount,
+    smtp: LocalSmtp,
+    imap: LocalImap,
+    say: Callable[[str], None],
+    start: date,
+) -> DemoResult:
+    _set_up(profile, account)
     transport = SmtpTransport(account, PASSWORD)
     mailbox = ImapMailbox(account, PASSWORD)
     no_sleep = lambda _seconds: None  # noqa: E731
@@ -239,3 +248,85 @@ def _story(
     text = draft.read_text("utf-8")
     say(f"Audit log intact. {len(smtp.delivered)} emails delivered to the local test server.")
     return DemoResult(statuses, len(smtp.delivered), chain_ok, text)
+
+
+# A demo world for the dashboard ------------------------------------------------------------
+
+# Companies the dashboard demo adds after the story's first round, so there's always something
+# arriving later: one that replies but hasn't been read, and two letters waiting for approval.
+LATER_BROKERS = {
+    b.id: b
+    for b in [
+        _broker("chatty-data", "Chatty Data Ltd"),
+        _broker("new-lists", "New Lists Ltd"),
+        _broker("people-finder", "People Finder UK", category="people-search"),
+    ]
+}
+DASHBOARD_BROKERS = {**DEMO_BROKERS, **LATER_BROKERS}
+DRAFTS = ("new-lists", "people-finder")
+
+
+def _morning(day: date) -> datetime:
+    return datetime(day.year, day.month, day.day, 9, tzinfo=UTC)
+
+
+def seed_dashboard_demo(store: ProfileStore, smtp: LocalSmtp, imap: LocalImap, today: date) -> str:
+    """Create a demo profile part-way through its story and return its id.
+
+    The history is back-dated so the dashboard shows every kind of case at once, relative to the
+    real today: removed, nothing held, refused, bounced, an unread reply, a web form, a company
+    past its deadline (the next cycle sends it a complaint) and two letters waiting for approval.
+    The clock is frozen only while history is written, then left at real time.
+    """
+    profile_id, _ = store.create()
+    account = demo_account(smtp, imap)
+    start = today - timedelta(days=33)
+    first_round = {k: v for k, v in DASHBOARD_BROKERS.items() if k in DEMO_BROKERS}
+    no_sleep = lambda _seconds: None  # noqa: E731
+    with store.open(profile_id) as profile:
+        _set_up(profile, account)
+        transport, mailbox = SmtpTransport(account, PASSWORD), ImapMailbox(account, PASSWORD)
+
+        def run(brokers: dict[str, Broker]) -> None:
+            cycle.run_cycle(profile, brokers, transport, mailbox, sleep=no_sleep)
+
+        with clock.frozen_at(_morning(start)):
+            run(first_round)
+            engine.form_done(profile, "form-only")
+        replied = start + timedelta(days=5)
+        with clock.frozen_at(_morning(replied)):
+            for address, text in (
+                ("privacy@prompt-data.test", "Your data has been erased."),
+                ("privacy@find-a-neighbour.test", "We hold no data about you."),
+                ("privacy@refusing-corp.test", "We decline your request."),
+            ):
+                imap.add(
+                    reply_to(_sent_to(smtp, address).data, address, text, day=_morning(replied))
+                )
+            dead = "privacy@dead-address.test"
+            imap.add(bounce_of(_sent_to(smtp, dead).data, dead, day=_morning(replied)))
+            run(first_round)
+            engine.confirm(profile, "prompt-data", "removed")
+            engine.confirm(profile, "find-a-neighbour", "no_data")
+            engine.confirm(profile, "refusing-corp", "refused")
+        later = start + timedelta(days=12)
+        with clock.frozen_at(_morning(later)):
+            engine.send_requests(
+                profile, {"chatty-data": LATER_BROKERS["chatty-data"]}, transport, sleep=no_sleep
+            )
+        yesterday = today - timedelta(days=1)
+        with clock.frozen_at(_morning(today)):
+            chatty = "privacy@chatty-data.test"
+            imap.add(
+                reply_to(
+                    _sent_to(smtp, chatty).data,
+                    chatty,
+                    "Thanks for your email. We are looking into this and will be in touch.",
+                    day=_morning(yesterday),
+                )
+            )
+            process_inbox(profile, mailbox, DASHBOARD_BROKERS)
+            engine.send_requests(
+                profile, DASHBOARD_BROKERS, transport, sleep=no_sleep, hold_for_approval=True
+            )
+    return profile_id

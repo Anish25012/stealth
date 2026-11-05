@@ -14,7 +14,7 @@ from stealth.db.connection import Connection
 
 
 class Status(StrEnum):
-    DRAFT = "draft"
+    DRAFT = "draft"  # a letter is ready and waits for the person's OK before it can be sent
     QUEUED = "queued"
     AWAITING_FORM = "awaiting_form"  # the person must fill in a web form
     SENT = "sent"
@@ -48,11 +48,12 @@ TRANSITIONS: dict[Status, set[Status]] = {
     S.COMPLAINT_SENT: {S.REPLIED, S.BOUNCED, S.ICO_READY, S.REMOVED, S.NO_DATA, S.NEEDS_YOU},
     S.ICO_READY: {S.ESCALATED, S.REMOVED, S.NO_DATA},
     S.ESCALATED: {S.REMOVED, S.NO_DATA},
-    S.REMOVED: {S.QUEUED, S.AWAITING_FORM},
-    S.NO_DATA: {S.QUEUED, S.AWAITING_FORM},
-    S.BOUNCED: {S.QUEUED, S.AWAITING_FORM, S.SKIPPED},
+    # A repeat request or a retry goes back to DRAFT when the person approves each send.
+    S.REMOVED: {S.DRAFT, S.QUEUED, S.AWAITING_FORM},
+    S.NO_DATA: {S.DRAFT, S.QUEUED, S.AWAITING_FORM},
+    S.BOUNCED: {S.DRAFT, S.QUEUED, S.AWAITING_FORM, S.SKIPPED},
     S.NEEDS_YOU: {S.SENT, S.COMPLAINT_SENT, S.ICO_READY} | (_OUTCOMES - {S.NEEDS_YOU}),
-    S.SKIPPED: {S.QUEUED, S.AWAITING_FORM},
+    S.SKIPPED: {S.DRAFT, S.QUEUED, S.AWAITING_FORM},
 }
 
 _DATE_COLUMNS = (

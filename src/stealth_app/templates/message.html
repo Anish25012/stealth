@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_macros.html" import help %}
+{% block main %}
+<p class="crumbs"><a href="/cases/{{ case.broker_id|urlencode }}">Back to {{ case.broker_name }}</a></p>
+<h1>{{ message.subject or "(no subject)" }}</h1>
+<dl class="facts">
+  <div><dt>From</dt><dd>{{ message.sender }}</dd></div>
+  <div><dt>To</dt><dd>{{ message.to }}</dd></div>
+  <div><dt>Date</dt><dd>{{ message.date }}</dd></div>
+</dl>
+<pre class="mail">{{ message.body }}</pre>
+<p class="muted small">
+  {% if message.verified %}This copy matches the fingerprint Stealth recorded when it was saved, so it hasn't been changed.
+  {% else %}<strong>Warning:</strong> this file no longer matches the fingerprint Stealth recorded when it was saved.{% endif %}
+  SHA-256 {{ message.sha256 }}.
+</p>
+{% call help() %}
+<p>Stealth shows emails as plain text only. Pictures, links and formatting from companies are
+left out on purpose, so nothing in an email can run or track you here. The original is kept
+unchanged in the evidence pack.</p>
+{% endcall %}
+{% endblock %}

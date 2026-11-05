@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
+{% block main %}
+<h1>Help</h1>
+<section class="card" aria-labelledby="what-h">
+  <h2 id="what-h">What Stealth does</h2>
+  <p>Companies called data brokers collect and sell personal details: names, addresses, phone
+  numbers, who you live with. UK law lets you tell them to delete it. Stealth writes those letters
+  for you, sends them from your own email, keeps every reply, and chases companies that ignore you.</p>
+</section>
+<section class="card" aria-labelledby="faq-h">
+  <h2 id="faq-h">Common questions</h2>
+  <details><summary>Does my information leave my computer?</summary>
+    <p>Only in the letters you approve, which go from your email account to the companies. Stealth
+    has no server and no account, and it sends nothing about you anywhere else.</p></details>
+  <details><summary>How long do companies have to answer?</summary>
+    <p>One calendar month from when they get your letter. They can take two months more if they
+    tell you why within that first month. If they ask for ID, the clock pauses until they get it.</p></details>
+  <details><summary>A company didn't answer. What now?</summary>
+    <p>Stealth sends them a formal complaint the day after their deadline. If 30 days pass without
+    it being put right, or they refuse, Stealth writes a complaint to the ICO, the UK regulator,
+    for you to send.</p></details>
+  <details><summary>Why does Stealth write to the same company again later?</summary>
+    <p>Brokers often re-collect people's details. Stealth asks people-search sites again every 60
+    days and other companies every 90.</p></details>
+  <details><summary>Can Stealth get me removed from everywhere?</summary>
+    <p>No tool can. Some companies ignore the law, data already leaked can't be called back, and
+    new brokers appear. Stealth covers the companies it knows about and keeps the evidence if you
+    need to complain.</p></details>
+</section>
+{% if not demo %}
+<section class="card" aria-labelledby="demo-h">
+  <h2 id="demo-h">Practise with the demo</h2>
+  <p>See every kind of case with made-up data. Your own information isn't touched.</p>
+  <form method="post" action="/demo/start">
+    {{ csrf_field(csrf) }}
+    <button class="button secondary" type="submit">Try it with made-up data</button>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

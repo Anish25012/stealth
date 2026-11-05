@@ -15,6 +15,12 @@ def _real_clock_between_tests() -> Iterator[None]:
     clock.reset()
 
 
+@pytest.fixture(autouse=True)
+def _never_the_real_data_folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Anything that falls back to the default data folder gets a throwaway one."""
+    monkeypatch.setenv("STEALTH_HOME", str(tmp_path / "default-home"))
+
+
 @pytest.fixture
 def store(tmp_path: Path) -> ProfileStore:
     return ProfileStore(MemoryStore(), home=tmp_path / "home")

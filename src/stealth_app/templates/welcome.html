@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
+{% block main %}
+<h1>Welcome to Stealth</h1>
+<p class="lead">Stealth asks companies that sell your personal data to delete it, using your legal
+rights under UK data protection law. It keeps a record of every letter and reply, and chases
+companies that don't answer.</p>
+
+<section class="card" aria-labelledby="try">
+  <h2 id="try">See how it works first</h2>
+  <p>Try Stealth with made-up details and pretend companies. Nothing is sent anywhere, and the demo
+  is deleted when you leave it or close Stealth.</p>
+  <form method="post" action="/demo/start">
+    {{ csrf_field(csrf) }}
+    <button class="button" type="submit">Try it with made-up data</button>
+  </form>
+</section>
+
+<section class="card" aria-labelledby="setup">
+  <h2 id="setup">Set up Stealth for yourself</h2>
+  <p>A step-by-step setup screen is coming in the next update. Until then, whoever installed
+  Stealth for you can set it up by running <code>stealth init</code> in a terminal.</p>
+</section>
+{% endblock %}
