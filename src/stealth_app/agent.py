@@ -20,7 +20,9 @@ log = logging.getLogger("stealth.agent")
 
 
 def open_window() -> subprocess.Popen[bytes]:
-    flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+    flags = 0
+    if sys.platform == "win32":  # a statement, not a ternary, so mypy narrows on other OSes
+        flags = subprocess.CREATE_NO_WINDOW
     return subprocess.Popen(runtime.self_command("window"), creationflags=flags)  # noqa: S603
 
 
