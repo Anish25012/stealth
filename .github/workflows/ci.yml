@@ -66,6 +66,20 @@ jobs:
           $s = Start-Process $app -ArgumentList '--smoke-test','--with-window','--report',$report -Wait -PassThru
           Get-Content $report
           if ($s.ExitCode -ne 0) { throw "smoke test exited $($s.ExitCode)" }
+          # Upgrading over a running copy: the tray app holds its files open, so the installer
+          # must ask it to quit first. Then the same for uninstalling.
+          function Start-Agent {
+            Start-Process $app -ArgumentList '--background'
+            $agentFile = "$env:LOCALAPPDATA\Stealth\agent.json"
+            for ($i = 0; $i -lt 60 -and -not (Test-Path $agentFile); $i++) { Start-Sleep 1 }
+            if (-not (Test-Path $agentFile)) { throw "the app didn't start" }
+            Start-Sleep 2
+          }
+          Start-Agent
+          $p = Start-Process $setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "upgrade over a running copy exited $($p.ExitCode)" }
+          if (Get-Process Stealth -ErrorAction SilentlyContinue) { throw "the old copy is still running" }
+          Start-Agent
           $u = Start-Process "$env:LOCALAPPDATA\Programs\Stealth\unins000.exe" -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES' -Wait -PassThru
           Start-Sleep 3
           if (Test-Path $app) { throw "uninstall left the app behind" }

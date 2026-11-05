@@ -357,7 +357,8 @@ def _post_routes(app):
     return [
         route.path.replace("{broker_id}", "chatty-data")
         for route in app.routes
-        if "POST" in getattr(route, "methods", set()) and route.path != "/show"
+        # /show and /quit are for other copies of the app and check the launch token instead.
+        if "POST" in getattr(route, "methods", set()) and route.path not in {"/show", "/quit"}
     ]
 
 

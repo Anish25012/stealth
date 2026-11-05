@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 import urllib.request
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -71,8 +72,17 @@ def is_alive(info: AgentInfo, timeout: float = 2.0) -> bool:
 
 def request_show(info: AgentInfo, timeout: float = 5.0) -> bool:
     """Ask the running agent to bring up its window. False if it didn't answer."""
+    return _post(info, "/show", timeout)
+
+
+def request_quit(info: AgentInfo, timeout: float = 5.0) -> bool:
+    """Ask the running agent to quit. False if it didn't answer."""
+    return _post(info, "/quit", timeout)
+
+
+def _post(info: AgentInfo, path: str, timeout: float) -> bool:
     request = urllib.request.Request(
-        f"http://127.0.0.1:{info.port}/show",
+        f"http://127.0.0.1:{info.port}{path}",
         data=b"",
         method="POST",
         headers={TOKEN_HEADER: info.token},
@@ -87,6 +97,20 @@ def request_show(info: AgentInfo, timeout: float = 5.0) -> bool:
 def running_agent(home: Path | None = None) -> AgentInfo | None:
     info = read(home)
     return info if info is not None and is_alive(info) else None
+
+
+def quit_running_agent(home: Path | None = None, wait: float = 20.0) -> bool:
+    """Ask a running agent to quit and wait until it has. True if none is left running."""
+    info = running_agent(home)
+    if info is None:
+        return True
+    request_quit(info)
+    deadline = time.monotonic() + wait
+    while time.monotonic() < deadline:
+        if not is_alive(info, timeout=1.0):
+            return True
+        time.sleep(0.2)
+    return False
 
 
 def self_command(*args: str) -> list[str]:

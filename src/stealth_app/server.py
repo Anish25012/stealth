@@ -44,7 +44,7 @@ COOKIE = "stealth_session"
 TOKEN_HEADER = "X-Stealth-Token"  # noqa: S105 (a header name, not a secret)
 # Pages a browser may reach before it holds the session cookie.
 # These check the token themselves.
-OPEN_PATHS = frozenset({"/auth", "/health", "/show"})
+OPEN_PATHS = frozenset({"/auth", "/health", "/show", "/quit"})
 
 
 def new_token() -> str:
@@ -143,6 +143,7 @@ def create_app(
     port: int,
     on_show: Callable[[], None] | None = None,
     workspace: Workspace | None = None,
+    on_quit: Callable[[], None] | None = None,
 ) -> FastAPI:
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
     app.add_middleware(GuardMiddleware, token=token, port=port)
@@ -169,6 +170,14 @@ def create_app(
         if not _has_token(request, token) or on_show is None:
             return PlainTextResponse("No.", status_code=403)
         on_show()
+        return JSONResponse({"ok": True})
+
+    @app.post("/quit")
+    def quit_app(request: Request) -> Response:
+        """The installer asks a running copy to quit, so it can replace the files it holds open."""
+        if not _has_token(request, token) or on_quit is None:
+            return PlainTextResponse("No.", status_code=403)
+        on_quit()
         return JSONResponse({"ok": True})
 
     @app.get("/static/{name}")
@@ -212,12 +221,13 @@ def start_server(
     token: str | None = None,
     on_show: Callable[[], None] | None = None,
     workspace: Workspace | None = None,
+    on_quit: Callable[[], None] | None = None,
 ) -> RunningServer:
     """Run the server on a background thread and return once it accepts connections."""
     token = token or new_token()
     sock = bind_socket()
     port = sock.getsockname()[1]
-    app = create_app(token, port, on_show, workspace)
+    app = create_app(token, port, on_show, workspace, on_quit)
     config = uvicorn.Config(
         app,
         log_config=None,  # our scrubbed logging, not uvicorn's console handlers

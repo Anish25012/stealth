@@ -230,3 +230,37 @@ def test_a_failing_check_reports_the_error_rather_than_raising():
     check = smoke._run("broken", broken)
     assert not check.ok
     assert "no luck" in check.detail
+
+
+def test_quit_needs_the_token():
+    quits = []
+    app = create_app(TOKEN, PORT, on_quit=lambda: quits.append(1))
+    client = TestClient(app, base_url=BASE)
+    assert client.post("/quit").status_code == 403
+    assert client.post("/quit", headers={TOKEN_HEADER: "wrong"}).status_code == 403
+    assert quits == []
+    assert client.post("/quit", headers={TOKEN_HEADER: TOKEN}).status_code == 200
+    assert quits == [1]
+
+
+def test_quit_is_refused_when_nothing_can_quit():
+    client = TestClient(create_app(TOKEN, PORT), base_url=BASE)
+    assert client.post("/quit", headers={TOKEN_HEADER: TOKEN}).status_code == 403
+
+
+def test_quitting_a_running_agent_waits_until_it_has_gone(monkeypatch, tmp_path):
+    """What the installer relies on before replacing files a running copy holds open."""
+    monkeypatch.setenv("STEALTH_HOME", str(tmp_path))
+    holder = []
+    server = start_server(on_quit=lambda: holder[0].stop())
+    holder.append(server)
+    runtime.write(runtime.AgentInfo(port=server.port, token=server.token, pid=1))
+    assert runtime.running_agent() is not None
+    assert runtime.quit_running_agent(wait=15) is True
+    assert runtime.running_agent() is None
+
+
+def test_quitting_when_nothing_is_running_succeeds(monkeypatch, tmp_path):
+    monkeypatch.setenv("STEALTH_HOME", str(tmp_path))
+    assert runtime.quit_running_agent() is True
+    assert launcher.main(["--quit"]) == 0

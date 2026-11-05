@@ -11,6 +11,7 @@ import os
 import subprocess
 import sys
 import threading
+from typing import Any
 
 from stealth_app import runtime
 from stealth_app.server import RunningServer, start_server
@@ -57,14 +58,19 @@ def run_agent(*, open_on_start: bool = True) -> int:
         return 0
 
     holder: list[Agent] = []
-    agent = Agent(start_server(on_show=lambda: holder[0].show()))
+    icons: list[Any] = []
+    # Stopping the tray loop returns control here, where `finally` shuts everything down. That
+    # keeps the shutdown off the server's own thread, which a quit request arrives on.
+    server = start_server(on_show=lambda: holder[0].show(), on_quit=lambda: icons[0].stop())
+    agent = Agent(server)
     holder.append(agent)
     runtime.write(agent.info)
     log.info("agent started on port %s", agent.server.port)
     try:
         if open_on_start:
             agent.show()
-        build_icon(on_open=agent.show, on_quit=agent.shutdown).run()
+        icons.append(build_icon(on_open=agent.show, on_quit=lambda: None))
+        icons[0].run()
     finally:
         agent.shutdown()
     return 0
