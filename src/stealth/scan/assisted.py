@@ -13,6 +13,7 @@ every call runs on one worker thread.
 from __future__ import annotations
 
 import contextlib
+import logging
 import shutil
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
@@ -21,6 +22,8 @@ from pathlib import Path
 from typing import Any
 
 from stealth.core.errors import StealthError
+
+log = logging.getLogger("stealth.scan")
 
 CHANNELS = ("msedge", "chrome")  # what's already installed, so nothing big is downloaded
 WAIT = 90  # seconds: starting a browser for the first time can be slow
@@ -49,10 +52,28 @@ class SearchWindow:
     # Called from any thread ----------------------------------------------------------------
 
     def open(self, url: str) -> None:
-        self._worker.submit(self._open, url).result(timeout=WAIT)
+        try:
+            self._worker.submit(self._open, url).result(timeout=WAIT)
+        except StealthError:
+            raise
+        except Exception as exc:  # the browser stalled or closed mid-way
+            log.warning("search window didn't open: %s", exc)
+            raise StealthError(
+                "The search window didn't open properly.",
+                hint="Press Open again. If it keeps happening, close any open search window first.",
+            ) from exc
 
     def capture(self) -> Capture:
-        result: Capture = self._worker.submit(self._capture).result(timeout=WAIT)
+        try:
+            result: Capture = self._worker.submit(self._capture).result(timeout=WAIT)
+        except StealthError:
+            raise
+        except Exception as exc:  # the page froze or the window was closed mid-capture
+            log.warning("search window capture failed: %s", exc)
+            raise StealthError(
+                "Stealth couldn't capture the search window.",
+                hint="Check the results are showing, then press Capture again.",
+            ) from exc
         return result
 
     @property
@@ -85,7 +106,13 @@ class SearchWindow:
                 if attempt == 2:
                     raise
         self._folder = Path(tempfile.mkdtemp(prefix="stealth-search-"))
-        options: dict[str, Any] = {"headless": self.headless, "no_viewport": not self.headless}
+        # chromium_sandbox: Playwright turns the browser's sandbox off by default, and Edge then
+        # shows a "--no-sandbox" security warning. These pages are untrusted: keep it on.
+        options: dict[str, Any] = {
+            "headless": self.headless,
+            "no_viewport": not self.headless,
+            "chromium_sandbox": True,
+        }
         for channel in CHANNELS:
             try:
                 self._context = self._playwright.chromium.launch_persistent_context(
@@ -109,8 +136,35 @@ class SearchWindow:
             self._start()
         pages = self._context.pages
         page = pages[0] if pages else self._context.new_page()
-        page.goto(url, wait_until="domcontentloaded")
+        # A freshly started browser sometimes aborts or stalls its first navigation: try again.
+        # "commit" is enough: the window is open once the page starts arriving.
+        for attempt in range(3):
+            try:
+                page.goto(url, wait_until="commit", timeout=20_000)
+                break
+            except Exception:
+                if attempt == 2:
+                    raise
+                log.debug("search window navigation failed, retrying", exc_info=True)
         page.bring_to_front()
+        if not self.headless:
+            self._raise_window(page)
+
+    def _raise_window(self, page: Any) -> None:
+        """Put the window in front of everything. Stealth runs in the background, and Windows
+        won't let a background program push a window forward, so the window minimises and
+        restores itself, which Windows does allow."""
+        try:
+            cdp = self._context.new_cdp_session(page)
+            window = cdp.send("Browser.getWindowForTarget")["windowId"]
+            for state in ("minimized", "normal"):
+                cdp.send(
+                    "Browser.setWindowBounds",
+                    {"windowId": window, "bounds": {"windowState": state}},
+                )
+            cdp.detach()
+        except Exception as exc:  # a nicety: the window is open either way
+            log.debug("couldn't bring the search window forward: %s", exc)
 
     def _capture(self) -> Capture:
         if not self._alive():
@@ -119,7 +173,12 @@ class SearchWindow:
                 hint="Open it again from the Scan page, search, then capture.",
             )
         page = self._context.pages[-1]  # the newest tab: sites often open results in one
-        page.wait_for_load_state("domcontentloaded")
+        # Ask the page itself (Playwright's load-state wait can miss an event that fired early),
+        # and if it's still loading, photograph what's there: the person can see it already.
+        try:
+            page.wait_for_function("document.readyState !== 'loading'", polling=250, timeout=10_000)
+        except Exception:
+            log.debug("captured a page that was still loading", exc_info=True)
         png = page.screenshot(full_page=True, timeout=30_000)
         text = page.inner_text("body", timeout=10_000)
         return Capture(url=page.url, title=page.title(), png=png, text=text[:50_000])

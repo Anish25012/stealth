@@ -263,21 +263,29 @@ def test_a_clean_slate_scores_100():
 # The real search window --------------------------------------------------------------------
 
 
-def test_the_search_window_captures_what_the_person_searched():
-    pytest.importorskip("playwright")
-    from stealth.scan.assisted import NoBrowser, SearchWindow
+def _search_and_capture() -> Capture:
+    from stealth.scan.assisted import SearchWindow
 
     window = SearchWindow(headless=True)
     try:
         with LocalPeopleSearch() as site:
-            try:
-                window.open(site.url)
-            except NoBrowser:
-                pytest.skip("no Edge or Chrome on this machine")
+            window.open(site.url)
             window.open(site.url + "search?name=Alex+Example")  # as if the person searched
-            capture = window.capture()
+            return window.capture()
     finally:
         window.close()
+
+
+def test_the_search_window_captures_what_the_person_searched():
+    pytest.importorskip("playwright")
+    from stealth.scan.assisted import NoBrowser
+
+    try:
+        capture = _search_and_capture()
+    except NoBrowser:
+        pytest.skip("no Edge or Chrome on this machine")
+    except StealthError:  # headless Edge now and then freezes a page: try once more, as a
+        capture = _search_and_capture()  # person would
     assert capture.png.startswith(b"\x89PNG")
     assert "12 Sample Street" in capture.text
     assert capture.url.endswith("name=Alex+Example")

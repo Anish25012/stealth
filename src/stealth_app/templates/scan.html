@@ -18,6 +18,9 @@
       <li><strong>Search for yourself</strong> in that window, as you would anywhere: your name and town.</li>
       <li><strong>Come back here and press Capture.</strong> Stealth photographs the page that's open, then asks whether it shows you.</li>
     </ol>
+    {% if opened %}
+    <p class="notice action" role="status">{{ icon("search") }}<span>The search window is open. Search for yourself there, then press Capture. Can't see it? It's the Edge (or Chrome) icon on your taskbar.</span></p>
+    {% endif %}
     <form method="post" action="/scan/capture">
       {{ csrf_field(csrf) }}
       <button class="button" type="submit">{{ icon("eye") }} Capture what's on screen</button>

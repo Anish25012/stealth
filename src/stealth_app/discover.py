@@ -172,6 +172,7 @@ def install(app: FastAPI, state: State) -> None:
                 decided=[r for r in all_results if r.outcome != scans.PENDING][:20],
                 score=views.exposure(profile),
                 brokers=state.workspace.brokers(),
+                opened=bool(request.query_params.get("opened")),
             )
 
     @app.post("/scan/open")
