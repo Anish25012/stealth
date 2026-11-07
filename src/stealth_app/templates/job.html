@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon %}
+{% block body_attrs %}{% if job.state == "running" %} class="refreshing"{% endif %}{% endblock %}
 {% block head %}{% if job.state == "running" %}<meta http-equiv="refresh" content="2">{% endif %}{% endblock %}
 {% block main %}
 <div class="page-head">

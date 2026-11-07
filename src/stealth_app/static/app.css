@@ -684,7 +684,15 @@
   .nav a .icon { color: var(--text-2); }
   .nav a:hover { background: var(--fill); }
   .nav a:active { transform: scale(.98); }
-  .nav a[aria-current="page"] { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-text); font-weight: 600; }
+  .nav a { position: relative; isolation: isolate; }
+  .nav a[aria-current="page"] { color: var(--accent-text); font-weight: 600; }
+  .nav a[aria-current="page"]:hover { background: transparent; }
+  /* The highlight is its own element so it can glide from page to page (see Motion). */
+  .nav-pill {
+    position: absolute; inset: 0; z-index: -1; border-radius: inherit;
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    view-transition-name: nav-pill;
+  }
   .nav a[aria-current="page"] .icon { color: var(--accent-text); }
   .nav .count { margin-left: auto; }
   .nav-label { flex: 1; }
@@ -893,4 +901,76 @@
 @layer components {
   .page-head.compact h1 { font-size: var(--text-title-2); line-height: 1.25; letter-spacing: -.01em; }
   .steps-explained h3 { font-size: 1.0625rem; }
+}
+
+/* Motion ===================================================================================== */
+/* Calm and physical: things arrive from slightly below and settle, numbers count up, and the
+   sidebar highlight glides to the page you chose. Everything here is switched off for people who
+   ask for reduced motion (see the utilities layer, plus the block at the end). */
+@layer components {
+  /* Page to page: the window chrome stays still, the content cross-fades, the highlight moves.
+     Cross-document view transitions; browsers without them just change page as before. */
+  @view-transition { navigation: auto; }
+  .sidebar { view-transition-name: sidebar; }
+  .toolbar { view-transition-name: toolbar; }
+  ::view-transition-group(sidebar), ::view-transition-group(toolbar) { animation: none; }
+  ::view-transition-old(sidebar), ::view-transition-new(sidebar),
+  ::view-transition-old(toolbar), ::view-transition-new(toolbar) { animation: none; }
+  ::view-transition-old(root) { animation: page-out 140ms ease-in both; }
+  ::view-transition-new(root) { animation: page-in 260ms var(--ease-out) both; }
+  ::view-transition-group(nav-pill) { animation-duration: 420ms; animation-timing-function: var(--spring); }
+  @keyframes page-out { to { opacity: 0; } }
+  @keyframes page-in { from { opacity: 0; } }
+
+  /* Arrivals: each block on a page rises into place, a beat after the one above it. */
+  @keyframes rise { from { opacity: 0; transform: translateY(10px) scale(.99); } }
+  main > *, .stats > li, .features > li, .timeline > li, .rows > li {
+    animation: rise 520ms var(--spring) backwards;
+  }
+  main > :nth-child(2), .stats > li:nth-child(2), .features > li:nth-child(2) { animation-delay: 50ms; }
+  main > :nth-child(3), .stats > li:nth-child(3), .features > li:nth-child(3) { animation-delay: 100ms; }
+  main > :nth-child(4), .stats > li:nth-child(4), .features > li:nth-child(4) { animation-delay: 150ms; }
+  main > :nth-child(5) { animation-delay: 200ms; }
+  main > :nth-child(n + 6) { animation-delay: 240ms; }
+  .rows > li, .timeline > li { animation-duration: 420ms; animation-delay: 120ms; }
+  .rows > li:nth-child(2), .timeline > li:nth-child(2) { animation-delay: 160ms; }
+  .rows > li:nth-child(3), .timeline > li:nth-child(3) { animation-delay: 200ms; }
+  .rows > li:nth-child(4), .timeline > li:nth-child(4) { animation-delay: 240ms; }
+  .rows > li:nth-child(n + 5), .timeline > li:nth-child(n + 5) { animation-delay: 280ms; }
+
+  /* The ring: a soft glow on the arc, and the welcome mark settles with a little bounce. */
+  .ring .ring-value { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 45%, transparent)); }
+  .ring.tone-action .ring-value { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--action-dot) 45%, transparent)); }
+  .welcome-mark { animation: pop 700ms var(--spring-bounce) 80ms backwards; }
+  @keyframes pop { from { opacity: 0; transform: scale(.6) rotate(-8deg); } }
+
+  /* Reports: the bar fills from left to right. */
+  .breakdown { animation: fill-in 1s var(--ease-out) 250ms backwards; }
+  @keyframes fill-in { from { clip-path: inset(0 100% 0 0 round 999px); } to { clip-path: inset(0 0 0 0 round 999px); } }
+
+  /* Hover: rows nudge their chevron forward; primary buttons lift a touch; icons in the
+     sidebar wake up. All quick, all springs, all interruptible (transitions, not keyframes). */
+  .row .chevron { transition: transform var(--dur-3) var(--spring), color var(--dur-1) ease; }
+  a.row:hover .chevron { transform: translateX(3px); color: var(--text); }
+  .button:not(.secondary, .plain):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--button-bg) 70%, transparent);
+  }
+  .button:not(.secondary, .plain):active { transform: scale(.97); box-shadow: none; }
+  .nav a .icon { transition: transform var(--dur-3) var(--spring-bounce), color var(--dur-1) ease; }
+  .nav a:hover .icon { transform: scale(1.08); }
+  .stat .glyph { transition: transform var(--dur-3) var(--spring-bounce); }
+  a.card.stat:hover .glyph { transform: scale(1.1) rotate(-4deg); }
+  .glyph .icon { transition: transform var(--dur-3) var(--spring); }
+
+  /* Pages that refresh themselves while work runs shouldn't replay their arrival every time. */
+  .refreshing main *, .refreshing .ring .ring-value { animation: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    @view-transition { navigation: none; }
+    main > *, .stats > li, .features > li, .timeline > li, .rows > li,
+    .welcome-mark, .breakdown { animation: none; }
+    a.row:hover .chevron, .nav a:hover .icon, a.card.stat:hover .glyph,
+    .button:not(.secondary, .plain):hover { transform: none; }
+  }
 }

@@ -11,7 +11,7 @@
 <script src="/static/app.js" defer></script>
 {% block head %}{% endblock %}
 </head>
-<body>
+<body{% block body_attrs %}{% endblock %}>
 <a class="skip" href="#main">Skip to main content</a>
 <div class="app">
   <aside class="sidebar">
@@ -33,6 +33,7 @@
         {% set ns = namespace(current=(path == "/")) if href == "/" else namespace(current=False) %}
         {% for m in matches if href != "/" and path.startswith(m) %}{% set ns.current = True %}{% endfor %}
         <li><a href="{{ href }}" title="{{ label }}"{% if ns.current %} aria-current="page"{% endif %}>
+          {% if ns.current %}<span class="nav-pill" aria-hidden="true"></span>{% endif %}
           {{ icon(glyph) }}<span class="nav-label">{{ label }}</span>
           {% if nav_counts and nav_counts.get(href) %}<span class="count" aria-label="{{ nav_counts[href] }} waiting">{{ nav_counts[href] }}</span>{% endif %}
         </a></li>

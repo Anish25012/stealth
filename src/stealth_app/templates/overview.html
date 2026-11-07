@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import badge, help, csrf_field, icon, ring, avatar %}
+{% block body_attrs %}{% if running %} class="refreshing"{% endif %}{% endblock %}
 {% block head %}{% if running %}<meta http-equiv="refresh" content="3">{% endif %}{% endblock %}
 {% block main %}
 <div class="page-head">

@@ -79,3 +79,29 @@ document.querySelectorAll('input[name="theme"], input[name="accent"]').forEach((
     }
   });
 });
+
+// Numbers count up to their value as the page arrives: the ring's figure and the stat cards.
+// The final number is already in the page, so without this (or with reduced motion) it just shows.
+(() => {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (document.body.classList.contains("refreshing")) return;
+  const ease = (t) => 1 - Math.pow(1 - t, 4);
+  document.querySelectorAll(".ring-number, .stat-number").forEach((el, i) => {
+    const match = el.textContent.trim().match(/^(\d+)(.*)$/);
+    if (!match) return;
+    const target = Number(match[1]);
+    const suffix = match[2];
+    if (target === 0) return;
+    const duration = el.classList.contains("ring-number") ? 1100 : 700;
+    const delay = el.classList.contains("ring-number") ? 150 : 120 + i * 50;
+    el.textContent = `0${suffix}`;
+    let start;
+    const step = (now) => {
+      start ??= now + delay;
+      const t = Math.min(Math.max((now - start) / duration, 0), 1);
+      el.textContent = `${Math.round(ease(t) * target)}${suffix}`;
+      if (t < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+})();
