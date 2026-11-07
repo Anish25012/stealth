@@ -11,11 +11,12 @@ import secrets
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from importlib import resources
 from typing import Any
 from urllib.parse import parse_qs, quote
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from jinja2 import Environment, PackageLoader, select_autoescape
 from starlette.responses import Response
 
@@ -27,7 +28,7 @@ from stealth.core.logging_scrub import add_known_values
 from stealth.inbox import responses
 from stealth.profiles.store import Profile
 from stealth.templates.render import format_date
-from stealth_app import autostart, monthly, views
+from stealth_app import autostart, monthly, updates, views
 from stealth_app.workspace import DemoWorkspace, Job, Jobs, RealWorkspace, Workspace
 
 CSRF_FIELD = "csrf"
@@ -54,6 +55,7 @@ class State:
     csrf: str
     jobs: Jobs
     demo: DemoWorkspace | None = None
+    phone: Any = None  # a running phone.PhoneView, if phone view is on
 
     @property
     def workspace(self) -> Workspace:
@@ -99,6 +101,23 @@ EMPTY_PAGES: dict[str, tuple[str, str, str]] = {
 def not_set_up(request: Request) -> HTMLResponse:
     title, about, glyph = EMPTY_PAGES[request.url.path]
     return render(request, "not_set_up.html", title=title, about=about, glyph=glyph)
+
+
+STATIC_TYPES = {
+    ".css": "text/css",
+    ".js": "text/javascript",
+    ".png": "image/png",
+    ".svg": "image/svg+xml",
+}
+
+
+def static_response(name: str) -> Response:
+    """One file from the static folder. Names only, never paths; dot-files are refused."""
+    entry = resources.files("stealth_app") / "static" / name
+    suffix = "." + name.rsplit(".", 1)[-1] if "." in name else ""
+    if name.startswith(".") or suffix not in STATIC_TYPES or not entry.is_file():
+        return PlainTextResponse("Not found.", status_code=404)
+    return Response(entry.read_bytes(), media_type=STATIC_TYPES[suffix])
 
 
 def redirect(url: str) -> RedirectResponse:
@@ -243,6 +262,7 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
                 can_complain=views.can_complain(case),
                 can_ico=case.status in (Status.ICO_READY, Status.ESCALATED),
                 form_url=broker.form_url if broker else None,
+                dead_contact=views.dead_contact_link(profile, case),
             )
 
     @app.get("/cases/{broker_id}/messages/{message_id}", response_class=HTMLResponse)
@@ -367,11 +387,19 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
                 nav_counts=views.nav_counts(views.grouped(views.rows(profile))),
             )
 
+    def update_context() -> dict[str, Any]:
+        phone = state.phone if state.phone is not None and state.phone.active() else None
+        return {
+            "updates": updates.load(),
+            "list_version": updates.list_version(),
+            "phone": phone,
+        }
+
     @app.get("/settings", response_class=HTMLResponse)
     def settings_page(request: Request) -> Response:
         with opened(state) as profile:
             if profile is None:
-                return render(request, "settings.html", title="Settings")
+                return render(request, "settings.html", title="Settings", **update_context())
             return render(
                 request,
                 "settings.html",
@@ -384,7 +412,22 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
                 autostart_available=autostart.available(),
                 autostart_on=autostart.is_enabled(),
                 hours=range(6, 23),
+                **update_context(),
             )
+
+    @app.post("/settings/updates")
+    async def update_setting(request: Request) -> Response:
+        form = await read_form(request)
+        updates.set_enabled(first(form, "check_updates") == "yes")
+        return redirect("/settings#updates-h")
+
+    @app.post("/updates/check")
+    async def check_now(request: Request) -> Response:
+        await read_form(request)
+        result = updates.check()
+        if result.list_updated:
+            state.real.forget_brokers()
+        return redirect("/settings#updates-h")
 
     @app.post("/settings/automation")
     async def automation(request: Request) -> Response:

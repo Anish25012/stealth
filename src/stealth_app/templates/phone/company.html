@@ -1,0 +1,23 @@
+{% extends "phone/base.html" %}
+{% from "_macros.html" import badge %}
+{% block main %}
+<section class="card">
+  <h1>{{ row.case.broker_name }}</h1>
+  <p>{{ badge(row.info) }}{% if row.overdue %} <span class="badge tone-problem">Late</span>{% endif %}</p>
+  <p class="lead">{{ row.explanation }}</p>
+  <dl class="facts">
+    <div><dt>Website</dt><dd>{{ row.case.broker_domain }}</dd></div>
+    {% if row.case.last_request_on %}<div><dt>Last letter sent</dt><dd>{{ row.case.last_request_on|day }}</dd></div>{% endif %}
+    {% if row.case.deadline_on %}<div><dt>Reply due by</dt><dd>{{ row.case.deadline_on|day }}</dd></div>{% endif %}
+  </dl>
+</section>
+{% if timeline %}
+<section class="card">
+  <h2>History</h2>
+  <ol class="phone-list">
+    {% for entry in timeline %}<li><strong>{{ entry.at.date()|day }}</strong> · {{ entry.text }}</li>{% endfor %}
+  </ol>
+</section>
+{% endif %}
+<p><a href="/companies">All companies</a></p>
+{% endblock %}

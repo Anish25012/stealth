@@ -128,8 +128,76 @@
     <a class="more" href="/people">Manage people {{ icon("chevron-right", "s") }}</a>
   </div>
 </section>
+<section class="card" aria-labelledby="phone-h">
+  <div class="card-head">
+    <span class="glyph tone-accent">{{ icon("eye") }}</span>
+    <div>
+      <h2 id="phone-h">Phone view</h2>
+      <p class="muted">Check on Stealth from your phone while it's on the same Wi-Fi. Your phone
+      can only look, not change anything, and phone view turns itself off after 30 minutes.</p>
+    </div>
+  </div>
+  {% if phone %}
+  <ol>
+    <li>On your phone, open <strong>{{ phone.url }}</strong></li>
+    <li>Your browser warns that the connection isn't private, because the certificate was made
+    on this computer rather than bought. Choose to continue (often under "Advanced").</li>
+    <li>Enter this code: <span class="phone-code">{{ phone.code[:3] }} {{ phone.code[3:] }}</span></li>
+  </ol>
+  <p class="muted small">{% if phone.session %}A phone is connected. {% endif %}Phone view ends at {{ phone.ends_text }}.
+  The certificate's SHA-256 fingerprint, if your browser shows one: <span class="fingerprint">{{ phone.fingerprint }}</span></p>
+  <form method="post" action="/phone/stop" class="button-row">
+    {{ csrf_field(csrf) }}
+    <button class="button secondary" type="submit">{{ icon("x") }} Turn off phone view</button>
+  </form>
+  {% else %}
+  <p class="muted small">The first time, Windows may ask whether Stealth can use private networks. Allow it, or your phone can't connect.</p>
+  <form method="post" action="/phone/start" class="button-row">
+    {{ csrf_field(csrf) }}
+    <button class="button secondary" type="submit">{{ icon("play") }} Turn on phone view</button>
+  </form>
+  {% endif %}
+</section>
 <p class="muted small">Changing the sending settings from the app is coming in a later update.</p>
 {% endif %}
+
+<section class="card" aria-labelledby="updates-h">
+  <div class="card-head">
+    <span class="glyph tone-accent">{{ icon("download") }}</span>
+    <div>
+      <h2 id="updates-h">Updates</h2>
+      <p class="muted">Once a day Stealth asks GitHub whether there's a newer version, and downloads
+      newer lists of company addresses. Nothing about you is sent. A new list is only used if it's
+      signed by the Stealth project.</p>
+    </div>
+  </div>
+  {% if updates.latest_app %}
+  <div class="notice action">
+    {{ icon("bell") }}
+    <p><strong>Stealth {{ updates.latest_app }} is available.</strong> You have {{ version }}.
+    <a href="{{ updates.latest_url }}" target="_blank" rel="noopener noreferrer">Download it from GitHub</a> (opens in your web browser), then run the installer. Your data is kept.</p>
+  </div>
+  {% endif %}
+  <form method="post" action="/settings/updates">
+    {{ csrf_field(csrf) }}
+    <div class="toggle-row">
+      <label for="f-check_updates">Check for updates every day</label>
+      <input type="checkbox" class="switch" role="switch" id="f-check_updates" name="check_updates" value="yes"{% if updates.enabled %} checked{% endif %}>
+    </div>
+    <div class="button-row"><button class="button secondary" type="submit">Save</button></div>
+  </form>
+  <dl class="facts">
+    <div><dt>This version</dt><dd>Stealth {{ version }}</dd></div>
+    <div><dt>Company list</dt><dd>Version {{ list_version }}</dd></div>
+    <div><dt>Last checked</dt><dd>{{ updates.checked|when if updates.checked else "Not yet" }}</dd></div>
+  </dl>
+  {% if updates.result %}<p class="muted small">{{ updates.result }}</p>{% endif %}
+  <form method="post" action="/updates/check" class="button-row">
+    {{ csrf_field(csrf) }}
+    <button class="button secondary" type="submit">{{ icon("refresh-cw") }} Check now</button>
+  </form>
+</section>
+
 
 {% call help() %}
 <p>The <strong>daily limit</strong> keeps your email provider from mistaking you for a spammer.

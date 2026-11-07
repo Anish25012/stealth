@@ -1,0 +1,28 @@
+{% from "_macros.html" import icon %}
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex">
+<title>{{ title if title == "Stealth" else title ~ " · Stealth" }}</title>
+<link rel="stylesheet" href="/static/app.css">
+<script src="/static/theme.js"></script>
+</head>
+<body class="phone">
+<header class="toolbar phone-bar">
+  <a class="brand" href="/home"><span class="brand-mark">{{ icon("shield-check") }}</span><span class="brand-name">Stealth</span></a>
+  {% if view.session %}
+  <nav aria-label="Main"><ul class="segmented">
+    <li><a href="/home"{% if title == "Stealth" %} aria-current="page"{% endif %}>Home</a></li>
+    <li><a href="/companies"{% if title == "Companies" %} aria-current="page"{% endif %}>Companies</a></li>
+  </ul></nav>
+  {% endif %}
+</header>
+<main id="main" class="phone-main">
+{% block main %}{% endblock %}
+<p class="muted small phone-foot">{{ icon("eye", "s") }} Read-only phone view. It ends at {{ view.ends_text }}. To change anything, use Stealth on your computer.</p>
+</main>
+</body>
+</html>

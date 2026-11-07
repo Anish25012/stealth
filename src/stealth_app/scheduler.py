@@ -22,7 +22,7 @@ from stealth.core import clock
 from stealth.core.errors import MailAuthError, MailConnectionError, StealthError
 from stealth.core.logging_scrub import add_known_values
 from stealth.profiles.models import Settings
-from stealth_app import monthly, views
+from stealth_app import monthly, updates, views
 from stealth_app.workspace import Workspace
 
 log = logging.getLogger("stealth.scheduler")
@@ -69,10 +69,15 @@ class Scheduler:
         workspace: Workspace,
         notify: Notify | None = None,
         now: Callable[[], datetime] = local_now,
+        check_updates: Callable[[], updates.CheckResult] | None = None,
+        update_state: Callable[[], updates.UpdateState] = updates.load,
     ) -> None:
         self.workspace = workspace  # always the real one: the demo looks after itself
         self.notify = notify or (lambda _title, _message: None)
         self.now = now
+        # None in tests: only the running app goes online to check for updates.
+        self.check_updates = check_updates
+        self.update_state = update_state
         self.started = now()
         self._retry_at: dict[str, datetime] = {}
         self._stop = threading.Event()
@@ -103,6 +108,7 @@ class Scheduler:
         now = self.now()
         if not force and now - self.started < STARTUP_GRACE:
             return []
+        self._updates(now)
         outcomes = []
         for profile_id in self.workspace.store.list_ids():
             if not force and now < self._retry_at.get(profile_id, now):
@@ -113,6 +119,23 @@ class Scheduler:
             outcomes.append(outcome)
             self._announce_report(profile_id)
         return outcomes
+
+    def _updates(self, now: datetime) -> None:
+        """Once a day, look for a newer app and broker list. Never stops the daily checks."""
+        if self.check_updates is None or not updates.due(self.update_state(), now):
+            return
+        try:
+            result = self.check_updates()
+        except Exception:
+            log.exception("update check failed")
+            return
+        if result.list_updated:
+            self.workspace.forget_brokers()
+        if result.new_app:
+            self.notify(
+                "Stealth update",
+                f"Stealth {result.new_app} is out. Open Settings in Stealth to download it.",
+            )
 
     def _announce_report(self, profile_id: str) -> None:
         """Once a month, say that last month's report is ready. Only once, even across restarts."""

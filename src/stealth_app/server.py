@@ -22,7 +22,6 @@ import threading
 import traceback
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from importlib import resources
 from pathlib import PurePath
 from typing import Any
 
@@ -35,7 +34,7 @@ from starlette.responses import Response
 from stealth import __version__
 from stealth.core.errors import StealthError
 from stealth.core.logging_scrub import scrub
-from stealth_app import dashboard, discover, setup_wizard, styleguide
+from stealth_app import dashboard, discover, phone, setup_wizard, styleguide
 from stealth_app.workspace import Workspace
 
 log = logging.getLogger("stealth.app.server")
@@ -86,14 +85,6 @@ class GuardMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Cache-Control"] = "no-store"
         return response
-
-
-STATIC_TYPES = {
-    ".css": "text/css",
-    ".js": "text/javascript",
-    ".png": "image/png",
-    ".svg": "image/svg+xml",
-}
 
 
 def diagnostics(exc: BaseException) -> str:
@@ -152,7 +143,6 @@ def create_app(
 ) -> FastAPI:
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
     app.add_middleware(GuardMiddleware, token=token, port=port)
-    static = resources.files("stealth_app") / "static"
 
     @app.get("/health")
     def health(request: Request) -> JSONResponse:
@@ -187,16 +177,12 @@ def create_app(
 
     @app.get("/static/{name}")
     def static_file(name: str) -> Response:
-        entry = static / name
-        suffix = "." + name.rsplit(".", 1)[-1] if "." in name else ""
-        # Names only, never paths: no slashes reach here, and dot-files are refused.
-        if name.startswith(".") or suffix not in STATIC_TYPES or not entry.is_file():
-            return PlainTextResponse("Not found.", status_code=404)
-        return Response(entry.read_bytes(), media_type=STATIC_TYPES[suffix])
+        return dashboard.static_response(name)
 
     state = dashboard.install(app, workspace)
     setup_wizard.install(app, state)
     discover.install(app, state)
+    phone.install(app, state)
     if styleguide.enabled():
         styleguide.install(app)
     return app
@@ -220,6 +206,9 @@ class RunningServer:
     def stop(self) -> None:
         self._server.should_exit = True
         self._thread.join(timeout=10)
+        if self.dashboard.phone is not None:
+            self.dashboard.phone.stop()
+            self.dashboard.phone = None
         # A demo left open when the app quits still gets its folder and mail servers cleaned up.
         demo, self.dashboard.demo = self.dashboard.demo, None
         if demo is not None:

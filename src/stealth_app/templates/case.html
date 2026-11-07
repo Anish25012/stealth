@@ -25,6 +25,15 @@
       {% if case.next_action_on and case.next_action_on != case.deadline_on %}<div><dt>Next step</dt><dd>{{ case.next_action_on|day }}</dd></div>{% endif %}
       <div><dt>Contact</dt><dd>{{ case.contact or "Web form only" }}</dd></div>
     </dl>
+    {% if dead_contact %}
+    <div class="notice problem">
+      {{ icon("flag") }}
+      <p><strong>This company's address didn't work.</strong> Let the Stealth project know so the
+      list can be fixed for everyone: <a href="{{ dead_contact }}" target="_blank" rel="noopener noreferrer">report it on GitHub</a>
+      (opens in your web browser). Only the company's details are filled in, nothing about you,
+      and you see it before it's posted.</p>
+    </div>
+    {% endif %}
   </section>
 
   {% if case.status.value == "draft" %}

@@ -1,0 +1,31 @@
+{% extends "phone/base.html" %}
+{% from "_macros.html" import badge, icon %}
+{% block main %}
+{% if not summary %}
+<section class="card"><h1>Nothing here yet</h1><p>Set Stealth up on your computer first.</p></section>
+{% else %}
+<section class="card hero tone-{{ summary.tone }}">
+  <p class="muted">{{ name }}</p>
+  <h1>{{ summary.headline }}</h1>
+  <p>{{ summary.text }}</p>
+  <dl class="facts">
+    <div><dt>Removed</dt><dd>{{ summary.removed }}</dd></div>
+    <div><dt>In progress</dt><dd>{{ summary.progress }}</dd></div>
+    <div><dt>Need you</dt><dd>{{ summary.needs }}</dd></div>
+    <div><dt>Problems</dt><dd>{{ summary.problems }}</dd></div>
+  </dl>
+  {% if last_run.when %}<p class="muted small">Last check: {{ last_run.when }}. {{ last_run.result }}</p>{% endif %}
+</section>
+{% for key, title in [("approve", "Waiting for your OK"), ("you", "Needs you"), ("problem", "Problems")] if groups[key] %}
+<section class="card">
+  <h2>{{ title }}</h2>
+  <ul class="phone-list">
+    {% for row in groups[key] %}
+    <li><a href="/companies/{{ row.case.broker_id|urlencode }}">{{ row.case.broker_name }}</a> {{ badge(row.info) }}
+      <p class="muted small">{{ row.explanation }}</p></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endfor %}
+{% endif %}
+{% endblock %}

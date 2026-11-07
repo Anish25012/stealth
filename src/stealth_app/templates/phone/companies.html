@@ -1,0 +1,17 @@
+{% extends "phone/base.html" %}
+{% from "_macros.html" import badge %}
+{% block main %}
+<h1>Companies</h1>
+{% for key, rows in groups.items() if rows %}
+<section class="card">
+  <ul class="phone-list">
+    {% for row in rows %}
+    <li><a href="/companies/{{ row.case.broker_id|urlencode }}">{{ row.case.broker_name }}</a> {{ badge(row.info) }}{% if row.overdue %} <span class="badge tone-problem">Late</span>{% endif %}
+      <p class="muted small">{{ row.explanation }}</p></li>
+    {% endfor %}
+  </ul>
+</section>
+{% else %}
+<section class="card"><p>Stealth hasn't written to any companies yet.</p></section>
+{% endfor %}
+{% endblock %}

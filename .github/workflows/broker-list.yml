@@ -1,0 +1,35 @@
+name: Publish broker list
+# Signs the broker list and publishes it as the `broker-list` release, where every copy of
+# Stealth looks for updates. Copies only accept it if the signature matches the key built into
+# them and the version is higher than any list they've seen.
+on:
+  push:
+    branches: [main]
+    paths: [src/stealth/registry/data/brokers.json]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e .
+      - name: Sign
+        env:
+          BROKER_LIST_KEY: ${{ secrets.BROKER_LIST_KEY }}
+        run: python tools/sign_broker_list.py out
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view broker-list > /dev/null 2>&1; then
+            gh release create broker-list --prerelease --title "Broker list" \
+              --notes "The signed broker list Stealth downloads. Not an app release."
+          fi
+          gh release upload broker-list out/brokers.json out/brokers.json.sig --clobber

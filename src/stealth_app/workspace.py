@@ -43,6 +43,9 @@ class Workspace(Protocol):
 
     def brokers(self) -> dict[str, Broker]: ...
 
+    def forget_brokers(self) -> None:
+        """Load the broker list again next time: a newer one was downloaded."""
+
     def mail(self, profile: Profile) -> tuple[Transport, Mailbox]: ...
 
     def sleep(self, seconds: float) -> None: ...
@@ -69,6 +72,9 @@ class RealWorkspace:
         if self._brokers is None:
             self._brokers = load_registry()
         return self._brokers
+
+    def forget_brokers(self) -> None:
+        self._brokers = None
 
     def mail(self, profile: Profile) -> tuple[Transport, Mailbox]:
         return open_mail(profile)
@@ -119,6 +125,9 @@ class DemoWorkspace:
 
     def brokers(self) -> dict[str, Broker]:
         return self._brokers
+
+    def forget_brokers(self) -> None:
+        pass  # the demo has its own fixed list
 
     def mail(self, profile: Profile) -> tuple[Transport, Mailbox]:
         account = profile.mail_account()

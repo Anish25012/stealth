@@ -80,10 +80,21 @@ def packaged_document() -> dict[str, Any]:
     return data
 
 
+def current_document(home: Path | None = None) -> dict[str, Any]:
+    """The newest genuine list: a signed download if it's newer, else the one in the app."""
+    from stealth.registry import updater
+
+    packaged = packaged_document()
+    validate(packaged, "the app")
+    downloaded = updater.cached_document(home)
+    if downloaded is not None and downloaded["version"] > packaged["version"]:
+        return downloaded
+    return packaged
+
+
 def load_registry(extra_path: Path | None = None) -> dict[str, Broker]:
     """The full registry, with the person's own `brokers_extra.json` layered over it."""
-    document = packaged_document()
-    validate(document, "the app")
+    document = current_document()
     merged = {b["id"]: b for b in document["brokers"]}
     extra = extra_path or paths.extra_brokers_file()
     if extra.exists():

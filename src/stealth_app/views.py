@@ -19,9 +19,9 @@ from email.message import EmailMessage
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
-from stealth import score
+from stealth import __version__, score
 from stealth.cases.state import TRANSITIONS, Case, Status, all_cases
 from stealth.core import clock
 from stealth.core.errors import ProfileError
@@ -592,3 +592,42 @@ def exposure(profile: Profile) -> score.Score:
         open_listings=scans.open_listings(profile),
         listings_checked=scans.ever_scanned(profile),
     )
+
+
+ISSUES_URL = "https://github.com/Anish25012/stealth/issues/new"
+
+
+def dead_contact_link(profile: Profile, case: Case) -> str | None:
+    """A pre-filled GitHub issue telling the project a company's address no longer works.
+
+    Only the company's details go in it: its name, its published address and what happened.
+    Nothing about the person. GitHub shows the issue to them before anything is posted.
+    """
+    row = profile.conn.execute(
+        "SELECT contact, reason, flagged_at FROM broker_contact_flag WHERE broker_id = ? "
+        "ORDER BY flagged_at DESC LIMIT 1",
+        (case.broker_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    when = format_date(datetime.fromisoformat(row["flagged_at"]).date())
+    what = {"bounced": "Email to this address bounced"}.get(row["reason"], row["reason"])
+    body = "\n".join(
+        [
+            f"**Company:** {case.broker_name} (`{case.broker_id}`)",
+            f"**Website:** {case.broker_domain}",
+            f"**Address in the list:** {row['contact'] or 'none'}",
+            f"**What happened:** {what}, {when}.",
+            f"**Stealth version:** {__version__}",
+            "",
+            "If you know their current privacy address or removal form, add it here.",
+        ]
+    )
+    query = urlencode(
+        {
+            "title": f"Dead contact: {case.broker_name}",
+            "body": body,
+            "labels": "dead-contact",
+        }
+    )
+    return f"{ISSUES_URL}?{query}"

@@ -1,0 +1,13 @@
+{% extends "phone/base.html" %}
+{% block main %}
+<section class="card">
+  <h1>Enter the code</h1>
+  <p>Stealth's Settings page on your computer shows a six-digit code next to this address.</p>
+  {% if error %}<div class="notice problem" role="alert"><p>{{ error }}</p></div>{% endif %}
+  <form method="post" action="/code">
+    <label for="f-code">Code</label>
+    <input id="f-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" pattern="[0-9 ]*" required autofocus>
+    <div class="button-row"><button class="button" type="submit">Open</button></div>
+  </form>
+</section>
+{% endblock %}

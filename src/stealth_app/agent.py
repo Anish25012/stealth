@@ -13,7 +13,7 @@ import sys
 import threading
 from typing import Any
 
-from stealth_app import runtime
+from stealth_app import runtime, updates
 from stealth_app.scheduler import Scheduler
 from stealth_app.server import RunningServer, start_server
 from stealth_app.tray import build_icon
@@ -75,7 +75,7 @@ def run_agent(*, open_on_start: bool = True) -> int:
             except Exception:  # a notification is a nicety; never let it stop a check
                 log.exception("tray notification failed")
 
-    scheduler = Scheduler(server.dashboard.real, notify=notify)
+    scheduler = Scheduler(server.dashboard.real, notify=notify, check_updates=updates.check)
 
     def check_now() -> None:
         threading.Thread(
