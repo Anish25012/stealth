@@ -608,6 +608,28 @@
   .notice.reading .reading-quote { font-style: italic; overflow-wrap: anywhere; }
   .notice.reading a { overflow-wrap: anywhere; }
   details.draft { margin: 0 0 var(--space-4); }
+
+  /* Scan and Add a company ---------------------------------------------------------------- */
+  .steps-list { margin: 0 0 var(--space-5); padding-left: 1.25rem; display: grid; gap: var(--space-2); }
+  .button.compact { min-height: 2rem; padding: .25rem .75rem; font-size: .875rem; }
+  .row-end form { margin: 0; }
+  .inline-form { margin-top: var(--space-4); }
+  .capture-url { overflow-wrap: anywhere; margin-bottom: var(--space-3); }
+  .capture {
+    max-height: 70vh; overflow: auto; border-radius: var(--radius-m);
+    border: 1px solid var(--separator); background: var(--inset);
+  }
+  .capture img { display: block; width: 100%; height: auto; }
+  .row-text.quote { font-style: italic; overflow-wrap: anywhere; }
+  .choices .row-main { display: grid; gap: .15rem; }
+  .score .ring { margin: var(--space-3) auto; }
+  .score-words { text-align: center; font-weight: 600; margin-bottom: var(--space-3); }
+  .score-table { width: 100%; border-collapse: collapse; margin-bottom: var(--space-4); font-size: .875rem; }
+  .score-table th { text-align: left; font-weight: 500; padding: var(--space-2) var(--space-2) var(--space-2) 0; }
+  .score-table th .small { display: block; }
+  .score-table td { text-align: right; padding: var(--space-2) 0 var(--space-2) var(--space-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .score-table tr + tr { border-top: 1px solid var(--separator); }
+  .score-table .points { font-weight: 600; }
   details.draft > summary { margin-bottom: var(--space-3); }
   .mail-head { margin-bottom: var(--space-4); }
 

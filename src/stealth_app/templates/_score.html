@@ -1,0 +1,21 @@
+{% from "_macros.html" import icon, ring %}
+<section class="card score" aria-labelledby="score-h">
+  <h2 id="score-h">Exposure score</h2>
+  {{ ring(score.value, score.value, "of 100", label="Exposure score " ~ score.value ~ " out of 100", tone={"low": "good", "medium": "waiting", "high": "problem"}[score.band]) }}
+  <p class="score-words">{{ score.words }}.</p>
+  <p class="muted small">Higher is better. It starts at 100 and loses points for what's still out there:</p>
+  <table class="score-table">
+    <tbody>
+      {% for part in score.parts %}
+      <tr>
+        <th scope="row">{{ part.rule.label }}{% if part.rule.label == "Data breaches" %} <span class="muted">(coming later)</span>{% endif %}<span class="muted small"> · {{ part.rule.each }} each, at most {{ part.rule.cap }}</span></th>
+        <td>{{ part.count }}</td>
+        <td class="points">{{ "−" ~ part.points if part.points else "0" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if not score.listings_checked %}
+  <p class="notice">{{ icon("info") }}<span>Listings aren't checked yet. <a href="/scan">Run a scan</a> so the score includes them.</span></p>
+  {% endif %}
+</section>

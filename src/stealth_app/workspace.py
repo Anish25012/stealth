@@ -21,12 +21,16 @@ from typing import Protocol
 from stealth.core import clock
 from stealth.core.errors import StealthError
 from stealth.core.secrets import KeyringStore, MemoryStore
+from stealth.custom.policy_fetch import Page, http_get
 from stealth.devmail.servers import LocalImap, LocalSmtp
+from stealth.devmail.sites import LocalPeopleSearch, demo_fetch
 from stealth.mail.base import Mailbox, Transport
 from stealth.mail.factory import open_mail
 from stealth.mail.smtp_imap import ImapMailbox, SmtpTransport
 from stealth.profiles.store import Profile, ProfileStore
 from stealth.registry.loader import Broker, load_registry
+from stealth.scan.assisted import SearchWindow
+from stealth.scan.results import ScanSite, suggested_sites
 
 log = logging.getLogger("stealth.app.workspace")
 
@@ -43,6 +47,12 @@ class Workspace(Protocol):
 
     def sleep(self, seconds: float) -> None: ...
 
+    def fetch(self, url: str) -> Page: ...
+
+    def search_window(self) -> SearchWindow: ...
+
+    def scan_sites(self) -> list[ScanSite]: ...
+
     def close(self) -> None: ...
 
 
@@ -53,6 +63,7 @@ class RealWorkspace:
         self.store = store or ProfileStore(KeyringStore())
         self.lock = threading.Lock()
         self._brokers: dict[str, Broker] | None = None
+        self._window: SearchWindow | None = None
 
     def brokers(self) -> dict[str, Broker]:
         if self._brokers is None:
@@ -65,8 +76,21 @@ class RealWorkspace:
     def sleep(self, seconds: float) -> None:
         time.sleep(seconds)
 
+    def fetch(self, url: str) -> Page:
+        return http_get(url)
+
+    def search_window(self) -> SearchWindow:
+        if self._window is None:
+            self._window = SearchWindow()
+        return self._window
+
+    def scan_sites(self) -> list[ScanSite]:
+        return suggested_sites(self.brokers())
+
     def close(self) -> None:
-        pass
+        if self._window is not None:
+            self._window.close()
+            self._window = None
 
 
 class DemoWorkspace:
@@ -88,6 +112,8 @@ class DemoWorkspace:
         self._password = PASSWORD
         self._brokers = DASHBOARD_BROKERS
         self.store = ProfileStore(MemoryStore(), home=self._folder)
+        self.people_search = LocalPeopleSearch().__enter__()
+        self._window: SearchWindow | None = None
         with self.lock:
             seed_dashboard_demo(self.store, self.smtp, self.imap, clock.local_date("Europe/London"))
 
@@ -102,7 +128,23 @@ class DemoWorkspace:
     def sleep(self, seconds: float) -> None:
         pass  # nothing real is being sent, so there's no mailbox to protect
 
+    def fetch(self, url: str) -> Page:
+        return demo_fetch(url)
+
+    def search_window(self) -> SearchWindow:
+        if self._window is None:
+            self._window = SearchWindow()
+        return self._window
+
+    def scan_sites(self) -> list[ScanSite]:
+        site = self.people_search
+        return [ScanSite("find-a-neighbour", "Find-a-Neighbour (demo)", site.url, (site.host,))]
+
     def close(self) -> None:
+        if self._window is not None:
+            self._window.close()
+            self._window = None
+        self.people_search.__exit__(None, None, None)
         self.smtp.__exit__(None, None, None)
         self.imap.__exit__(None, None, None)
         shutil.rmtree(self._folder, ignore_errors=True)

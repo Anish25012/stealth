@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, help, icon %}
+{% block toolbar_start %}<a class="back" href="/companies/add">{{ icon("arrow-left", "s") }} Add a company</a>{% endblock %}
+{% block main %}
+<div class="page-head">
+  <div>
+    <h1>Where should the letter go?</h1>
+    <p>{% if company.candidates %}Stealth read {{ company.domain }}{% if company.policy_url %} and found its privacy policy{% endif %}. Choose the address to write to.{% else %}Stealth couldn't find an email address on {{ company.domain }}. If you know their privacy address, type it below.{% endif %}</p>
+  </div>
+</div>
+
+<form method="post" action="/companies/add/{{ company.id|urlencode }}">
+  {{ csrf_field(csrf) }}
+  <section class="card" aria-labelledby="address-h">
+    <h2 id="address-h">Their privacy address</h2>
+    {% if company.policy_url %}<p class="muted small">Found in <a href="{{ company.policy_url }}" target="_blank" rel="noopener noreferrer">{{ company.policy_url }}</a></p>{% endif %}
+    <fieldset class="choices">
+      <legend class="visually-hidden">Address to write to</legend>
+      {% for candidate in company.candidates %}
+      <div class="choice">
+        <input type="radio" id="c-{{ loop.index }}" name="email" value="{{ candidate.address }}"{% if loop.first %} checked{% endif %} required>
+        <label for="c-{{ loop.index }}">
+          <span class="row-main">
+            <span class="row-title">{{ candidate.address }}{% if loop.first %} <span class="badge tone-good">Likeliest</span>{% endif %}</span>
+            {% if candidate.reasons %}<span class="row-text">{{ candidate.reasons|join(", ")|capitalize }}</span>{% endif %}
+            {% if candidate.context %}<span class="row-text quote">“…{{ candidate.context }}…”</span>{% endif %}
+          </span>
+        </label>
+      </div>
+      {% endfor %}
+      <div class="choice">
+        <input type="radio" id="c-other" name="email" value="other"{% if not company.candidates %} checked{% endif %} required>
+        <label for="c-other">Another address</label>
+      </div>
+    </fieldset>
+    <div class="field">
+      <label for="f-other">Another address <span class="muted">(if you chose it)</span></label>
+      <input id="f-other" name="other_email" type="email" autocomplete="off">
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="details-h">
+    <h2 id="details-h">About them</h2>
+    <div class="field">
+      <label for="f-name">Their name</label>
+      <input id="f-name" name="name" type="text" value="{{ company.name }}" required>
+    </div>
+    <div class="field">
+      <label for="f-category">What kind of company</label>
+      <select id="f-category" name="category">
+        {% for value, label in categories.items() %}<option value="{{ value }}"{% if value == company.category %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="f-listing">A page that shows your details <span class="muted">(optional)</span></label>
+      <input id="f-listing" name="listing" type="url" value="{{ company.listing_url or '' }}" autocomplete="off">
+    </div>
+  </section>
+
+  <div class="action-bar">
+    <p class="muted small">{{ icon("info", "s") }} The letter waits for your OK, like every other.</p>
+    <div class="button-row">
+      <button class="button" type="submit">Add {{ company.name }} {{ icon("arrow-right") }}</button>
+    </div>
+  </div>
+</form>
+<form method="post" action="/companies/add/{{ company.id|urlencode }}/forget" class="inline-form">
+  {{ csrf_field(csrf) }}
+  <button class="button secondary" type="submit">Don't add them</button>
+</form>
+
+{% call help() %}
+<p>Write to the address a policy gives for privacy or data protection, often called the Data
+Protection Officer. Avoid sales, press or general enquiry addresses: they may not pass your letter
+on, and the company could later say it never had it.</p>
+{% endcall %}
+{% endblock %}

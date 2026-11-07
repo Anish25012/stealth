@@ -173,6 +173,7 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
                 running=state.jobs.running(),
                 settings=profile.settings(),
                 last_run=views.last_run(profile.settings()),
+                score=views.exposure(profile),
             )
 
     @app.get("/cases", response_class=HTMLResponse)
@@ -308,6 +309,7 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
                 total=len(rows),
                 ico=[r for r in rows if r.case.status in (Status.ICO_READY, Status.ESCALATED)],
                 sent=[r for r in rows if r.case.last_request_on],
+                score=views.exposure(profile),
                 nav_counts=views.nav_counts(groups),
             )
 

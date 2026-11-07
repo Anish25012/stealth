@@ -14,6 +14,8 @@ The details below are given only so that you can find my records:
 {% endfor %}{% for address in addresses %}Address: {{ address }}
 {% endfor %}{% for phone in phones %}Phone: {{ phone }}
 {% endfor %}{% if date_of_birth %}Date of birth: {{ date_of_birth }}
+{% endif %}{% if listing %}
+My details appear on your website here: {{ listing }}
 {% endif %}
 Please do not add any of these details to your records if you do not already hold them.
 

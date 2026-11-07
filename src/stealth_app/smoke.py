@@ -123,6 +123,17 @@ def check_tray() -> str:
     return f"icon {image.width}x{image.height}"
 
 
+def check_search_window() -> str:
+    """The scan's browser driver shipped: Playwright's node runtime and its scripts."""
+    from playwright._impl._driver import compute_driver_executable
+
+    node, cli = (Path(p) for p in compute_driver_executable())
+    missing = [p.name for p in (node, cli) if not p.exists()]
+    if missing:
+        raise RuntimeError(f"search window driver missing: {', '.join(missing)}")
+    return f"driver at {node.parent.name}"
+
+
 # Reads back what actually rendered, so a blocked stylesheet fails rather than passing unstyled.
 PAGE_PROBE = "({title: document.title, font: getComputedStyle(document.body).fontFamily})"
 
@@ -170,6 +181,7 @@ def run_checks(*, with_window: bool) -> list[Check]:
         _run("demo", check_demo),
         _run("server", check_server),
         _run("tray", check_tray),
+        _run("search window", check_search_window),
     ]
     # Last, because some GUI toolkits can't be cleanly restarted in the same process.
     if with_window:

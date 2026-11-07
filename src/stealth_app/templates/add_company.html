@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, help, icon, avatar %}
+{% block toolbar_start %}<a class="back" href="/cases">{{ icon("arrow-left", "s") }} Companies</a>{% endblock %}
+{% block main %}
+<div class="page-head">
+  <div>
+    <h1>Add a company</h1>
+    <p>Got marketing you never signed up for, or found yourself on a site Stealth doesn't know?
+    Give Stealth its website. It finds the company's privacy address for you and writes to them
+    like every other company.</p>
+  </div>
+</div>
+
+<form method="post" action="/companies/add" class="card">
+  {{ csrf_field(csrf) }}
+  <div class="field">
+    <label for="f-site">Their website</label>
+    <p class="hint" id="h-site">For example shopwise.co.uk. An email from them works too.</p>
+    <input id="f-site" name="site" type="text" value="{{ site }}" required autocomplete="off" aria-describedby="h-site"{% if not site %} autofocus{% endif %}>
+  </div>
+  <div class="field">
+    <label for="f-listing">A page that shows your details <span class="muted">(optional)</span></label>
+    <p class="hint" id="h-listing">If your name, address or phone number is on their website, paste the page's address. It goes in the letter, so they can find it.</p>
+    <input id="f-listing" name="listing" type="url" value="{{ listing }}" autocomplete="off" aria-describedby="h-listing">
+  </div>
+  <div class="field">
+    <label for="f-category">What kind of company is it?</label>
+    <select id="f-category" name="category">
+      {% for value, label in categories.items() %}
+      <option value="{{ value }}"{% if (listing and value == "people-search") or (not listing and value == "other") %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="button-row">
+    <button class="button" type="submit">{{ icon("search") }} Find their privacy address</button>
+  </div>
+  <p class="muted small">{{ icon("info", "s") }} Stealth reads a few pages of their website, the way your browser would, and only where the site allows it. Nothing is sent until you've seen the letter.</p>
+</form>
+
+{% if companies %}
+<section class="card" aria-labelledby="yours-h">
+  <div class="card-head">
+    <h2 id="yours-h">Companies you've added</h2>
+    <span class="count">{{ companies|length }}</span>
+  </div>
+  <ul class="rows">
+    {% for company in companies %}
+    <li><a class="row" href="{{ '/cases/' ~ company.id|urlencode if company.ready else '/companies/add/' ~ company.id|urlencode }}">
+      {{ avatar(company.name) }}
+      <span class="row-main">
+        <span class="row-title">{{ company.name }}</span>
+        <span class="row-text">{{ company.domain }} · {{ company.email if company.ready else "Choose an address to finish adding them" }}</span>
+      </span>
+      <span class="row-end">{{ icon("chevron-right", "s chevron") }}</span>
+    </a></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% call help() %}
+<p>Stealth looks for the company's privacy policy and the addresses in it. Policies often list
+several (press, sales, a parent company's lawyers), so Stealth puts the likeliest privacy address
+first and shows the words it was found next to. You choose which one to use.</p>
+<p>A company you add gets the same letter, deadlines, formal complaint and evidence trail as every
+other company.</p>
+{% endcall %}
+{% endblock %}

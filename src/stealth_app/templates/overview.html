@@ -47,6 +47,7 @@
     ("progress", "/cases?group=progress", "hourglass", "waiting", summary.progress, "In progress"),
     ("needs", "/needs", "inbox", "action", summary.needs, "Need you"),
     ("problems", "/cases?group=problem", "triangle-alert", "problem", summary.problems, "Problems"),
+    ("score", "/scan", "shield", {"low": "good", "medium": "waiting", "high": "problem"}[score.band], score.value, "Exposure score"),
   ] %}
   <li data-stat="{{ key }}">
     <a class="card stat" href="{{ href }}">

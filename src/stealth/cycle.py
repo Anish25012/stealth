@@ -17,6 +17,7 @@ from stealth.cases.engine import NO_REPLY, Sleep, jurisdiction_of
 from stealth.cases.state import Case, Status, all_cases, transition
 from stealth.core import clock
 from stealth.core.errors import MailSendError
+from stealth.custom import store as custom
 from stealth.inbox.processor import InboxReport, process_inbox
 from stealth.mail.base import Mailbox, Transport
 from stealth.profiles.store import Profile
@@ -122,6 +123,7 @@ def run_cycle(
 ) -> CycleReport:
     """A live cycle. See `engine.send_requests` for what `hold_for_approval` changes."""
     report = CycleReport()
+    brokers = custom.with_custom(profile, brokers)
     report.inbox = process_inbox(profile, mailbox, brokers)
     _update_states(profile, brokers, report, hold=hold_for_approval)
     _send_complaints(profile, transport, sleep, report)

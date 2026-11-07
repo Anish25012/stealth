@@ -28,6 +28,7 @@ from stealth.core import clock
 from stealth.core.errors import MailSendError, ProfileError
 from stealth.core.jurisdictions import Jurisdiction, for_country
 from stealth.core.paths import ensure_private_dir
+from stealth.custom import store as custom
 from stealth.db import events
 from stealth.mail.base import Transport, compose
 from stealth.profiles.models import MailAccount, Person
@@ -76,6 +77,7 @@ def request_message(
     tier: str,
     ref: str,
     today: date,
+    listing: str | None = None,
 ) -> EmailMessage:
     deadline = deadlines.response_deadline(today, jurisdiction)
     letter = render(
@@ -83,6 +85,7 @@ def request_message(
         "erasure",
         ref=ref,
         deadline=format_date(deadline),
+        listing=listing,
         **identity_context(person, account, extended=tier == "extended"),
     )
     return compose(letter, account.address, contact)
@@ -204,6 +207,7 @@ def due_selections(profile: Profile, selections: list[Selection]) -> list[Select
 def preview_requests(profile: Profile, brokers: dict[str, Broker]) -> SendReport:
     """Dry run: one `.eml` per email broker due a letter, with no change to any case."""
     person, account, jurisdiction = profile.person(), _account(profile), jurisdiction_of(profile)
+    brokers = custom.with_custom(profile, brokers)
     selections = select_brokers(brokers, jurisdiction, profile.settings())
     today = clock.local_date(jurisdiction.tz)
     report = SendReport()
@@ -228,6 +232,7 @@ def preview_requests(profile: Profile, brokers: dict[str, Broker]) -> SendReport
 def _create_for(profile: Profile, selection: Selection, *, hold: bool) -> Case:
     """Open a case for a broker. With `hold`, an email letter waits as a draft for approval."""
     broker = selection.broker
+    listing = custom.get(profile, broker.id).listing_url if custom.is_custom(broker.id) else None
     case = create_case(
         profile.conn,
         broker_id=broker.id,
@@ -239,6 +244,7 @@ def _create_for(profile: Profile, selection: Selection, *, hold: bool) -> Case:
         tier=selection.tier,
         template="erasure",
         ref=new_ref(),
+        custom_url=listing,
     )
     if broker.method == "form" or not broker.email:
         return transition(profile.conn, case, Status.AWAITING_FORM, reason="web form only")
@@ -253,6 +259,7 @@ def open_cases(profile: Profile, brokers: dict[str, Broker], *, hold: bool = Tru
     With `hold`, email letters wait as drafts for approval. Returns the web-form companies.
     """
     jurisdiction, settings = jurisdiction_of(profile), profile.settings()
+    brokers = custom.with_custom(profile, brokers)
     forms = []
     for selection in due_selections(profile, select_brokers(brokers, jurisdiction, settings)):
         case = _create_for(profile, selection, hold=hold)
@@ -328,6 +335,7 @@ def send_requests(
             tier=case.tier,
             ref=case.ref,
             today=today,
+            listing=case.custom_url,
         )
         try:
             _deliver(profile, case, message, "request", transport, account)
@@ -380,6 +388,7 @@ def draft_letter(profile: Profile, case: Case) -> EmailMessage:
         tier=case.tier,
         ref=case.ref,
         today=clock.local_date(jurisdiction.tz),
+        listing=case.custom_url,
     )
 
 

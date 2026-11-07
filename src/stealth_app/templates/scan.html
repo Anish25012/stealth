@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, help, icon, avatar, ring %}
+{% block main %}
+<div class="page-head">
+  <div>
+    <h1>Scan</h1>
+    <p>See what people-search sites show about you. You search; Stealth keeps a picture of the
+    results as evidence and writes to any site that lists you.</p>
+  </div>
+</div>
+
+<div class="two-col">
+<div class="stack">
+  <section class="card" aria-labelledby="how-h">
+    <h2 id="how-h">How it works</h2>
+    <ol class="steps-list">
+      <li><strong>Open a site.</strong> Stealth opens it in a separate browser window, with none of your own browsing, cookies or passwords.</li>
+      <li><strong>Search for yourself</strong> in that window, as you would anywhere: your name and town.</li>
+      <li><strong>Come back here and press Capture.</strong> Stealth photographs the page that's open, then asks whether it shows you.</li>
+    </ol>
+    <form method="post" action="/scan/capture">
+      {{ csrf_field(csrf) }}
+      <button class="button" type="submit">{{ icon("eye") }} Capture what's on screen</button>
+    </form>
+  </section>
+
+  <section class="card" aria-labelledby="sites-h">
+    <div class="card-head">
+      <h2 id="sites-h">Sites to check</h2>
+    </div>
+    <ul class="rows">
+      {% for site, status in sites %}
+      <li class="row">
+        {{ avatar(site.name) }}
+        <span class="row-main">
+          <span class="row-title">{{ site.name }}</span>
+          <span class="row-text">{% if status.last %}Checked {{ status.last.captured_at.date()|day }}{% else %}Not checked yet{% endif %}</span>
+        </span>
+        <span class="row-end">
+          <span class="badge tone-{{ status.tone }}">{{ status.label }}</span>
+          <form method="post" action="/scan/open">
+            {{ csrf_field(csrf) }}
+            <input type="hidden" name="site" value="{{ site.broker_id }}">
+            <button class="button secondary compact" type="submit">{{ icon("search", "s") }} Open</button>
+          </form>
+        </span>
+      </li>
+      {% endfor %}
+      {% if not demo %}
+      <li class="row">
+        <span class="glyph tone-accent">{{ icon("search") }}</span>
+        <span class="row-main">
+          <span class="row-title">Search the web for your name</span>
+          <span class="row-text">Finds sites Stealth doesn't list. Capture any page that shows you, and Stealth can add that company.</span>
+        </span>
+        <span class="row-end">
+          <form method="post" action="/scan/open">
+            {{ csrf_field(csrf) }}
+            <input type="hidden" name="site" value="web">
+            <button class="button secondary compact" type="submit">{{ icon("search", "s") }} Open</button>
+          </form>
+        </span>
+      </li>
+      {% endif %}
+    </ul>
+  </section>
+
+  {% if pending %}
+  <section class="card attention" aria-labelledby="pending-h">
+    <div class="card-head">
+      <h2 id="pending-h">Captures to look at</h2>
+      <span class="count">{{ pending|length }}</span>
+    </div>
+    <ul class="rows">
+      {% for result in pending %}
+      <li><a class="row" href="/scan/{{ result.id }}">
+        <span class="glyph tone-action">{{ icon("eye") }}</span>
+        <span class="row-main">
+          <span class="row-title">{{ result.title or result.site }}</span>
+          <span class="row-text">{{ result.site }} · {{ result.captured_at|when }}</span>
+        </span>
+        <span class="row-end">{{ icon("chevron-right", "s chevron") }}</span>
+      </a></li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if decided %}
+  <section class="card" aria-labelledby="done-h">
+    <h2 id="done-h">Past captures</h2>
+    <ul class="rows">
+      {% for result in decided %}
+      <li><a class="row" href="/scan/{{ result.id }}">
+        <span class="glyph{{ ' tone-problem' if result.outcome == 'listed' else ' tone-good' }}">{{ icon("eye" if result.outcome == "listed" else "circle-check") }}</span>
+        <span class="row-main">
+          <span class="row-title">{{ result.title or result.site }}</span>
+          <span class="row-text">{{ "Shows you" if result.outcome == "listed" else "Doesn't show you" }} · {{ result.captured_at|when }}</span>
+        </span>
+        <span class="row-end">{{ icon("chevron-right", "s chevron") }}</span>
+      </a></li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+</div>
+
+<aside class="stack">
+  {% include "_score.html" %}
+</aside>
+</div>
+
+{% call help() %}
+<p>People-search sites don't allow programs to search them, so Stealth never searches for you. It
+opens the site in a window of its own and you search, just as you would in your own browser. When
+you press Capture, Stealth keeps a screenshot, the page's address and its text, with a fingerprint
+(SHA-256) so you can show later that it wasn't changed.</p>
+<p>Only you can say whether a page shows you: many people share a name. If it does, Stealth writes
+to that site and puts the page's address in the letter. If they'd already said they removed you,
+it's a new listing, and a new letter waits for your OK.</p>
+<p>After a site removes you, check it again here. A capture that no longer shows you is your proof
+it's gone.</p>
+{% endcall %}
+{% endblock %}

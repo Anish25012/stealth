@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
+from stealth import score
 from stealth.cases.state import TRANSITIONS, Case, Status, all_cases
 from stealth.core import clock
 from stealth.core.errors import ProfileError
@@ -574,3 +575,20 @@ def evidence_pack(profile: Profile, case: Case) -> bytes:
         if draft.exists():
             pack.write(draft, "ico-complaint-draft.txt")
     return buffer.getvalue()
+
+
+def evidence_file(profile: Profile, relative: str) -> Path:
+    return _evidence_path(profile, relative)
+
+
+# Exposure score ------------------------------------------------------------------------------
+
+
+def exposure(profile: Profile) -> score.Score:
+    from stealth.scan import results as scans
+
+    return score.exposure(
+        (c.status for c in all_cases(profile.conn)),
+        open_listings=scans.open_listings(profile),
+        listings_checked=scans.ever_scanned(profile),
+    )

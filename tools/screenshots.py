@@ -53,6 +53,8 @@ PAGES = [
     ("reports", "/reports"),
     ("settings", "/settings"),
     ("people", "/people"),
+    ("scan", "/scan"),
+    ("add-company", "/companies/add"),
     ("help", "/help"),
     ("error", "/cases/no-such-company"),
     ("styleguide", "/styleguide"),

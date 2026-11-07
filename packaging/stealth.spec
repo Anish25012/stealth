@@ -15,11 +15,16 @@ datas = (
     collect_data_files("stealth")  # broker list, schema, letter templates, migrations
     + collect_data_files("stealth_app")  # tray icon
     + collect_data_files("tzdata")  # Windows has no system time zone database
+    # The scan's browser driver (a small node runtime). Browsers aren't bundled: the scan uses
+    # the Edge or Chrome already installed.
+    + collect_data_files("playwright", include_py_files=False)
 )
 hiddenimports = (
     collect_submodules("uvicorn")  # picks its loop and protocol modules at runtime
     + collect_submodules("keyring.backends")  # found through entry points
     + collect_submodules("stealth_app")
+    + collect_submodules("stealth")
+    + collect_submodules("playwright")  # imported only when the search window opens
 )
 
 analysis = Analysis(

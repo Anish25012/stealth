@@ -134,6 +134,7 @@ def test_overview_counts_every_group(client, demo):
     stat = r'data-stat="(\w+)".*?<span class="stat-number">(\d+)</span>'
     counts = dict(re.findall(stat, page, re.S))
     # Needs you is the letters to approve (2) plus the things only the person can do (2).
+    assert counts.pop("score").isdigit()  # the exposure score, as its own tile
     assert counts == {"removed": "2", "progress": "2", "needs": "4", "problems": "1"}
 
 
@@ -277,7 +278,17 @@ def test_leaving_the_demo_deletes_it(client, demo):
     assert "Welcome to Stealth" in client.get("/").text
 
 
-PAGES = ("/", "/cases", "/cases/chatty-data", "/approve", "/needs", "/reports", "/settings")
+PAGES = (
+    "/",
+    "/cases",
+    "/cases/chatty-data",
+    "/approve",
+    "/needs",
+    "/reports",
+    "/settings",
+    "/scan",
+    "/companies/add",
+)
 
 
 def test_every_page_has_help_and_one_h1(client, demo):
@@ -394,6 +405,8 @@ def test_evidence_pack_holds_every_email_and_an_intact_log(client, demo):
 def _post_routes(app):
     return [
         route.path.replace("{broker_id}", "chatty-data")
+        .replace("{result_id}", "1")
+        .replace("{company_id}", "custom-x")
         for route in app.routes
         # /show and /quit are for other copies of the app and check the launch token instead.
         if "POST" in getattr(route, "methods", set()) and route.path not in {"/show", "/quit"}
