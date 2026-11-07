@@ -75,8 +75,15 @@ class SearchWindow:
             from playwright.sync_api import Error, sync_playwright
         except ImportError as exc:  # pragma: no cover - the app always ships it
             raise NoBrowser("The search window isn't part of this copy of Stealth.") from exc
-        if self._playwright is None:
-            self._playwright = sync_playwright().start()
+        for attempt in range(3):
+            if self._playwright is not None:
+                break
+            # The driver process occasionally dies while starting on Windows: try again.
+            try:
+                self._playwright = sync_playwright().start()
+            except Exception:
+                if attempt == 2:
+                    raise
         self._folder = Path(tempfile.mkdtemp(prefix="stealth-search-"))
         options: dict[str, Any] = {"headless": self.headless, "no_viewport": not self.headless}
         for channel in CHANNELS:

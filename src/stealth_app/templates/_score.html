@@ -8,7 +8,7 @@
     <tbody>
       {% for part in score.parts %}
       <tr>
-        <th scope="row">{{ part.rule.label }}{% if part.rule.label == "Data breaches" %} <span class="muted">(coming later)</span>{% endif %}<span class="muted small"> · {{ part.rule.each }} each, at most {{ part.rule.cap }}</span></th>
+        <th scope="row">{{ part.rule.label }}{% if part.rule.label == "Data breaches" %} <span class="muted">(coming later)</span>{% endif %}<span class="muted small">{{ part.rule.each }} each, at most {{ part.rule.cap }}</span></th>
         <td>{{ part.count }}</td>
         <td class="points">{{ "−" ~ part.points if part.points else "0" }}</td>
       </tr>
@@ -16,6 +16,6 @@
     </tbody>
   </table>
   {% if not score.listings_checked %}
-  <p class="notice">{{ icon("info") }}<span>Listings aren't checked yet. <a href="/scan">Run a scan</a> so the score includes them.</span></p>
+  <p class="notice">{{ icon("info") }}<span>Listings aren't checked yet. {% if path == "/scan" %}Check a site above{% else %}<a href="/scan">Run a scan</a>{% endif %} so the score includes them.</span></p>
   {% endif %}
 </section>

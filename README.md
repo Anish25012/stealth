@@ -44,6 +44,12 @@ Mac. Windows is the supported platform.
 - More than one person, each kept separately, from Settings > People
 - Runs by itself once a day, with catch-up after the computer was off, tray notifications, and an
   optional start with Windows
+- Add any company by its website: Stealth reads its privacy policy, puts the likeliest privacy
+  address first with the words it was found next to, and you choose
+- An assisted people-search scan: Stealth opens your own Edge or Chrome (in a separate, empty
+  profile), you search for yourself, and Stealth captures the page as evidence. A listing you
+  confirm goes in the letter, and a later capture without you proves it's gone
+- An exposure score out of 100, with its formula on screen
 
 ## Screenshots
 
@@ -57,7 +63,8 @@ These are from the demo, so the details are made up.
 More, in both themes: [welcome](docs/screenshots/welcome-light.png),
 [companies](docs/screenshots/companies-light.png),
 [approving letters](docs/screenshots/approve-light.png),
-[reports](docs/screenshots/reports-light.png), [settings](docs/screenshots/settings-light.png),
+[reports](docs/screenshots/reports-light.png), [scan](docs/screenshots/scan-light.png),
+[adding a company](docs/screenshots/add-company-light.png), [settings](docs/screenshots/settings-light.png),
 [help](docs/screenshots/help-light.png) and the rest in [docs/screenshots](docs/screenshots).
 
 ## How many companies
@@ -91,7 +98,8 @@ Based on Incogni's public plans. Stealth is an independent project and isn't con
 | ICO escalation drafted for you | No | Yes |
 | Can you check the broker list? | No | Yes, and you can fix it |
 | Handles replies for you | Yes | Yes for clear replies to its own letters; unclear ones come to you with a best guess |
-| Custom removals | Unlimited plans | Phase 2 |
+| Custom removals | Unlimited plans | Yes: give it a website and it finds the privacy address |
+| Finding your listings | Automatic | Assisted: you search, Stealth captures the evidence |
 | Dark web monitoring | Protect plan | Phase 3, breach monitoring only |
 | Identity theft insurance | Protect plan | **No, and it never will** |
 | Credit monitoring | Protect plan | **No.** Stealth reminds you to check your free reports |
@@ -110,6 +118,12 @@ and does more of the work for you.
 - **Your data does leave your computer when you choose to send it.** Each letter goes to the company
   it's addressed to, through your email provider.
 - **Some contacts will be out of date.** Bounces are flagged so they can be fixed.
+- **The scan is assisted, not automatic.** People-search sites forbid programs from searching
+  them, so you do the searching and Stealth keeps the evidence. Only you can say a listing is
+  you, because many people share a name.
+- **Only two UK people-search sites are suggested** (192.com and ukphonebook), because those are
+  the ones on the broker list. "Search the web for your name" finds others, and any company
+  can be added by its website.
 - **This isn't legal advice.** Check anything you send.
 
 ## Try it
