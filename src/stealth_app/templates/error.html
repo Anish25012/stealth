@@ -1,21 +1,24 @@
 {% extends "base.html" %}
+{% from "_macros.html" import icon %}
 {% block main %}
-<h1>{{ heading }}</h1>
 <section class="card" role="alert">
-  <p class="lead">{{ message }}</p>
-  {% if hint %}<p>{{ hint }}</p>{% endif %}
-  <p><a class="button" href="/">Back to the overview</a></p>
+  <div class="empty">
+    <span class="glyph l tone-problem">{{ icon("circle-alert", "xl") }}</span>
+    <h1>{{ heading }}</h1>
+    <p class="lead">{{ message }}</p>
+    {% if hint %}<p>{{ hint }}</p>{% endif %}
+    <p><a class="button" href="/">Back to the overview</a></p>
+  </div>
 </section>
 {% if details %}
 <section class="card" aria-labelledby="details-h">
   <h2 id="details-h">Details for whoever helps you</h2>
-  <p>If you ask someone for help, send them this. Your name, email addresses and other personal
-  details have been removed from it.</p>
+  <p class="muted">If you ask someone for help, send them this. Your name, email addresses and
+  other personal details have been removed from it.</p>
   <label for="details" class="visually-hidden">Error details</label>
   <textarea id="details" class="details" rows="10" readonly>{{ details }}</textarea>
-  <p><button class="button secondary" type="button" data-copy="details">Copy details</button>
+  <p class="button-row"><button class="button secondary" type="button" data-copy="details">{{ icon("copy") }} Copy details</button>
   <span class="muted small" data-copied hidden role="status">Copied.</span></p>
 </section>
-<script src="/static/app.js"></script>
 {% endif %}
 {% endblock %}

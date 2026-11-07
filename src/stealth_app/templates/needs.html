@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, help, icon, avatar %}
+{% block main %}
+{% set waiting = groups.approve|length + groups.you|length + groups.problem|length %}
+<div class="page-head">
+  <div>
+    <h1>Needs you</h1>
+    <p>{% if waiting %}Things only you can do. Everything else, Stealth handles.{% else %}You're all caught up.{% endif %}</p>
+  </div>
+</div>
+
+{% if waiting %}
+{% if groups.approve %}
+<section class="card" aria-labelledby="approve-h">
+  <div class="card-head">
+    <h2 id="approve-h">{{ group_text.approve[0] }}</h2>
+    <span class="count">{{ groups.approve|length }}</span>
+  </div>
+  <ul class="rows">
+    <li><a class="row" href="/approve">
+      <span class="glyph tone-action">{{ icon("mail") }}</span>
+      <span class="row-main">
+        <span class="row-title">{{ groups.approve|length }} letter{{ "" if groups.approve|length == 1 else "s" }} to read and approve</span>
+        <span class="row-text">{{ group_text.approve[1] }}</span>
+      </span>
+      <span class="row-end">{{ icon("chevron-right", "s chevron") }}</span>
+    </a></li>
+  </ul>
+</section>
+{% endif %}
+
+{% set headings = {"you": "Only you can do these", "problem": group_text.problem[0]} %}
+{% for key in ["you", "problem"] if groups[key] %}
+<section class="card" aria-labelledby="{{ key }}-h">
+  <div class="card-head">
+    <h2 id="{{ key }}-h">{{ headings[key] }}</h2>
+    <span class="count">{{ groups[key]|length }}</span>
+  </div>
+  <p class="muted">{{ group_text[key][1] }}</p>
+  <ul class="rows">
+    {% for row in groups[key] %}
+    <li><a class="row" href="/cases/{{ row.case.broker_id|urlencode }}">
+      {{ avatar(row.case.broker_name) }}
+      <span class="row-main">
+        <span class="row-title">{{ row.case.broker_name }}</span>
+        <span class="row-text">{{ row.explanation }}</span>
+      </span>
+      <span class="row-end">{{ badge(row.info) }}{{ icon("chevron-right", "s chevron") }}</span>
+    </a></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endfor %}
+{% else %}
+<section class="card">
+  <div class="empty">
+    <span class="glyph l tone-good">{{ icon("circle-check", "xl") }}</span>
+    <h2>Nothing needs you right now</h2>
+    <p>When a company replies, asks for something, or a letter is ready for your OK, it shows up
+    here. Stealth chases everyone else on its own.</p>
+    <p><a class="button secondary" href="/cases">See every company</a></p>
+  </div>
+</section>
+{% endif %}
+
+{% call help() %}
+<p>Stealth never decides on its own that a company has removed you. When a reply arrives, you
+read it and say what it meant. Web forms have to be filled in by you, because they often ask
+you to prove you're a person.</p>
+<p><strong>Problems</strong> are letters that didn't arrive. Open the company to see why.</p>
+{% endcall %}
+{% endblock %}

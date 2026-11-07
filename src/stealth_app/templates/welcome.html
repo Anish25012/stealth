@@ -1,24 +1,43 @@
 {% extends "base.html" %}
-{% from "_macros.html" import csrf_field %}
+{% from "_macros.html" import csrf_field, icon %}
 {% block main %}
-<h1>Welcome to Stealth</h1>
-<p class="lead">Stealth asks companies that sell your personal data to delete it, using your legal
-rights under UK data protection law. It keeps a record of every letter and reply, and chases
-companies that don't answer.</p>
-
-<section class="card" aria-labelledby="try">
-  <h2 id="try">See how it works first</h2>
-  <p>Try Stealth with made-up details and pretend companies. Nothing is sent anywhere, and the demo
-  is deleted when you leave it or close Stealth.</p>
-  <form method="post" action="/demo/start">
-    {{ csrf_field(csrf) }}
-    <button class="button" type="submit">Try it with made-up data</button>
-  </form>
+<section class="welcome" aria-labelledby="welcome-h">
+  <span class="welcome-mark">{{ icon("shield-check", "xl") }}</span>
+  <h1 id="welcome-h">Welcome to Stealth</h1>
+  <p class="lead">Stealth asks companies that sell your personal details to delete them, using
+  your rights under UK data protection law. It keeps every letter and reply, and chases companies
+  that don't answer.</p>
 </section>
 
-<section class="card" aria-labelledby="setup">
-  <h2 id="setup">Set up Stealth for yourself</h2>
-  <p>A step-by-step setup screen is coming in the next update. Until then, whoever installed
-  Stealth for you can set it up by running <code>stealth init</code> in a terminal.</p>
-</section>
+<ul class="features">
+  {% for glyph, heading, text in [
+    ("send", "Writes the letters", "Formal deletion requests, sent from your own email once you've approved them."),
+    ("clock", "Keeps the deadlines", "Companies get one month. Stealth chases anyone who's late, and escalates."),
+    ("lock", "Stays on this computer", "No account and no server. Your details go only into letters you approve."),
+  ] %}
+  <li class="card">
+    <span class="glyph tone-accent">{{ icon(glyph) }}</span>
+    <h2>{{ heading }}</h2>
+    <p>{{ text }}</p>
+  </li>
+  {% endfor %}
+</ul>
+
+<div class="two-col even">
+  <section class="card" aria-labelledby="try">
+    <h2 id="try">See how it works first</h2>
+    <p class="muted">Try Stealth with made-up details and pretend companies. Nothing is sent
+    anywhere, and the demo is deleted when you leave it or close Stealth.</p>
+    <form method="post" action="/demo/start">
+      {{ csrf_field(csrf) }}
+      <button class="button large" type="submit">{{ icon("play") }} Try the demo</button>
+    </form>
+  </section>
+
+  <section class="card quiet" aria-labelledby="setup">
+    <h2 id="setup">Set up Stealth for yourself</h2>
+    <p class="muted">Step-by-step setup arrives in the next update. Until then, whoever installed
+    Stealth for you can set it up by running <code>stealth init</code> in a terminal.</p>
+  </section>
+</div>
 {% endblock %}

@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, icon, ring, avatar, steps_bar, field %}
+{% block head %}<link rel="stylesheet" href="/static/styleguide.css">{% endblock %}
+
+{# Renders its body twice, once per theme. caller() gets a suffix that keeps ids unique. #}
+{% macro pair(name) %}
+<div class="sg-pair">
+  {% for theme in ["light", "dark"] %}
+  <div class="sg-pane theme-{{ theme }}">
+    <p class="sg-theme">{{ icon("sun" if theme == "light" else "moon", "s") }} {{ theme|title }}</p>
+    {{ caller(name ~ "-" ~ theme) }}
+  </div>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{% block toolbar_start %}<a class="back" href="/help">{{ icon("arrow-left", "s") }} Help</a>{% endblock %}
+{% block main %}
+<div class="page-head">
+  <div>
+    <h1>Style guide</h1>
+    <p>Every part of Stealth's design system, in light and dark. Development builds only.</p>
+  </div>
+</div>
+
+<nav aria-label="Sections" class="sg-toc">
+  <ul>
+    {% for id, name in [("principles","Principles"),("colour","Colour"),("type","Type"),("shape","Shape and depth"),("buttons","Buttons"),("badges","Badges"),("cards","Cards"),("ring","Protection ring"),("lists","Lists and tables"),("timeline","Timeline"),("forms","Forms"),("feedback","Notices and toasts"),("sheets","Sheets"),("loading","Loading"),("empty","Empty states"),("icons","Icons")] %}
+    <li><a href="#{{ id }}">{{ name }}</a></li>
+    {% endfor %}
+  </ul>
+</nav>
+
+<section class="card" aria-labelledby="try-h">
+  <h2 id="try-h">Try the options</h2>
+  <p class="muted">These change the whole app and are remembered on this computer. Pick the
+  accent you'd like Stealth to ship with.</p>
+  <div class="sg-controls">
+    <fieldset>
+      <legend>Accent colour</legend>
+      <div class="segmented" role="radiogroup">
+        {% for value, label in [("lagoon","Lagoon (teal)"),("dusk","Dusk (indigo)"),("ink","Ink (blue)")] %}
+        <input type="radio" id="accent-{{ value }}" name="accent" value="{{ value }}"{% if loop.first %} checked{% endif %}><label for="accent-{{ value }}"><span class="sg-dot accent-{{ value }}"></span>{{ label }}</label>
+        {% endfor %}
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Appearance</legend>
+      <div class="segmented" role="radiogroup">
+        {% for value, label, glyph in [("system","System","settings"),("light","Light","sun"),("dark","Dark","moon")] %}
+        <input type="radio" id="theme-{{ value }}" name="theme" value="{{ value }}"{% if loop.first %} checked{% endif %}><label for="theme-{{ value }}">{{ icon(glyph, "s") }} {{ label }}</label>
+        {% endfor %}
+      </div>
+    </fieldset>
+  </div>
+</section>
+
+<h2 class="section-title" id="principles">Principles</h2>
+<ul class="sg-principles">
+  <li class="card"><span class="glyph tone-accent">{{ icon("shield-check") }}</span><h3>Answer the question first</h3><p class="muted">Every screen opens with "am I protected, and is there anything I need to do?"</p></li>
+  <li class="card"><span class="glyph tone-accent">{{ icon("sparkles") }}</span><h3>Calm, not loud</h3><p class="muted">One accent, lots of space, colour only where it means something.</p></li>
+  <li class="card"><span class="glyph tone-accent">{{ icon("lock") }}</span><h3>Private by design</h3><p class="muted">Every asset ships with the app. No fonts, icons or scripts from the internet.</p></li>
+  <li class="card"><span class="glyph tone-accent">{{ icon("user") }}</span><h3>Plain words</h3><p class="muted">Short sentences. Status badges always carry words, never colour alone.</p></li>
+</ul>
+
+<h2 class="section-title" id="colour">Colour</h2>
+{% call(s) pair("colour") %}
+<div class="sg-swatches">
+  {% for token, name in [("accent","Accent"),("bg","Window"),("surface","Card"),("inset","Inset"),("text","Text"),("text-2","Secondary text")] %}
+  <div class="sg-swatch"><span class="sg-chip sg-{{ token }}"></span><span><strong>{{ name }}</strong><code>--{{ token }}</code></span></div>
+  {% endfor %}
+</div>
+<div class="sg-swatches">
+  {% for tone, name in [("good","Done"),("waiting","Waiting"),("action","Needs you"),("problem","Problem"),("neutral","Neutral")] %}
+  <div class="sg-swatch"><span class="sg-chip sg-tone-{{ tone }}">Aa</span><span><strong>{{ name }}</strong><code>--{{ tone }}-*</code></span></div>
+  {% endfor %}
+</div>
+{% endcall %}
+
+<h2 class="section-title" id="type">Type</h2>
+{% call(s) pair("type") %}
+<div class="sg-type">
+  <p class="sg-t-hero">52%</p><p class="sg-cap">Ring figure · 44 bold, −3.5% tracking</p>
+  <p class="sg-t-large">Large title</p><p class="sg-cap">34 bold, −2.2% tracking, 1.15 leading</p>
+  <p class="sg-t-title2">Title 2</p><p class="sg-cap">24 semibold</p>
+  <p class="sg-t-title3">Title 3, for card headings</p><p class="sg-cap">19 semibold</p>
+  <p>Body text is 16 regular at 1.55 leading, so long explanations stay easy to read.</p><p class="sg-cap">Body · 16</p>
+  <p class="sg-t-callout">Callout, for secondary lines in lists.</p><p class="sg-cap">Callout · 15</p>
+  <p class="small muted">Footnote, for timestamps and small print.</p><p class="sg-cap">Footnote · 13</p>
+</div>
+{% endcall %}
+
+<h2 class="section-title" id="shape">Shape and depth</h2>
+{% call(s) pair("shape") %}
+<div class="sg-depth">
+  <div class="sg-box sg-shadow-1">Card<br><small>16 radius · shadow 1</small></div>
+  <div class="sg-box sg-shadow-2">Hover<br><small>shadow 2</small></div>
+  <div class="sg-box sg-shadow-3">Sheet<br><small>shadow 3</small></div>
+</div>
+<div class="sg-radii">
+  <span class="sg-r sg-r-s">8</span><span class="sg-r sg-r-m">12</span><span class="sg-r sg-r-l">16</span><span class="sg-r sg-r-pill">pill</span>
+</div>
+{% endcall %}
+
+<h2 class="section-title" id="buttons">Buttons</h2>
+{% call(s) pair("buttons") %}
+<div class="button-row">
+  <button class="button" type="button">Approve and send</button>
+  <button class="button secondary" type="button">Skip</button>
+  <button class="button plain" type="button">Read the letter</button>
+  <button class="button destructive" type="button">Delete profile</button>
+</div>
+<div class="button-row">
+  <button class="button" type="button">{{ icon("refresh-cw") }} Run cycle now</button>
+  <button class="button secondary" type="button">{{ icon("download") }} Evidence pack</button>
+  <button class="button secondary icon-only" type="button" aria-label="Search">{{ icon("search") }}</button>
+  <button class="button" type="button" disabled>Disabled</button>
+</div>
+<div class="button-row">
+  <button class="button large" type="button">Large</button>
+  <button class="button small" type="button">Small</button>
+  <button class="button secondary small" type="button">Small secondary</button>
+</div>
+{% endcall %}
+
+<h2 class="section-title" id="badges">Status badges</h2>
+{% call(s) pair("badges") %}
+<div class="sg-badges">
+  {% for info in statuses %}{{ badge(info) }} {% endfor %}
+  <span class="badge tone-problem">Late</span>
+</div>
+{% endcall %}
+
+<h2 class="section-title" id="cards">Cards</h2>
+{% call(s) pair("cards") %}
+<ul class="stats">
+  <li><a class="card stat" href="#cards"><span class="glyph tone-good">{{ icon("circle-check") }}</span><span class="stat-number">52</span><span class="stat-label">Removed</span></a></li>
+  <li><a class="card stat" href="#cards"><span class="glyph tone-action">{{ icon("inbox") }}</span><span class="stat-number">3</span><span class="stat-label">Need you</span></a></li>
+</ul>
+<div class="card">
+  <h3>A card</h3>
+  <p class="muted">Soft corners, a hairline edge and a gentle shadow. Content goes here.</p>
+</div>
+<div class="card attention">
+  <h3>Something needs you</h3>
+  <p class="muted">An attention card has an amber edge.</p>
+</div>
+{% endcall %}
+
+<h2 class="section-title" id="ring">Protection ring</h2>
+{% call(s) pair("ring") %}
+<div class="card hero">
+  {{ ring(65, "65%", "removed", label="52 of 80 companies have removed your data") }}
+  <div class="hero-text">
+    <p class="eyebrow">{{ icon("shield-check", "s") }} Protection</p>
+    <h3 class="hero-title">You're protected</h3>
+    <p>52 companies have removed your data. Stealth is waiting on 24 more and keeps checking.</p>
+  </div>
+</div>
+<div class="sg-rings">
+  {{ ring(0, "0%", size="small", label="0%") }}
+  {{ ring(25, "25%", size="small", label="25%") }}
+  {{ ring(80, "80%", size="small", tone="action", label="80%") }}
+  {{ ring(100, "100%", size="small", label="100%") }}
+</div>
+{% endcall %}
+
+<h2 class="section-title" id="lists">Lists and tables</h2>
+{% call(s) pair("lists") %}
+<div class="card">
+  <div class="card-head"><h3>Needs you</h3><a class="more" href="#lists">See all</a></div>
+  <ul class="rows">
+    <li><a class="row" href="#lists"><span class="glyph tone-action">{{ icon("mail") }}</span><span class="row-main"><span class="row-title">2 letters waiting for your OK</span><span class="row-text">Stealth never sends a letter you haven't approved.</span></span><span class="row-end">{{ icon("chevron-right", "s chevron") }}</span></a></li>
+    <li><a class="row" href="#lists">{{ avatar("Chatty Data") }}<span class="row-main"><span class="row-title">Chatty Data</span><span class="row-text">They replied. Read it and tell Stealth what it said.</span></span><span class="row-end"><span class="badge tone-action">Reply to read</span>{{ icon("chevron-right", "s chevron") }}</span></a></li>
+  </ul>
+</div>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th scope="col">Company</th><th scope="col">Status</th><th scope="col">Reply due</th></tr></thead>
+    <tbody>
+      <tr><th scope="row"><span class="company">{{ avatar("Prompt Data") }}<span><a href="#lists">Prompt Data Ltd</a><small>promptdata.test</small></span></span></th><td><span class="badge tone-good">Removed</span></td><td></td></tr>
+      <tr><th scope="row"><span class="company">{{ avatar("Silent Lists") }}<span><a href="#lists">Silent Lists Ltd</a><small>silentlists.test</small></span></span></th><td><span class="badge tone-waiting">Letter sent</span> <span class="badge tone-problem">Late</span></td><td class="nowrap">3 October 2026</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endcall %}
+
+<h2 class="section-title" id="timeline">Timeline</h2>
+{% call(s) pair("timeline") %}
+<div class="card">
+<ol class="timeline">
+  <li><span class="glyph">{{ icon("clock") }}</span><div class="timeline-body"><p class="what">Stealth added this company</p><p class="when">2 September 2026, 09:12 UTC · Stealth</p></div></li>
+  <li><span class="glyph tone-accent">{{ icon("send") }}</span><div class="timeline-body"><p class="what"><a href="#timeline">Removal request sent</a></p><p class="when">2 September 2026, 09:14 UTC · Stealth</p><p class="detail">Erasure request under Article 17</p></div></li>
+  <li><span class="glyph tone-waiting">{{ icon("mail-open") }}</span><div class="timeline-body"><p class="what"><a href="#timeline">Reply received</a></p><p class="when">9 September 2026, 16:40 UTC · privacy@prompt.test</p></div></li>
+  <li><span class="glyph tone-good">{{ icon("circle-check") }}</span><div class="timeline-body"><p class="what">Now: Removed</p><p class="when">10 September 2026, 08:02 UTC · You</p></div></li>
+</ol>
+</div>
+{% endcall %}
+
+<h2 class="section-title" id="forms">Forms</h2>
+{% call(s) pair("forms") %}
+<div class="card">
+  {{ field("name-" ~ s, "Full name", {}, {"name-" ~ s: "Alex Example"}, autocomplete="off", required=True) }}
+  {{ field("email-" ~ s, "Email address", {"email-" ~ s: "Enter an email address, like name@example.com"}, {}, hint="The address companies know you by.") }}
+  <div class="field">
+    <label for="sel-{{ s }}">How did they agree?</label>
+    <select id="sel-{{ s }}"><option>In person</option><option>By email</option></select>
+  </div>
+  <fieldset class="choices tiles">
+    <legend>What did they say?</legend>
+    <div class="choice"><input type="radio" id="r1-{{ s }}" name="r-{{ s }}" checked><label for="r1-{{ s }}">They've removed my data</label></div>
+    <div class="choice"><input type="radio" id="r2-{{ s }}" name="r-{{ s }}"><label for="r2-{{ s }}">They refused</label></div>
+  </fieldset>
+  <div class="choice"><input type="checkbox" id="c1-{{ s }}" checked><label for="c1-{{ s }}">Send this letter</label></div>
+  <hr>
+  <div class="toggle-row"><label for="t1-{{ s }}">Check for replies automatically</label><input class="switch" type="checkbox" role="switch" id="t1-{{ s }}" checked></div>
+  <div class="toggle-row"><label for="t2-{{ s }}">Include extended companies</label><input class="switch" type="checkbox" role="switch" id="t2-{{ s }}"></div>
+  <hr>
+  <div class="segmented" role="radiogroup" aria-label="Segmented control">
+    <input type="radio" id="sg1-{{ s }}" name="sg-{{ s }}" checked><label for="sg1-{{ s }}">All</label>
+    <input type="radio" id="sg2-{{ s }}" name="sg-{{ s }}"><label for="sg2-{{ s }}">Needs you <span class="num">3</span></label>
+    <input type="radio" id="sg3-{{ s }}" name="sg-{{ s }}"><label for="sg3-{{ s }}">Done</label>
+  </div>
+  {{ steps_bar(["Who", "Details", "Email", "Companies"], 2) }}
+</div>
+{% endcall %}
+
+<h2 class="section-title" id="feedback">Notices and toasts</h2>
+{% call(s) pair("feedback") %}
+<div class="notice">{{ icon("info") }}<p>Stealth is working: <a href="#feedback">Run cycle</a>.</p></div>
+<div class="notice good">{{ icon("circle-check") }}<p>Finished. Letters sent to 2 companies.</p></div>
+<div class="notice action">{{ icon("triangle-alert") }}<p>Your mailbox password has changed. <a href="#feedback">Update it</a>.</p></div>
+<div class="notice problem">{{ icon("circle-alert") }}<p><strong>That didn't work.</strong> The mail server refused the password.</p></div>
+<div class="toasts static">
+  <div class="toast"><span class="glyph tone-good">{{ icon("circle-check") }}</span><p>Answer saved.</p><button class="button plain small icon-only" type="button" aria-label="Dismiss">{{ icon("x", "s") }}</button></div>
+</div>
+{% endcall %}
+<div class="button-row">
+  <button class="button secondary" type="button" data-toast="Answer saved. Stealth will check them again in 90 days." data-tone="good">Show a toast</button>
+  <button class="button secondary" type="button" data-toast="Up to 20 emails go out each day. The rest wait for tomorrow." data-tone="waiting">Show an info toast</button>
+</div>
+
+<h2 class="section-title" id="sheets">Sheets</h2>
+{% call(s) pair("sheets") %}
+<div class="sheet-preview">
+  <span class="glyph l tone-problem">{{ icon("triangle-alert", "l") }}</span>
+  <h3 class="sg-t-title2">Delete this profile?</h3>
+  <p class="muted">Every letter, reply and evidence pack for Alex Example is deleted from this computer. This can't be undone.</p>
+  <div class="button-row"><button class="button secondary" type="button">Cancel</button><button class="button destructive" type="button">Delete</button></div>
+</div>
+{% endcall %}
+<div class="button-row"><button class="button secondary" type="button" data-open="sheet-demo">Open a sheet</button></div>
+<dialog class="sheet" id="sheet-demo" aria-labelledby="sheet-demo-h">
+  <form method="dialog">
+    <span class="glyph l tone-accent">{{ icon("send", "l") }}</span>
+    <h2 id="sheet-demo-h">Send 2 letters?</h2>
+    <p class="muted">They go from your email account now. A copy of each is kept as evidence.</p>
+    <div class="button-row"><button class="button secondary" value="cancel">Cancel</button><button class="button" value="ok">Send</button></div>
+  </form>
+</dialog>
+
+<h2 class="section-title" id="loading">Loading</h2>
+{% call(s) pair("loading") %}
+<div class="card" aria-hidden="true">
+  <span class="skeleton title"></span>
+  <div class="skeleton-row"><span class="skeleton circle"></span><div><span class="skeleton w-60"></span><span class="skeleton w-80"></span></div></div>
+  <div class="skeleton-row"><span class="skeleton circle"></span><div><span class="skeleton w-30"></span><span class="skeleton w-60"></span></div></div>
+</div>
+{% endcall %}
+
+<h2 class="section-title" id="empty">Empty states</h2>
+{% call(s) pair("empty") %}
+<div class="card empty">
+  <span class="glyph l tone-good">{{ icon("circle-check", "xl") }}</span>
+  <h3>Nothing needs you right now</h3>
+  <p>Stealth is waiting for companies to answer. You can check for replies any time.</p>
+  <p><button class="button secondary" type="button">{{ icon("refresh-cw") }} Run cycle now</button></p>
+</div>
+{% endcall %}
+
+<h2 class="section-title" id="icons">Icons</h2>
+<div class="card">
+  <p class="muted">Lucide, outline, 1.75 stroke. Bundled in <code>static/icons.svg</code>; add more with <code>tools/build_icons.py</code>.</p>
+  <ul class="sg-icons">
+    {% for name in icons %}<li>{{ icon(name, "l") }}<span>{{ name }}</span></li>{% endfor %}
+  </ul>
+</div>
+{% endblock %}

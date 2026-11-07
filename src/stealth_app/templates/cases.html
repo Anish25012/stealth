@@ -1,11 +1,15 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge, help %}
+{% from "_macros.html" import badge, help, icon, avatar %}
 {% block main %}
-<h1>{{ group_text[group][0] if group else "All companies" }}</h1>
-{% if group %}<p class="muted">{{ group_text[group][1] }} <a href="/cases">Show all companies</a>.</p>{% endif %}
+<div class="page-head">
+  <div>
+    <h1>{{ group_text[group][0] if group else "Companies" }}</h1>
+    <p>{{ group_text[group][1] if group else "Every company Stealth has written to, or will write to." }}</p>
+  </div>
+</div>
 
-<nav aria-label="Filter companies" class="filters">
-  <ul>
+<nav aria-label="Filter companies">
+  <ul class="segmented">
     <li><a href="/cases"{% if not group %} aria-current="page"{% endif %}>All</a></li>
     {% for key, (heading, _t) in group_text.items() %}
     <li><a href="/cases?group={{ key }}"{% if group == key %} aria-current="page"{% endif %}>{{ heading }}</a></li>
@@ -23,17 +27,27 @@
   <tbody>
     {% for row in rows %}
     <tr>
-      <th scope="row"><a href="/cases/{{ row.case.broker_id|urlencode }}">{{ row.case.broker_name }}</a></th>
+      <th scope="row">
+        <span class="company">{{ avatar(row.case.broker_name) }}
+          <span><a href="/cases/{{ row.case.broker_id|urlencode }}">{{ row.case.broker_name }}</a>
+          <small>{{ row.case.broker_domain }}</small></span>
+        </span>
+      </th>
       <td data-label="Status">{{ badge(row.info) }}{% if row.overdue %} <span class="badge tone-problem">Late</span>{% endif %}</td>
       <td class="nowrap" data-label="Reply due">{{ row.case.deadline_on|day if row.case.deadline_on and row.info.group == "progress" else "" }}</td>
-      <td data-label="What's happening">{{ row.explanation }}</td>
+      <td class="explain" data-label="What's happening">{{ row.explanation }}</td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
 </div>
 {% else %}
-<p class="card">No companies in this list.</p>
+<section class="card empty">
+  <span class="glyph l">{{ icon("building-2", "xl") }}</span>
+  <h2>No companies in this list</h2>
+  <p>When a company's case moves here, you'll see it straight away.</p>
+  <p><a class="button secondary" href="/cases">Show all companies</a></p>
+</section>
 {% endif %}
 
 {% call help() %}

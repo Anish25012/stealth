@@ -1,11 +1,66 @@
+{# An outline icon from static/icons.svg. Decorative: the words beside it carry the meaning. #}
+{% macro icon(name, size="") %}<svg class="icon{{ " " ~ size if size }}" aria-hidden="true" focusable="false"><use href="/static/icons.svg#{{ name }}"></use></svg>{% endmacro %}
+
 {% macro badge(info) %}<span class="badge tone-{{ info.tone }}">{{ info.label }}</span>{% endmacro %}
+
+{# A company's initial, standing in for a logo. #}
+{% macro avatar(name, size="") %}<span class="avatar{{ " " ~ size if size }}" aria-hidden="true">{{ (name or "?")[:1]|upper }}</span>{% endmacro %}
+
+{# The progress ring. `percent` is 0-100; the SVG attribute carries it, so no inline style. #}
+{% macro ring(percent, number, caption="", label="", tone="", size="") %}
+<div class="ring{{ " tone-" ~ tone if tone }}{{ " " ~ size if size }}" role="img" aria-label="{{ label or (number ~ " " ~ caption) }}">
+  <svg viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+    <circle class="ring-track" cx="60" cy="60" r="52"></circle>
+    <circle class="ring-value" cx="60" cy="60" r="52" pathLength="100" stroke-dasharray="100" stroke-dashoffset="{{ 100 - ([[percent, 0]|max, 100]|min) }}" transform="rotate(-90 60 60)"{% if percent <= 0 %} visibility="hidden"{% endif %}></circle>
+  </svg>
+  <div class="ring-label" aria-hidden="true"><span class="ring-number">{{ number }}</span>{% if caption %}<span class="ring-caption">{{ caption }}</span>{% endif %}</div>
+</div>
+{% endmacro %}
 
 {# Per-screen help. A closed <details> stays out of the way until someone wants it. #}
 {% macro help() %}
 <details class="help">
-  <summary>Help with this page</summary>
+  <summary>{{ icon("circle-help", "s") }} Help with this page</summary>
   <div class="help-body">{{ caller() }}</div>
 </details>
 {% endmacro %}
 
 {% macro csrf_field(csrf) %}<input type="hidden" name="csrf" value="{{ csrf }}">{% endmacro %}
+
+{% macro steps_bar(steps, current) %}
+<nav aria-label="Setup steps" class="steps">
+  <p class="muted">Step {{ current }} of {{ steps|length }}</p>
+  <ol>
+    {% for name in steps %}
+    <li{% if loop.index == current %} aria-current="step"{% elif loop.index < current %} class="done"{% endif %}>{{ name }}</li>
+    {% endfor %}
+  </ol>
+</nav>
+{% endmacro %}
+
+{# An error summary at the top links to each field, as well as the message beside it. #}
+{% macro error_summary(errors) %}
+{% if errors %}
+<div class="notice problem" role="alert" tabindex="-1">
+  {{ icon("circle-alert") }}
+  <div>
+  <p><strong>Please check {{ "this" if errors|length == 1 else "these" }}:</strong></p>
+  <ul>{% for name, message in errors.items() %}<li><a href="#f-{{ name }}">{{ message }}</a></li>{% endfor %}</ul>
+  </div>
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro field(name, label, errors, values, type="text", hint="", autocomplete="", rows=0, required=False) %}
+<div class="field{% if errors[name] %} has-error{% endif %}">
+  <label for="f-{{ name }}">{{ label }}{% if required %} <span class="muted">(required)</span>{% endif %}</label>
+  {% if hint %}<p class="hint" id="h-{{ name }}">{{ hint }}</p>{% endif %}
+  {% if errors[name] %}<p class="error" id="e-{{ name }}">{{ errors[name] }}</p>{% endif %}
+  {% set described = (("h-" ~ name) if hint else "") ~ ((" e-" ~ name) if errors[name] else "") %}
+  {% if rows %}
+  <textarea id="f-{{ name }}" name="{{ name }}" rows="{{ rows }}"{% if described %} aria-describedby="{{ described|trim }}"{% endif %}{% if errors[name] %} aria-invalid="true"{% endif %}>{{ values.get(name, "") }}</textarea>
+  {% else %}
+  <input id="f-{{ name }}" name="{{ name }}" type="{{ type }}" value="{{ values.get(name, "") if type != "password" else "" }}"{% if autocomplete %} autocomplete="{{ autocomplete }}"{% endif %}{% if required %} required{% endif %}{% if described %} aria-describedby="{{ described|trim }}"{% endif %}{% if errors[name] %} aria-invalid="true"{% endif %}>
+  {% endif %}
+</div>
+{% endmacro %}

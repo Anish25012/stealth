@@ -131,10 +131,10 @@ def test_with_no_profile_the_welcome_page_offers_the_demo(client):
 
 def test_overview_counts_every_group(client, demo):
     page = client.get("/").text
-    counts = dict(
-        re.findall(r'tile-(\w+)">\s*<a[^>]*>\s*<span class="tile-count">(\d+)</span>', page)
-    )
-    assert counts == {"approve": "2", "you": "2", "progress": "2", "problem": "1", "done": "2"}
+    stat = r'data-stat="(\w+)".*?<span class="stat-number">(\d+)</span>'
+    counts = dict(re.findall(stat, page, re.S))
+    # Needs you is the letters to approve (2) plus the things only the person can do (2).
+    assert counts == {"removed": "2", "progress": "2", "needs": "4", "problems": "1"}
 
 
 def test_filtering_the_list_by_group(client, demo):
@@ -242,8 +242,11 @@ def test_leaving_the_demo_deletes_it(client, demo):
     assert "Welcome to Stealth" in client.get("/").text
 
 
+PAGES = ("/", "/cases", "/cases/chatty-data", "/approve", "/needs", "/reports", "/settings")
+
+
 def test_every_page_has_help_and_one_h1(client, demo):
-    for url in ("/", "/cases", "/cases/chatty-data", "/approve"):
+    for url in PAGES:
         page = client.get(url).text
         assert page.count("<h1") == 1, url
         assert "Help with this page" in page, url
@@ -398,7 +401,7 @@ def test_an_unexpected_error_shows_scrubbed_details_not_a_traceback(client, demo
 
 
 def test_the_dashboard_has_no_inline_scripts_or_styles(client, demo):
-    for url in ("/", "/cases", "/cases/chatty-data", "/approve", "/help"):
+    for url in (*PAGES, "/help"):
         page = client.get(url).text
         assert "<style" not in page and " style=" not in page, url
         assert not re.search(r"<script(?![^>]*\bsrc=)", page), url

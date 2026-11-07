@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, help, icon, avatar, ring %}
+{% block main %}
+<div class="page-head">
+  <div>
+    <h1>Reports</h1>
+    <p>Where every company stands, and the evidence to prove it.</p>
+  </div>
+</div>
+
+{% set parts = [
+  ("good", "Removed or held nothing", summary.removed),
+  ("waiting", "In progress", summary.progress),
+  ("action", "Need you", summary.needs),
+  ("problem", "Problems", summary.problems),
+] %}
+<section class="card hero" aria-labelledby="sum-h">
+  {{ ring(summary.percent, summary.percent ~ "%", "removed",
+          label=summary.removed ~ " of " ~ summary.active ~ " companies have removed your data") }}
+  <div class="hero-text">
+    <p class="eyebrow">{{ icon("file-check", "s") }} Summary</p>
+    <h2 id="sum-h" class="hero-title">{{ summary.removed }} of {{ summary.active }} done</h2>
+    <p>{{ summary.text }}</p>
+    {% if summary.active %}
+    {% set ns = namespace(x=0) %}
+    <svg class="breakdown" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+      <rect class="breakdown-track" x="0" y="0" width="100" height="4"></rect>
+      {% for tone, _label, n in parts if n %}
+      {% set width = 100 * n / summary.active %}
+      <rect class="tone-{{ tone }}" x="{{ '%.2f'|format(ns.x) }}" y="0" width="{{ '%.2f'|format(width) }}" height="4"></rect>
+      {% set ns.x = ns.x + width %}
+      {% endfor %}
+    </svg>
+    <ul class="legend">
+      {% for tone, label, n in parts %}
+      <li><span class="legend-dot tone-{{ tone }}" aria-hidden="true"></span>{{ label }} <strong>{{ n }}</strong></li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+</section>
+
+<div class="two-col">
+<div>
+  <section class="card" aria-labelledby="evidence-h">
+    <div class="card-head">
+      <h2 id="evidence-h">Evidence packs</h2>
+    </div>
+    <p class="muted">Each pack is a zip of every letter and reply, with a fingerprint of each
+    file so anyone can check nothing was changed.</p>
+    {% if sent %}
+    <ul class="rows">
+      {% for row in sent %}
+      <li><a class="row" href="/cases/{{ row.case.broker_id|urlencode }}/evidence.zip" download>
+        {{ avatar(row.case.broker_name) }}
+        <span class="row-main">
+          <span class="row-title">{{ row.case.broker_name }}</span>
+          <span class="row-text">Last letter {{ row.case.last_request_on|day }}</span>
+        </span>
+        <span class="row-end">{{ badge(row.info) }}{{ icon("download", "s chevron") }}</span>
+      </a></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="empty">
+      <span class="glyph l">{{ icon("file-text", "xl") }}</span>
+      <h3>No evidence yet</h3>
+      <p>Packs appear here once Stealth has sent its first letters.</p>
+    </div>
+    {% endif %}
+  </section>
+</div>
+<div>
+  <section class="card" aria-labelledby="ico-h">
+    <h2 id="ico-h">The ICO</h2>
+    {% if ico %}
+    <p class="muted">The UK regulator. Stealth writes the complaint; you send it.</p>
+    <ul class="rows">
+      {% for row in ico %}
+      <li><a class="row" href="/cases/{{ row.case.broker_id|urlencode }}">
+        <span class="glyph tone-{{ row.info.tone }}">{{ icon("scale") }}</span>
+        <span class="row-main">
+          <span class="row-title">{{ row.case.broker_name }}</span>
+          <span class="row-text">{{ row.info.label }}</span>
+        </span>
+        <span class="row-end">{{ icon("chevron-right", "s chevron") }}</span>
+      </a></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">No company needs reporting. If one refuses, or ignores a formal complaint for
+    30 days, Stealth writes an ICO complaint for you and it shows here.</p>
+    {% endif %}
+  </section>
+</div>
+</div>
+
+{% call help() %}
+<p><strong>Evidence packs</strong> hold the exact emails sent and received, as they were. If you
+complain to the ICO or a company disputes what happened, this is your proof.</p>
+<p>A company counts as <strong>done</strong> when it has removed your data or said it held none.
+Skipped companies aren't counted.</p>
+{% endcall %}
+{% endblock %}

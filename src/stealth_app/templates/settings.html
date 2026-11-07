@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% from "_macros.html" import help, icon, avatar %}
+{% block main %}
+<div class="page-head">
+  <div>
+    <h1>Settings</h1>
+    <p>How Stealth looks and how it works for {{ person.display_name if person else "you" }}.</p>
+  </div>
+</div>
+
+<section class="card" aria-labelledby="look-h">
+  <h2 id="look-h">Appearance</h2>
+  <div class="setting">
+    <div>
+      <p class="setting-name" id="theme-l">Light or dark</p>
+      <p class="muted small">System follows your Windows setting. Your choice is saved on this computer.</p>
+    </div>
+    <div class="segmented" role="radiogroup" aria-labelledby="theme-l">
+      {% for value, label, glyph in [("system","System","settings"),("light","Light","sun"),("dark","Dark","moon")] %}
+      <input type="radio" id="theme-{{ value }}" name="theme" value="{{ value }}"{% if loop.first %} checked{% endif %}><label for="theme-{{ value }}">{{ icon(glyph, "s") }} {{ label }}</label>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% if person %}
+<div class="two-col">
+<div>
+  <section class="card" aria-labelledby="who-h">
+    <div class="card-head">
+      <h2 id="who-h">Who it's for</h2>
+    </div>
+    <div class="setting">
+      <div class="title">{{ avatar(person.display_name, "l") }}
+        <div><p class="setting-name">{{ person.display_name }}</p>
+        <p class="muted small">Details stay on this computer and only go into letters you approve.</p></div>
+      </div>
+    </div>
+    <dl class="facts">
+      <div><dt>Names</dt><dd>{{ person.names|length }}</dd></div>
+      <div><dt>Email addresses</dt><dd>{{ person.emails|length }}</dd></div>
+      <div><dt>Home addresses</dt><dd>{{ person.addresses|length }}</dd></div>
+      <div><dt>Phone numbers</dt><dd>{{ person.phones|length }}</dd></div>
+    </dl>
+  </section>
+
+  <section class="card" aria-labelledby="mail-h">
+    <h2 id="mail-h">Email</h2>
+    {% if account %}
+    <dl class="facts">
+      <div><dt>Letters are sent from</dt><dd>{{ account.address }}</dd></div>
+      <div><dt>Replies are read from</dt><dd>{{ account.imap_host or "The same account" }}</dd></div>
+    </dl>
+    <p class="muted small">{{ icon("lock", "s") }} The password is kept in Windows Credential Manager, not in Stealth's files.</p>
+    {% else %}
+    <p class="muted">No email account is set up, so Stealth can't send letters yet.</p>
+    {% endif %}
+  </section>
+</div>
+<div>
+  <section class="card" aria-labelledby="send-h">
+    <h2 id="send-h">Sending and chasing</h2>
+    <dl class="facts">
+      <div><dt>Emails a day, at most</dt><dd>{{ settings.daily_send_limit }}</dd></div>
+      <div><dt>Gap between emails</dt><dd>{{ settings.send_delay_seconds }} seconds</dd></div>
+      <div><dt>Ask people-search sites again</dt><dd>Every {{ settings.resend_days_people_search }} days</dd></div>
+      <div><dt>Ask other companies again</dt><dd>Every {{ settings.resend_days_other }} days</dd></div>
+      <div><dt>Ready for the ICO</dt><dd>{{ settings.ico_ready_days }} days after a complaint</dd></div>
+      <div><dt>Wider list of companies</dt><dd>{{ "On" if settings.include_extended else "Off" }}</dd></div>
+      <div><dt>Companies skipped</dt><dd>{{ settings.skip_brokers|length }}</dd></div>
+    </dl>
+  </section>
+</div>
+</div>
+<p class="muted small">Changing these from the app comes with the setup screens in the next
+update.</p>
+{% endif %}
+
+{% call help() %}
+<p>The <strong>daily limit</strong> keeps your email provider from mistaking you for a spammer.
+Anything over it goes the next day.</p>
+<p>Companies often collect people's details again after deleting them, so Stealth asks again
+on a schedule. People-search sites are asked more often because they re-list people fastest.</p>
+{% endcall %}
+{% endblock %}

@@ -1,14 +1,40 @@
 {% extends "base.html" %}
-{% from "_macros.html" import csrf_field %}
+{% from "_macros.html" import csrf_field, icon %}
 {% block main %}
-<h1>Help</h1>
-<section class="card" aria-labelledby="what-h">
-  <h2 id="what-h">What Stealth does</h2>
-  <p>Companies called data brokers collect and sell personal details: names, addresses, phone
-  numbers, who you live with. UK law lets you tell them to delete it. Stealth writes those letters
-  for you, sends them from your own email, keeps every reply, and chases companies that ignore you.</p>
+<div class="page-head">
+  <div>
+    <h1>Help</h1>
+    <p>How Stealth works, in plain English.</p>
+  </div>
+</div>
+
+<section class="card hero" aria-labelledby="what-h">
+  <span class="glyph l tone-accent">{{ icon("shield-check", "l") }}</span>
+  <div class="hero-text">
+    <h2 id="what-h">What Stealth does</h2>
+    <p>Companies called data brokers collect and sell personal details: names, addresses, phone
+    numbers, who you live with. UK law lets you tell them to delete it. Stealth writes those
+    letters for you, sends them from your own email, keeps every reply, and chases companies that
+    ignore you.</p>
+  </div>
 </section>
-<section class="card" aria-labelledby="faq-h">
+
+<ol class="features steps-explained" aria-label="How a request goes">
+  {% for glyph, heading, text in [
+    ("send", "1. A letter goes out", "Once you approve it, from your own email."),
+    ("clock", "2. They have a month", "Stealth tracks the legal deadline for each company."),
+    ("flag", "3. Late? Stealth chases", "A formal complaint, then a ready-to-send ICO complaint."),
+    ("refresh-cw", "4. Asked again later", "Brokers re-collect data, so Stealth checks back."),
+  ] %}
+  <li class="card">
+    <span class="glyph tone-accent">{{ icon(glyph) }}</span>
+    <h3>{{ heading }}</h3>
+    <p>{{ text }}</p>
+  </li>
+  {% endfor %}
+</ol>
+
+<section class="card faq" aria-labelledby="faq-h">
   <h2 id="faq-h">Common questions</h2>
   <details><summary>Does my information leave my computer?</summary>
     <p>Only in the letters you approve, which go from your email account to the companies. Stealth
@@ -28,14 +54,19 @@
     new brokers appear. Stealth covers the companies it knows about and keeps the evidence if you
     need to complain.</p></details>
 </section>
+
 {% if not demo %}
-<section class="card" aria-labelledby="demo-h">
-  <h2 id="demo-h">Practise with the demo</h2>
-  <p>See every kind of case with made-up data. Your own information isn't touched.</p>
-  <form method="post" action="/demo/start">
-    {{ csrf_field(csrf) }}
-    <button class="button secondary" type="submit">Try it with made-up data</button>
-  </form>
+<section class="card quiet" aria-labelledby="demo-h">
+  <div class="card-head">
+    <div>
+      <h2 id="demo-h">Practise with the demo</h2>
+      <p class="muted">See every kind of case with made-up data. Your own information isn't touched.</p>
+    </div>
+    <form method="post" action="/demo/start">
+      {{ csrf_field(csrf) }}
+      <button class="button secondary" type="submit">{{ icon("play") }} Try the demo</button>
+    </form>
+  </div>
 </section>
 {% endif %}
 {% endblock %}

@@ -1,69 +1,97 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge, help, csrf_field %}
+{% from "_macros.html" import badge, help, csrf_field, icon, ring, avatar %}
 {% block head %}{% if running %}<meta http-equiv="refresh" content="3">{% endif %}{% endblock %}
 {% block main %}
 <div class="page-head">
   <div>
     <h1>Overview</h1>
-    <p class="muted">For {{ person.display_name }}. {{ total }} compan{{ "y" if total == 1 else "ies" }} so far.</p>
+    <p>For {{ person.display_name }}. {{ total }} compan{{ "y" if total == 1 else "ies" }} so far.</p>
   </div>
-  <form method="post" action="/cycle" class="primary-action">
-    {{ csrf_field(csrf) }}
-    <button class="button" type="submit"{% if running %} disabled aria-disabled="true"{% endif %}>Run cycle now</button>
-    <p class="muted small">Checks for replies, chases late companies and sends approved letters.</p>
-  </form>
 </div>
 
 {% if running %}
-<p class="notice" role="status">Stealth is working: <a href="/jobs/{{ running.id }}">{{ running.title }}</a>.</p>
+<div class="notice" role="status">{{ icon("refresh-cw") }}<p>Stealth is working: <a href="/jobs/{{ running.id }}">{{ running.title }}</a>.</p></div>
 {% endif %}
 
-<ul class="tiles" aria-label="Summary">
-  {% for key, (heading, _text) in group_text.items() %}
-  <li class="tile tile-{{ key }}">
-    <a href="{{ '/approve' if key == 'approve' else '/cases?group=' ~ key }}">
-      <span class="tile-count">{{ groups[key]|length }}</span>
-      <span class="tile-label">{{ heading }}</span>
+<section class="card hero" aria-labelledby="status-h">
+  {{ ring(summary.percent, summary.percent ~ "%", "removed",
+          label=summary.removed ~ " of " ~ summary.active ~ " companies have removed your data",
+          tone=("" if summary.tone == "good" else "action")) }}
+  <div class="hero-text">
+    {% if summary.tone == "good" %}
+    <p class="eyebrow">{{ icon("shield-check", "s") }} Protection</p>
+    {% else %}
+    <p class="eyebrow tone-action">{{ icon("shield", "s") }} Protection</p>
+    {% endif %}
+    <h2 id="status-h" class="hero-title">{{ summary.headline }}</h2>
+    <p>{{ summary.text }}</p>
+    <form method="post" action="/cycle" class="button-row">
+      {{ csrf_field(csrf) }}
+      <button class="button" type="submit"{% if running %} disabled aria-disabled="true"{% endif %}>{{ icon("refresh-cw") }} Run cycle now</button>
+      {% if groups.approve %}<a class="button secondary" href="/approve">Read and approve</a>{% endif %}
+    </form>
+    <p class="small muted">Checks for replies, chases late companies and sends approved letters.</p>
+  </div>
+</section>
+
+<ul class="stats" aria-label="Summary">
+  {% for key, href, glyph, tone, number, label in [
+    ("removed", "/cases?group=done", "circle-check", "good", summary.removed, "Removed"),
+    ("progress", "/cases?group=progress", "hourglass", "waiting", summary.progress, "In progress"),
+    ("needs", "/needs", "inbox", "action", summary.needs, "Need you"),
+    ("problems", "/cases?group=problem", "triangle-alert", "problem", summary.problems, "Problems"),
+  ] %}
+  <li data-stat="{{ key }}">
+    <a class="card stat" href="{{ href }}">
+      <span class="glyph tone-{{ tone if number else '' }}">{{ icon(glyph) }}</span>
+      <span class="stat-number">{{ number }}</span>
+      <span class="stat-label">{{ label }}</span>
     </a>
   </li>
   {% endfor %}
 </ul>
 
-{% if groups.approve %}
-<section class="card attention" aria-labelledby="approve-h">
-  <h2 id="approve-h">{{ groups.approve|length }} letter{{ "" if groups.approve|length == 1 else "s" }} waiting for your OK</h2>
-  <p>Stealth never sends a letter you haven't approved.</p>
-  <a class="button" href="/approve">Read and approve</a>
-</section>
-{% endif %}
-
-{% for key in ["you", "problem"] if groups[key] %}
-<section class="card" aria-labelledby="{{ key }}-h">
-  <h2 id="{{ key }}-h">{{ group_text[key][0] }}</h2>
-  <p class="muted">{{ group_text[key][1] }}</p>
-  <ul class="actions">
-    {% for row in groups[key] %}
-    <li>
-      <a href="/cases/{{ row.case.broker_id|urlencode }}"><strong>{{ row.case.broker_name }}</strong></a>
-      {{ badge(row.info) }}
-      <p>{{ row.explanation }}</p>
-    </li>
+<section class="card" aria-labelledby="needs-h">
+  <div class="card-head">
+    <h2 id="needs-h">Needs you</h2>
+    {% if summary.needs + summary.problems > 5 %}<a class="more" href="/needs">See all</a>{% endif %}
+  </div>
+  {% if summary.needs or summary.problems %}
+  <ul class="rows">
+    {% if groups.approve %}
+    <li><a class="row" href="/approve">
+      <span class="glyph tone-action">{{ icon("mail") }}</span>
+      <span class="row-main">
+        <span class="row-title">{{ groups.approve|length }} letter{{ "" if groups.approve|length == 1 else "s" }} waiting for your OK</span>
+        <span class="row-text">Stealth never sends a letter you haven't approved.</span>
+      </span>
+      <span class="row-end">{{ icon("chevron-right", "s chevron") }}</span>
+    </a></li>
+    {% endif %}
+    {% for row in (groups.you + groups.problem)[:(4 if groups.approve else 5)] %}
+    <li><a class="row" href="/cases/{{ row.case.broker_id|urlencode }}">
+      {{ avatar(row.case.broker_name) }}
+      <span class="row-main">
+        <span class="row-title">{{ row.case.broker_name }}</span>
+        <span class="row-text">{{ row.explanation }}</span>
+      </span>
+      <span class="row-end">{{ badge(row.info) }}{{ icon("chevron-right", "s chevron") }}</span>
+    </a></li>
     {% endfor %}
   </ul>
+  {% else %}
+  <div class="empty">
+    <span class="glyph l tone-good">{{ icon("circle-check", "xl") }}</span>
+    <h3>Nothing needs you right now</h3>
+    <p>Stealth is waiting for companies to answer. You can check for replies any time with
+    <strong>Run cycle now</strong>.</p>
+  </div>
+  {% endif %}
 </section>
-{% endfor %}
-
-{% if not groups.approve and not groups.you and not groups.problem %}
-<section class="card">
-  <h2>Nothing needs you right now</h2>
-  <p>Stealth is waiting for companies to answer. You can check for replies any time with
-  <strong>Run cycle now</strong>.</p>
-</section>
-{% endif %}
 
 {% call help() %}
-<p><strong>The boxes</strong> count companies by what's happening with them. Select a box to see
-that list.</p>
+<p><strong>The ring</strong> shows how many companies have removed your data, or said they held
+none, out of every company Stealth is dealing with.</p>
 <p><strong>Run cycle now</strong> does everything that's due: it reads your mailbox for replies,
 sends a formal complaint to any company that missed its legal deadline, and sends letters you've
 approved. It sends at most {{ settings.daily_send_limit }} emails a day, so your email provider

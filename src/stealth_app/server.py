@@ -35,7 +35,7 @@ from starlette.responses import Response
 from stealth import __version__
 from stealth.core.errors import StealthError
 from stealth.core.logging_scrub import scrub
-from stealth_app import dashboard
+from stealth_app import dashboard, styleguide
 from stealth_app.workspace import Workspace
 
 log = logging.getLogger("stealth.app.server")
@@ -88,7 +88,12 @@ class GuardMiddleware(BaseHTTPMiddleware):
         return response
 
 
-STATIC_TYPES = {".css": "text/css", ".js": "text/javascript", ".png": "image/png"}
+STATIC_TYPES = {
+    ".css": "text/css",
+    ".js": "text/javascript",
+    ".png": "image/png",
+    ".svg": "image/svg+xml",
+}
 
 
 def diagnostics(exc: BaseException) -> str:
@@ -190,6 +195,8 @@ def create_app(
         return Response(entry.read_bytes(), media_type=STATIC_TYPES[suffix])
 
     dashboard.install(app, workspace)
+    if styleguide.enabled():
+        styleguide.install(app)
     return app
 
 

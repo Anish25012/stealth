@@ -1,19 +1,30 @@
 {% extends "base.html" %}
-{% from "_macros.html" import help %}
+{% from "_macros.html" import help, icon, avatar %}
+{% block toolbar_start %}<a class="back" href="/cases/{{ case.broker_id|urlencode }}">{{ icon("arrow-left", "s") }} {{ case.broker_name }}</a>{% endblock %}
 {% block main %}
-<p class="crumbs"><a href="/cases/{{ case.broker_id|urlencode }}">Back to {{ case.broker_name }}</a></p>
-<h1>{{ message.subject or "(no subject)" }}</h1>
-<dl class="facts">
-  <div><dt>From</dt><dd>{{ message.sender }}</dd></div>
-  <div><dt>To</dt><dd>{{ message.to }}</dd></div>
-  <div><dt>Date</dt><dd>{{ message.date }}</dd></div>
-</dl>
-<pre class="mail">{{ message.body }}</pre>
-<p class="muted small">
-  {% if message.verified %}This copy matches the fingerprint Stealth recorded when it was saved, so it hasn't been changed.
-  {% else %}<strong>Warning:</strong> this file no longer matches the fingerprint Stealth recorded when it was saved.{% endif %}
-  SHA-256 {{ message.sha256 }}.
-</p>
+<div class="page-head compact">
+  <div class="title">
+    <span class="glyph l">{{ icon("mail-open", "l") }}</span>
+    <div>
+      <h1>{{ message.subject or "(no subject)" }}</h1>
+      <p>{{ message.date }}</p>
+    </div>
+  </div>
+</div>
+<section class="card" aria-label="Email">
+  <dl class="facts">
+    <div><dt>From</dt><dd>{{ message.sender }}</dd></div>
+    <div><dt>To</dt><dd>{{ message.to }}</dd></div>
+  </dl>
+  <pre class="mail">{{ message.body }}</pre>
+  {% if message.verified %}
+  <div class="notice good">{{ icon("shield-check") }}<p>This copy matches the fingerprint Stealth recorded when it was saved, so it hasn't been changed.
+  <span class="fingerprint">SHA-256 {{ message.sha256 }}</span></p></div>
+  {% else %}
+  <div class="notice problem" role="alert">{{ icon("triangle-alert") }}<p><strong>Warning:</strong> this file no longer matches the fingerprint Stealth recorded when it was saved.
+  <span class="fingerprint">SHA-256 {{ message.sha256 }}</span></p></div>
+  {% endif %}
+</section>
 {% call help() %}
 <p>Stealth shows emails as plain text only. Pictures, links and formatting from companies are
 left out on purpose, so nothing in an email can run or track you here. The original is kept

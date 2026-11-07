@@ -59,8 +59,17 @@ class State:
         return self.demo or self.real
 
 
-def render(request: Request, name: str, status_code: int = 200, **context: Any) -> HTMLResponse:
+def render(
+    request: Request,
+    name: str,
+    status_code: int = 200,
+    profile: Profile | None = None,
+    **context: Any,
+) -> HTMLResponse:
+    """Render a page. Given the open profile, the sidebar shows how many things need the person."""
     state: State = request.app.state.dashboard
+    if profile is not None and "nav_counts" not in context:
+        context["nav_counts"] = views.nav_counts(views.grouped(views.rows(profile)))
     page = TEMPLATES.get_template(name).render(
         csrf=state.csrf,
         demo=state.workspace.demo,
@@ -149,12 +158,15 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
             if profile is None:
                 return render(request, "welcome.html", title="Stealth")
             rows = views.rows(profile)
+            groups = views.grouped(rows)
             return render(
                 request,
                 "overview.html",
                 title="Stealth",
                 person=profile.person(),
-                groups=views.grouped(rows),
+                groups=groups,
+                summary=views.summary(groups),
+                nav_counts=views.nav_counts(groups),
                 group_text=views.GROUPS,
                 total=len(rows),
                 running=state.jobs.running(),
@@ -172,6 +184,7 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
             return render(
                 request,
                 "cases.html",
+                profile=profile,
                 title="Companies",
                 rows=rows,
                 group=group if group in views.GROUPS else "",
@@ -188,6 +201,7 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
             return render(
                 request,
                 "case.html",
+                profile=profile,
                 title=case.broker_name,
                 case=case,
                 info=views.STATUS[case.status],
@@ -210,6 +224,7 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
             return render(
                 request,
                 "message.html",
+                profile=profile,
                 title=f"Email: {case.broker_name}",
                 case=case,
                 message=views.readable(profile, case, message_id),
@@ -238,6 +253,7 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
             return render(
                 request,
                 "approve.html",
+                profile=profile,
                 title="Waiting for your OK",
                 letters=letters,
                 account=profile.mail_account(),
@@ -251,9 +267,60 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
             return redirect("/")
         return render(request, "job.html", title=job.title, job=job)
 
+    @app.get("/needs", response_class=HTMLResponse)
+    def needs(request: Request) -> Response:
+        with opened(state) as profile:
+            if profile is None:
+                return redirect("/")
+            groups = views.grouped(views.rows(profile))
+            return render(
+                request,
+                "needs.html",
+                title="Needs you",
+                groups=groups,
+                group_text=views.GROUPS,
+                nav_counts=views.nav_counts(groups),
+            )
+
+    @app.get("/reports", response_class=HTMLResponse)
+    def reports(request: Request) -> Response:
+        with opened(state) as profile:
+            if profile is None:
+                return redirect("/")
+            rows = views.rows(profile)
+            groups = views.grouped(rows)
+            return render(
+                request,
+                "reports.html",
+                title="Reports",
+                groups=groups,
+                group_text=views.GROUPS,
+                summary=views.summary(groups),
+                total=len(rows),
+                ico=[r for r in rows if r.case.status in (Status.ICO_READY, Status.ESCALATED)],
+                sent=[r for r in rows if r.case.last_request_on],
+                nav_counts=views.nav_counts(groups),
+            )
+
+    @app.get("/settings", response_class=HTMLResponse)
+    def settings_page(request: Request) -> Response:
+        with opened(state) as profile:
+            if profile is None:
+                return render(request, "settings.html", title="Settings")
+            return render(
+                request,
+                "settings.html",
+                profile=profile,
+                title="Settings",
+                person=profile.person(),
+                account=profile.mail_account(),
+                settings=profile.settings(),
+            )
+
     @app.get("/help", response_class=HTMLResponse)
     def help_page(request: Request) -> Response:
-        return render(request, "help.html", title="Help")
+        with opened(state) as profile:
+            return render(request, "help.html", profile=profile, title="Help")
 
     # Actions --------------------------------------------------------------------------------
 

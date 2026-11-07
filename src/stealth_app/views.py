@@ -154,6 +154,64 @@ def grouped(all_rows: list[Row]) -> dict[str, list[Row]]:
     return groups
 
 
+def _companies(n: int) -> str:
+    return f"{n} compan{'y' if n == 1 else 'ies'}"
+
+
+@dataclass(frozen=True)
+class Summary:
+    """The answer to "am I protected, and is there anything I need to do?"."""
+
+    removed: int  # removed, or said they held nothing
+    progress: int
+    needs: int  # letters to approve plus things only the person can do
+    problems: int
+    active: int  # every company except skipped ones
+    percent: int  # removed as a share of active
+    headline: str
+    text: str
+    tone: str  # "good" when nothing needs the person, otherwise "action"
+
+
+def summary(groups: dict[str, list[Row]]) -> Summary:
+    removed = sum(1 for r in groups["done"] if r.case.status in (Status.REMOVED, Status.NO_DATA))
+    skipped = len(groups["done"]) - removed
+    needs = len(groups["approve"]) + len(groups["you"])
+    problems = len(groups["problem"])
+    progress = len(groups["progress"])
+    active = sum(len(rows) for rows in groups.values()) - skipped
+    percent = round(100 * removed / active) if active else 0
+    attention = needs + problems
+    gone = f"{_companies(removed)} {'has' if removed == 1 else 'have'} removed your data"
+    if not active:
+        headline, text = "Nothing to track yet", "Stealth hasn't written to any companies."
+    elif attention:
+        headline = f"{attention} things need you" if attention > 1 else "1 thing needs you"
+        text = f"{gone} so far. Everything else is in hand."
+    elif progress:
+        headline = "You're protected"
+        text = f"{gone}. Stealth is waiting on {progress} more and keeps checking."
+    else:
+        headline = "You're protected"
+        text = f"{gone}. Stealth will ask them again, in case they re-list you."
+    return Summary(
+        removed,
+        progress,
+        needs,
+        problems,
+        active,
+        percent,
+        headline,
+        text,
+        "action" if attention else "good",
+    )
+
+
+def nav_counts(groups: dict[str, list[Row]]) -> dict[str, int]:
+    """The number beside "Needs you" in the sidebar: everything waiting on the person."""
+    return {"/needs": sum(len(groups[key]) for key in ("approve", "you", "problem"))}
+
+
 def today_for(profile: Profile) -> date:
     from stealth.cases.engine import jurisdiction_of
 
@@ -205,6 +263,7 @@ def can_complain(case: Case) -> bool:
 
 EVENT_TEXT = {
     "case_created": "Stealth added this company",
+    "reply_received": "Stealth found their reply",
     "send_failed": "Sending failed",
     "ico_complaint_drafted": "ICO complaint drafted",
 }

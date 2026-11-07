@@ -31,8 +31,24 @@ Mac. Windows is the supported platform.
 - A desktop dashboard: every company and where it stands, each one's full history, replies shown
   as plain text, a downloadable evidence pack per company, and a "Run cycle now" button
 - Approve before send: in the desktop app, every letter waits for your OK first
-- A demo inside the app ("Try it with made-up data") that sends nothing anywhere
+- A demo inside the app ("Try the demo") that sends nothing anywhere
 - Help on every screen, and error screens with details you can copy to whoever helps you
+- Light and dark mode that follow Windows, with a choice in Settings
+
+## Screenshots
+
+These are from the demo, so the details are made up.
+
+| Light | Dark |
+|---|---|
+| ![Overview in light mode](docs/screenshots/overview-light.png) | ![Overview in dark mode](docs/screenshots/overview-dark.png) |
+| ![A company's history](docs/screenshots/company-light.png) | ![Things that need you](docs/screenshots/needs-dark.png) |
+
+More, in both themes: [welcome](docs/screenshots/welcome-light.png),
+[companies](docs/screenshots/companies-light.png),
+[approving letters](docs/screenshots/approve-light.png),
+[reports](docs/screenshots/reports-light.png), [settings](docs/screenshots/settings-light.png),
+[help](docs/screenshots/help-light.png) and the rest in [docs/screenshots](docs/screenshots).
 
 ## How many companies
 
@@ -234,7 +250,18 @@ CI runs it against the installed app on Windows and macOS, and headless on Linux
 window check is allowed to fail until [#1](https://github.com/Anish25012/stealth/issues/1) is fixed.
 
 The tests run real SMTP and IMAP code against servers on `127.0.0.1`, and move a controllable clock
-through whole case lifecycles.
+through whole case lifecycles. `tests/test_visual.py` opens every screen in light and dark mode in
+the Edge or Chrome already installed (through Playwright, with no browser download) and fails on
+any console error, failed request or Content-Security-Policy violation. It's skipped if neither
+browser is installed.
+
+The design system lives in `src/stealth_app/static/app.css`. To see every component in light and
+dark, start the app with `STEALTH_DEV=1` set and open `/styleguide`. To refresh the README's
+screenshots from the demo, without touching your own data:
+
+```
+python tools/screenshots.py
+```
 
 | Package | Purpose |
 |---|---|
@@ -243,6 +270,8 @@ through whole case lifecycles.
 | `src/stealth_app` | The desktop app: a local server shown in a native window, plus a tray icon |
 | `packaging/` | PyInstaller spec, Windows installer script, icons and `build.py` |
 | `tools/build_brokers.py` | Builds the broker list |
+| `tools/build_icons.py` | Builds the icon set from Lucide |
+| `tools/screenshots.py` | Screenshots every screen, light and dark |
 
 ## Roadmap
 

@@ -1,39 +1,59 @@
 {% extends "base.html" %}
-{% from "_macros.html" import help, csrf_field %}
+{% from "_macros.html" import help, csrf_field, icon, avatar %}
+{% block toolbar_start %}<a class="back" href="/needs">{{ icon("arrow-left", "s") }} Needs you</a>{% endblock %}
 {% block main %}
-<h1>Waiting for your OK</h1>
+<div class="page-head">
+  <div>
+    <h1>Waiting for your OK</h1>
+    {% if letters %}
+    <p>Stealth has written {{ letters|length }} letter{{ "" if letters|length == 1 else "s" }}.
+    Read them, untick any you don't want to send, then approve.</p>
+    {% else %}
+    <p>Nothing is ever sent without your OK.</p>
+    {% endif %}
+  </div>
+</div>
 {% if letters %}
-<p class="lead">Stealth has written {{ letters|length }} letter{{ "" if letters|length == 1 else "s" }}.
-Read them, untick any you don't want to send, then approve.</p>
 <form method="post" action="/approve">
   {{ csrf_field(csrf) }}
-  <fieldset>
+  <fieldset class="card flush letters">
     <legend class="visually-hidden">Letters to approve</legend>
     {% for case, letter in letters %}
-    <article class="card letter" aria-labelledby="l-{{ loop.index }}">
+    <article class="letter" aria-labelledby="l-{{ loop.index }}">
       <div class="choice">
         <input type="checkbox" id="b-{{ loop.index }}" name="broker" value="{{ case.broker_id }}" checked>
-        <label for="b-{{ loop.index }}"><strong id="l-{{ loop.index }}">{{ case.broker_name }}</strong> <span class="muted">to {{ case.contact }}</span></label>
+        <label for="b-{{ loop.index }}">
+          {{ avatar(case.broker_name) }}
+          <span class="row-main">
+            <strong class="row-title" id="l-{{ loop.index }}">{{ case.broker_name }}</strong>
+            <span class="row-text">To {{ case.contact }}</span>
+          </span>
+        </label>
       </div>
       <details>
         <summary>Read the letter</summary>
-        <p class="muted small">From {{ account.address }} · Subject: {{ letter["Subject"] }}</p>
+        <p class="muted small mail-head">From {{ account.address }} · Subject: {{ letter["Subject"] }}</p>
         <pre class="mail">{{ letter.get_content() }}</pre>
       </details>
     </article>
     {% endfor %}
   </fieldset>
-  <div class="button-row">
-    <button class="button" type="submit" name="action" value="approve">Approve and send ticked letters</button>
-    <button class="button secondary" type="submit" name="action" value="skip">Skip ticked companies</button>
+  <div class="action-bar">
+    <p class="muted small">{{ icon("info", "s") }} Up to {{ daily_limit }} emails go out each day. The rest wait for the next day.</p>
+    <div class="button-row">
+      <button class="button secondary" type="submit" name="action" value="skip">Skip ticked companies</button>
+      <button class="button" type="submit" name="action" value="approve">{{ icon("send") }} Approve and send</button>
+    </div>
   </div>
-  <p class="muted small">Up to {{ daily_limit }} emails go out each day. The rest wait for the next day.</p>
 </form>
 {% else %}
 <section class="card">
-  <h2>Nothing to approve</h2>
-  <p>When Stealth has new letters ready, they'll appear here first. Nothing is ever sent without
-  your OK.</p>
+  <div class="empty">
+    <span class="glyph l tone-good">{{ icon("mail-open", "xl") }}</span>
+    <h2>Nothing to approve</h2>
+    <p>When Stealth has new letters ready, they'll appear here first.</p>
+    <p><a class="button secondary" href="/">Back to the overview</a></p>
+  </div>
 </section>
 {% endif %}
 {% call help() %}

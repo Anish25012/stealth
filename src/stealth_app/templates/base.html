@@ -1,40 +1,70 @@
+{% from "_macros.html" import icon, csrf_field %}
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>{{ title if title == "Stealth" else title ~ " · Stealth" }}</title>
 <link rel="stylesheet" href="/static/app.css">
+<script src="/static/theme.js"></script>
+<script src="/static/app.js" defer></script>
 {% block head %}{% endblock %}
 </head>
 <body>
 <a class="skip" href="#main">Skip to main content</a>
-<header class="top">
-  <div class="top-inner">
-    <a class="brand" href="/">Stealth</a>
+<div class="app">
+  <aside class="sidebar">
+   <div class="sidebar-inner">
+    <a class="brand" href="/">
+      <span class="brand-mark">{{ icon("shield-check") }}</span>
+      <span class="brand-name">Stealth</span>
+    </a>
     <nav aria-label="Main">
-      <ul>
-        {% for href, label in [("/", "Overview"), ("/cases", "Companies"), ("/approve", "Waiting for your OK"), ("/help", "Help")] %}
-        <li><a href="{{ href }}"{% if path == href or (href != "/" and path.startswith(href)) %} aria-current="page"{% endif %}>{{ label }}</a></li>
+      <ul class="nav">
+        {% for href, label, glyph, matches in [
+          ("/", "Overview", "layout-dashboard", ["/"]),
+          ("/cases", "Companies", "building-2", ["/cases"]),
+          ("/needs", "Needs you", "inbox", ["/needs", "/approve"]),
+          ("/reports", "Reports", "file-text", ["/reports"]),
+          ("/settings", "Settings", "settings", ["/settings"]),
+          ("/help", "Help", "circle-help", ["/help", "/styleguide"]),
+        ] %}
+        {% set ns = namespace(current=(path == "/")) if href == "/" else namespace(current=False) %}
+        {% for m in matches if href != "/" and path.startswith(m) %}{% set ns.current = True %}{% endfor %}
+        <li><a href="{{ href }}" title="{{ label }}"{% if ns.current %} aria-current="page"{% endif %}>
+          {{ icon(glyph) }}<span class="nav-label">{{ label }}</span>
+          {% if nav_counts and nav_counts.get(href) %}<span class="count" aria-label="{{ nav_counts[href] }} waiting">{{ nav_counts[href] }}</span>{% endif %}
+        </a></li>
         {% endfor %}
       </ul>
     </nav>
-  </div>
-</header>
-{% if demo %}
-<div class="demo-banner" role="note">
-  <div class="top-inner">
-    <p><strong>Demo:</strong> everything here is made up. No email leaves this computer.</p>
-    <form method="post" action="/demo/stop">
-      <input type="hidden" name="csrf" value="{{ csrf }}">
-      <button class="button secondary small" type="submit">Leave the demo</button>
-    </form>
+    <div class="sidebar-foot">
+      <p>{{ icon("lock", "s") }}<span>Your data stays on this computer, except the letters you choose to send.</span></p>
+      <p class="version">Stealth {{ version }}</p>
+    </div>
+   </div>
+  </aside>
+
+  <div class="content">
+    <header class="toolbar">
+      <div class="toolbar-start">{% block toolbar_start %}{% endblock %}</div>
+      <div class="toolbar-end">
+        {% block toolbar_end %}{% endblock %}
+        {% if demo %}
+        <span class="demo-chip" role="note">{{ icon("sparkles") }}<span>Demo: made-up data, nothing is sent</span></span>
+        <form method="post" action="/demo/stop">
+          {{ csrf_field(csrf) }}
+          <button class="button secondary small" type="submit">Leave the demo</button>
+        </form>
+        {% endif %}
+      </div>
+    </header>
+    <main id="main" tabindex="-1">
+    {% block main %}{% endblock %}
+    </main>
   </div>
 </div>
-{% endif %}
-<main id="main" tabindex="-1">
-{% block main %}{% endblock %}
-</main>
-<footer class="foot"><p>Stealth {{ version }}. Your data stays on this computer, except the letters you choose to send.</p></footer>
+{% block body_end %}{% endblock %}
 </body>
 </html>
