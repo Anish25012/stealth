@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "_macros.html" import help, csrf_field, icon, avatar %}
+{% block toolbar_start %}<a class="back" href="/settings">{{ icon("arrow-left", "s") }} Settings</a>{% endblock %}
+{% block main %}
+<div class="page-head">
+  <div>
+    <h1>People</h1>
+    <p>Stealth can look after more than one person, each with their own letters, email and evidence.</p>
+  </div>
+  {% if not demo %}<a class="button" href="/setup">{{ icon("user") }} Add someone</a>{% endif %}
+</div>
+{% if people %}
+<section class="card" aria-label="People">
+  <ul class="rows">
+    {% for p in people %}
+    <li><div class="row">
+      {{ avatar(p.name) }}
+      <span class="row-main">
+        <span class="row-title">{{ p.name }}{% if p.active %} <span class="badge tone-good">Showing now</span>{% endif %}</span>
+        <span class="row-text">{{ p.account.address if p.account else "No email connected" }}{% if p.consents %} · {{ p.consents[-1].method }}{% endif %}</span>
+      </span>
+      <span class="row-end">
+        {% if not p.active %}
+        <form method="post" action="/people/switch">
+          {{ csrf_field(csrf) }}<input type="hidden" name="profile" value="{{ p.id }}">
+          <button class="button secondary small" type="submit">Switch to</button>
+        </form>
+        {% endif %}
+        {% if not demo %}<button class="button plain small" type="button" data-open="delete-{{ p.id }}">Delete</button>{% endif %}
+      </span>
+    </div></li>
+    {% endfor %}
+  </ul>
+</section>
+{% if not demo %}
+{% for p in people %}
+<dialog class="sheet" id="delete-{{ p.id }}" aria-labelledby="delete-h-{{ p.id }}">
+  <form method="post" action="/people/delete">
+    {{ csrf_field(csrf) }}<input type="hidden" name="profile" value="{{ p.id }}">
+    <span class="glyph l tone-problem">{{ icon("triangle-alert", "l") }}</span>
+    <h2 id="delete-h-{{ p.id }}">Delete {{ p.name }}?</h2>
+    <p>This removes their details, every letter and reply, and the evidence, from this computer.
+    It can't be undone. Companies already written to keep their own copies.</p>
+    <div class="field">
+      <label for="confirm-{{ p.id }}">Type DELETE to confirm</label>
+      <input id="confirm-{{ p.id }}" name="confirm" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="button-row">
+      <button class="button secondary" type="submit" formmethod="dialog" formnovalidate>Cancel</button>
+      <button class="button destructive" type="submit">Delete for good</button>
+    </div>
+  </form>
+</dialog>
+{% endfor %}
+{% endif %}
+{% else %}
+<section class="card">
+  <div class="empty">
+    <span class="glyph l">{{ icon("users", "xl") }}</span>
+    <h2>Nobody set up yet</h2>
+    <p>Set Stealth up for yourself, or for someone who's asked you to help.</p>
+    <p><a class="button" href="/setup">Set up Stealth</a></p>
+  </div>
+</section>
+{% endif %}
+{% call help() %}
+<p>Each person's information is kept separately, locked with its own key. When you set Stealth
+up for someone else, it records how they agreed, because companies only have to act for someone
+who has.</p>
+{% endcall %}
+{% endblock %}

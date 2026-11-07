@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% from "_macros.html" import steps_bar, error_summary, field, csrf_field, icon %}
+{% block main %}
+{{ steps_bar(steps, step) }}
+<div class="page-head">
+  <div>
+    <h1>Connect the email letters come from</h1>
+    <p>Stealth sends each letter from this address, so replies come back to it, and reads the
+    inbox only to spot those replies. It never deletes or changes anything there.</p>
+  </div>
+</div>
+{{ error_summary(errors) }}
+<form method="post" action="/setup/email" class="card">
+  {{ csrf_field(csrf) }}
+  {% if draft and not draft.for_self %}
+  <fieldset>
+    <legend>Whose email is it?</legend>
+    <div class="choices tiles">
+      <div class="choice"><input type="radio" id="whose-theirs" name="whose" value="theirs"{% if values.get("whose") != "mine" %} checked{% endif %}><label for="whose-theirs">{{ icon("user") }} Theirs</label></div>
+      <div class="choice"><input type="radio" id="whose-mine" name="whose" value="mine"{% if values.get("whose") == "mine" %} checked{% endif %}><label for="whose-mine">{{ icon("users") }} Mine, writing on their behalf</label></div>
+    </div>
+  </fieldset>
+  {% endif %}
+
+  {{ field("address", "Email address", errors, values, type="email", autocomplete="email", required=True) }}
+
+  <fieldset class="{% if errors.provider %}has-error{% endif %}">
+    <legend>Who provides it?</legend>
+    {% if errors.provider %}<p class="error" id="e-provider">{{ errors.provider }}</p>{% endif %}
+    <div class="choices tiles provider-tiles">
+      {% for key, provider in providers.items() %}
+      <div class="choice"><input type="radio" id="f-provider-{{ key }}" name="provider" value="{{ key }}"{% if values.get("provider", "gmail") == key %} checked{% endif %}><label for="f-provider-{{ key }}">{{ icon("mail") }} {{ provider.name }}</label></div>
+      {% endfor %}
+      <div class="choice"><input type="radio" id="f-provider-outlook" name="provider" value="outlook"{% if values.get("provider") == "outlook" %} checked{% endif %}><label for="f-provider-outlook">{{ icon("mail") }} Outlook or Hotmail</label></div>
+      <div class="choice"><input type="radio" id="f-provider-other" name="provider" value="other"{% if values.get("provider") == "other" %} checked{% endif %}><label for="f-provider-other">{{ icon("settings") }} Something else</label></div>
+    </div>
+  </fieldset>
+
+  {{ field("password", "App password", errors, values, type="password", autocomplete="off", required=True,
+           hint="Not your normal password: a separate one your provider makes just for Stealth. You can cancel it any time.") }}
+
+  <details class="how-to">
+    <summary>{{ icon("info", "s") }} How to make an app password</summary>
+    <ol>
+      <li>Turn on two-step sign-in for the account, if it isn't already. Providers only offer app
+      passwords once it's on.</li>
+      <li>Open your provider's page (these open in your web browser):
+        <ul class="link-list">
+          {% for provider in providers.values() %}
+          <li><a href="{{ provider.app_password_url }}" target="_blank" rel="noopener noreferrer">{{ provider.name }} app passwords</a></li>
+          {% endfor %}
+        </ul>
+      </li>
+      <li>Make one called "Stealth", copy it, and paste it above.</li>
+    </ol>
+    <p class="muted small">Outlook and Hotmail no longer allow app passwords. Microsoft sign-in for
+    them is coming.</p>
+  </details>
+
+  <details class="how-to"{% if values.get("provider") == "other" %} open{% endif %}>
+    <summary>{{ icon("settings", "s") }} Server settings, for "Something else"</summary>
+    <p class="muted small">Your provider's help pages list these. Stealth only allows protected
+    connections, so your password never crosses the network in plain text.</p>
+    <div class="server-grid">
+      {% for prefix, label, default_port in [("smtp", "Sending (SMTP)", "587"), ("imap", "Reading (IMAP)", "993")] %}
+      <fieldset class="subtle">
+        <legend>{{ label }}</legend>
+        {{ field(prefix ~ "_host", "Server", errors, values, hint="For example mail.example.com") }}
+        {% set port_value = {prefix ~ "_port": values.get(prefix ~ "_port") or default_port} %}
+        {{ field(prefix ~ "_port", "Port", errors, port_value) }}
+        <div class="field{% if errors[prefix ~ '_security'] %} has-error{% endif %}">
+          <label for="f-{{ prefix }}_security">Protection</label>
+          {% if errors[prefix ~ '_security'] %}<p class="error">{{ errors[prefix ~ '_security'] }}</p>{% endif %}
+          <select id="f-{{ prefix }}_security" name="{{ prefix }}_security">
+            {% for value, text in ([("starttls", "STARTTLS"), ("ssl", "SSL/TLS")] if prefix == "smtp" else [("ssl", "SSL/TLS")]) %}
+            <option value="{{ value }}"{% if values.get(prefix ~ "_security") == value %} selected{% endif %}>{{ text }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </fieldset>
+      {% endfor %}
+    </div>
+    {{ field("username", "Username, if it isn't the email address", errors, values, autocomplete="username") }}
+  </details>
+
+  <div class="notice">{{ icon("lock") }}<p>The app password is kept in Windows Credential Manager,
+  never in Stealth's files. Stealth signs in once now to check it works, and sends nothing.</p></div>
+
+  <div class="button-row">
+    <a class="button secondary" href="/setup/details">Back</a>
+    <button class="button" type="submit">Check and continue {{ icon("arrow-right") }}</button>
+  </div>
+</form>
+{% endblock %}

@@ -66,3 +66,74 @@ GMAIL_DEFAULTS: dict[str, Any] = {
     "imap_port": 993,
     "imap_security": "ssl",
 }
+
+
+@dataclass(frozen=True)
+class Provider:
+    """Settings for a mail provider that allows app passwords, so people don't type servers."""
+
+    key: str
+    name: str
+    smtp_host: str
+    smtp_port: int
+    smtp_security: str
+    imap_host: str
+    imap_port: int
+    app_password_url: str
+
+
+# Outlook, Hotmail and Live are deliberately absent: Microsoft no longer accepts app passwords for
+# them, so those accounts need Microsoft sign-in.
+PROVIDERS: dict[str, Provider] = {
+    p.key: p
+    for p in [
+        Provider(
+            "gmail",
+            "Gmail",
+            "smtp.gmail.com",
+            587,
+            "starttls",
+            "imap.gmail.com",
+            993,
+            "https://myaccount.google.com/apppasswords",
+        ),
+        Provider(
+            "yahoo",
+            "Yahoo Mail",
+            "smtp.mail.yahoo.com",
+            465,
+            "ssl",
+            "imap.mail.yahoo.com",
+            993,
+            "https://login.yahoo.com/account/security",
+        ),
+        Provider(
+            "icloud",
+            "iCloud Mail",
+            "smtp.mail.me.com",
+            587,
+            "starttls",
+            "imap.mail.me.com",
+            993,
+            "https://account.apple.com/account/manage",
+        ),
+    ]
+}
+MICROSOFT_DOMAINS = frozenset(
+    {"outlook.com", "hotmail.com", "hotmail.co.uk", "live.com", "live.co.uk", "msn.com"}
+)
+
+
+def provider_account(provider: Provider, address: str, *, is_own_mailbox: bool) -> MailAccount:
+    return MailAccount(
+        provider=f"{provider.key}-password",
+        address=address,
+        smtp_host=provider.smtp_host,
+        smtp_port=provider.smtp_port,
+        smtp_security=provider.smtp_security,
+        imap_host=provider.imap_host,
+        imap_port=provider.imap_port,
+        imap_security="ssl",
+        username=address,
+        is_own_mailbox=is_own_mailbox,
+    )

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% from "_macros.html" import steps_bar, csrf_field, icon, avatar %}
+{% block main %}
+{{ steps_bar(steps, step) }}
+<div class="page-head">
+  <div>
+    <h1>Choose the companies</h1>
+    <p>Stealth starts with the companies UK law clearly covers. They're all included; you can
+    leave any out, now or later.</p>
+  </div>
+</div>
+<form method="post" action="/setup/companies">
+  {{ csrf_field(csrf) }}
+  {% set by_form = core|selectattr("method", "equalto", "form")|list|length %}
+  <section class="card" aria-labelledby="core-h">
+    <div class="card-head">
+      <span class="glyph tone-accent">{{ icon("building-2") }}</span>
+      <div>
+        <h2 id="core-h">{{ core|length }} companies</h2>
+        <p class="muted">{{ core|length - by_form }} by email, {{ by_form }} through web forms you fill in.</p>
+      </div>
+    </div>
+    <details class="how-to company-picker">
+      <summary>See them all, or untick some</summary>
+      <fieldset class="letters company-list">
+        <legend class="visually-hidden">Companies Stealth will write to</legend>
+        {% for broker in core %}
+        <div class="letter">
+          <div class="choice">
+            <input type="checkbox" id="b-{{ loop.index }}" name="broker" value="{{ broker.id }}"{% if broker.id not in settings.skip_brokers %} checked{% endif %}>
+            <label for="b-{{ loop.index }}">
+              {{ avatar(broker.name) }}
+              <span class="row-main">
+                <span class="row-title">{{ broker.name }}</span>
+                <span class="row-text">{{ broker.domain }} · {{ "By email" if broker.method == "email" else "Web form" }}</span>
+              </span>
+            </label>
+          </div>
+        </div>
+        {% endfor %}
+      </fieldset>
+    </details>
+  </section>
+
+  <section class="card" aria-labelledby="extended-h">
+    <div class="toggle-row">
+      <div>
+        <h2 id="extended-h">Also write to {{ numbers.optional }} more</h2>
+        <p class="muted">Companies abroad that may hold UK data, but where it's less clear the law
+        reaches them. Writing to them shares your name and email address with them.</p>
+      </div>
+      <input type="checkbox" class="switch" id="f-extended" name="extended" value="yes"{% if settings.include_extended %} checked{% endif %} aria-labelledby="extended-h">
+    </div>
+  </section>
+
+  <div class="action-bar">
+    <p class="muted small">{{ icon("info", "s") }} Nothing is sent yet. Next you'll see every letter first.</p>
+    <div class="button-row">
+      <button class="button" type="submit">Continue {{ icon("arrow-right") }}</button>
+    </div>
+  </div>
+</form>
+{% endblock %}

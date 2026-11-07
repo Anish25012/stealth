@@ -6,8 +6,9 @@ Information Commissioner's Office (ICO) when they don't. It runs on your own com
 account, no server and no telemetry.
 
 **Status: Phase 2 of 4, in progress.** The engine, command line and desktop dashboard work
-today, and installers are built and tested on every change. Setting up a profile and connecting
-email still needs the command line (`stealth init`) until the setup screens arrive.
+today, and installers are built and tested on every change. The desktop app sets itself up in six
+steps, with Gmail, Yahoo, iCloud or any provider that allows app passwords. Outlook and Hotmail
+need Microsoft sign-in, which is still to come.
 
 **macOS is untested for now.** The Mac build is made and checked in CI, but its window doesn't
 load yet ([#1](https://github.com/Anish25012/stealth/issues/1)) and nobody has tried it on a real
@@ -34,6 +35,9 @@ Mac. Windows is the supported platform.
 - A demo inside the app ("Try the demo") that sends nothing anywhere
 - Help on every screen, and error screens with details you can copy to whoever helps you
 - Light and dark mode that follow Windows, with a choice in Settings
+- Setup in the app: who it's for (with consent recorded when it's someone else), their details,
+  email checked before anything is saved, a recovery code, and the companies to write to
+- More than one person, each kept separately, from Settings > People
 
 ## Screenshots
 
@@ -125,7 +129,8 @@ an app password at <https://myaccount.google.com/apppasswords>. Your normal pass
 Outlook and Hotmail no longer allow app passwords, so those accounts need the Microsoft sign-in
 arriving in Phase 2.
 
-**2. Set up your profile.**
+**2. Set up your profile.** In the desktop app, choose **Get started** on the welcome screen.
+From the command line instead:
 
 ```
 stealth init

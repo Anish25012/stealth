@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import steps_bar, csrf_field, icon %}
+{% block main %}
+{{ steps_bar(steps, step) }}
+<div class="page-head">
+  <div>
+    <h1>Ready to write the letters</h1>
+    <p>Stealth will draft one for each company. Nothing goes out until you've read them and said OK.</p>
+  </div>
+</div>
+{% set total = by_email + by_form %}
+<section class="card hero" aria-labelledby="sum-h">
+  <span class="glyph l tone-accent">{{ icon("shield-check", "l") }}</span>
+  <div class="hero-text">
+    <h2 id="sum-h" class="hero-title">{{ total }} compan{{ "y" if total == 1 else "ies" }}</h2>
+    <p>For {{ person.display_name }}, sent from {{ account.address }}.</p>
+  </div>
+</section>
+<ul class="stats" aria-label="What happens next">
+  <li><div class="card stat"><span class="glyph tone-accent">{{ icon("mail") }}</span><span class="stat-number">{{ by_email }}</span><span class="stat-label">Letters for you to approve</span></div></li>
+  <li><div class="card stat"><span class="glyph tone-action">{{ icon("file-text") }}</span><span class="stat-number">{{ by_form }}</span><span class="stat-label">Web forms for you to fill in</span></div></li>
+  <li><div class="card stat"><span class="glyph tone-waiting">{{ icon("clock") }}</span><span class="stat-number">1</span><span class="stat-label">Month for each to reply</span></div></li>
+</ul>
+<form method="post" action="/setup/finish" class="button-row">
+  {{ csrf_field(csrf) }}
+  <a class="button secondary" href="/setup/companies">Back</a>
+  <button class="button large" type="submit">{{ icon("sparkles") }} Write the letters</button>
+</form>
+{% endblock %}

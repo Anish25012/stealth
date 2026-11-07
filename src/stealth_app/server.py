@@ -35,7 +35,7 @@ from starlette.responses import Response
 from stealth import __version__
 from stealth.core.errors import StealthError
 from stealth.core.logging_scrub import scrub
-from stealth_app import dashboard, styleguide
+from stealth_app import dashboard, setup_wizard, styleguide
 from stealth_app.workspace import Workspace
 
 log = logging.getLogger("stealth.app.server")
@@ -194,7 +194,7 @@ def create_app(
             return PlainTextResponse("Not found.", status_code=404)
         return Response(entry.read_bytes(), media_type=STATIC_TYPES[suffix])
 
-    dashboard.install(app, workspace)
+    setup_wizard.install(app, dashboard.install(app, workspace))
     if styleguide.enabled():
         styleguide.install(app)
     return app

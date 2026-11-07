@@ -10,6 +10,7 @@ import contextlib
 import imaplib
 import smtplib
 import ssl
+from collections.abc import Callable
 from datetime import date
 from email.message import EmailMessage
 
@@ -71,6 +72,18 @@ class SmtpTransport:
             server.starttls(context=ssl.create_default_context())
         return server
 
+    def check(self) -> None:
+        """Sign in and straight out again, sending nothing. Used when connecting an account."""
+        try:
+            with self._connect() as server:
+                server.ehlo_or_helo_if_needed()
+                if self.account.username and server.has_extn("auth"):
+                    server.login(self.account.username, self.password)
+        except smtplib.SMTPAuthenticationError as exc:
+            raise _auth_error() from exc
+        except (OSError, smtplib.SMTPException) as exc:
+            raise _network_error(self.account.smtp_host, exc) from exc
+
     def send(self, message: EmailMessage, bcc: str | None = None) -> None:
         # A fresh connection per message: with long pacing delays, providers drop idle sessions.
         recipients = [str(message["To"])] + ([bcc] if bcc else [])
@@ -118,7 +131,14 @@ class ImapMailbox:
             return imaplib.IMAP4_SSL(host, port, ssl_context=context, timeout=TIMEOUT_SECONDS)
         return imaplib.IMAP4(host, port, timeout=TIMEOUT_SECONDS)
 
+    def check(self) -> None:
+        """Sign in and open the folder read-only, reading nothing. Used when connecting."""
+        self._in_folder(lambda _server: [])
+
     def fetch_since(self, since: date) -> list[IncomingMail]:
+        return self._in_folder(lambda server: self._fetch(server, since))
+
+    def _in_folder(self, work: Callable[[imaplib.IMAP4], list[IncomingMail]]) -> list[IncomingMail]:
         try:
             server = self._connect()
         except OSError as exc:
@@ -128,7 +148,7 @@ class ImapMailbox:
             status, _ = server.select(self.folder, readonly=True)
             if status != "OK":
                 raise MailConnectionError(f"Couldn't open the {self.folder} folder.")
-            return self._fetch(server, since)
+            return work(server)
         except imaplib.IMAP4.error as exc:
             if "login" in str(exc).lower() or "auth" in str(exc).lower():
                 raise _auth_error() from exc
@@ -151,3 +171,9 @@ class ImapMailbox:
                 if isinstance(part, tuple):
                     found.append(IncomingMail(raw=part[1]))
         return found
+
+
+def check_connection(account: MailAccount, password: str) -> None:
+    """Prove both halves work before anything is saved: sending (SMTP) and reading (IMAP)."""
+    SmtpTransport(account, password).check()
+    ImapMailbox(account, password).check()

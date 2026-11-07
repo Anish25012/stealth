@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_macros.html" import steps_bar, error_summary, csrf_field, icon %}
+{% block main %}
+{{ steps_bar(steps, step) }}
+<div class="page-head">
+  <div>
+    <h1>Keep this recovery code safe</h1>
+    <p>Everything Stealth keeps is locked with a key stored in Windows. If that's ever lost, say
+    after reinstalling Windows, this code is the only way back in. Stealth can't show it again.</p>
+  </div>
+</div>
+{{ error_summary(errors) }}
+<form method="post" action="/setup/recovery" class="card">
+  {{ csrf_field(csrf) }}
+  <div class="recovery">
+    <span class="glyph l tone-accent">{{ icon("lock", "l") }}</span>
+    <label for="code" class="visually-hidden">Recovery code</label>
+    <input id="code" class="recovery-code" value="{{ code }}" readonly spellcheck="false" aria-describedby="code-hint">
+    <p class="muted small" id="code-hint">Five groups of five letters and numbers.</p>
+    <div class="button-row">
+      <button class="button secondary" type="button" data-copy="code" data-copy-text="Copied. Paste it somewhere safe, like a password manager.">{{ icon("copy") }} Copy</button>
+      <button class="button secondary" type="button" data-print>{{ icon("file-text") }} Print</button>
+    </div>
+  </div>
+  <ul class="checks">
+    <li>{{ icon("check", "s") }} Write it on paper, or save it in a password manager.</li>
+    <li>{{ icon("check", "s") }} Don't keep it only on this computer.</li>
+    <li>{{ icon("x", "s") }} Nobody from Stealth will ever ask you for it.</li>
+  </ul>
+  <div class="choice{% if errors.kept %} has-error{% endif %}">
+    <input type="checkbox" id="f-kept" name="kept" value="yes">
+    <label for="f-kept">I've kept the code somewhere safe</label>
+  </div>
+  <div class="button-row">
+    <button class="button" type="submit">Continue {{ icon("arrow-right") }}</button>
+  </div>
+</form>
+{% endblock %}

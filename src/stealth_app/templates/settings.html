@@ -23,6 +23,16 @@
   </div>
 </section>
 
+{% if not person %}
+<section class="card">
+  <div class="empty">
+    <span class="glyph l">{{ icon("user", "xl") }}</span>
+    <h2>Nobody set up yet</h2>
+    <p>Once Stealth is set up, its email and sending settings show here.</p>
+    <p><a class="button" href="/setup">Set up Stealth</a></p>
+  </div>
+</section>
+{% endif %}
 {% if person %}
 <div class="two-col">
 <div>
@@ -72,8 +82,16 @@
   </section>
 </div>
 </div>
-<p class="muted small">Changing these from the app comes with the setup screens in the next
-update.</p>
+<section class="card" aria-labelledby="people-h">
+  <div class="card-head">
+    <div>
+      <h2 id="people-h">People</h2>
+      <p class="muted">Look after someone else too, or switch between people.</p>
+    </div>
+    <a class="more" href="/people">Manage people {{ icon("chevron-right", "s") }}</a>
+  </div>
+</section>
+<p class="muted small">Changing the sending settings from the app is coming in a later update.</p>
 {% endif %}
 
 {% call help() %}

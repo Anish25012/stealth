@@ -974,3 +974,52 @@
     .button:not(.secondary, .plain):hover { transform: none; }
   }
 }
+
+/* Setup ====================================================================================== */
+@layer components {
+  .provider-tiles { grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); }
+  .how-to { margin: 0 0 var(--space-4); border-top: 1px solid var(--separator); border-bottom: 1px solid var(--separator); }
+  .how-to > summary { color: var(--accent-text); font-size: var(--text-callout); }
+  .how-to ol { padding-left: 1.25rem; color: var(--text-2); }
+  .how-to li { margin-bottom: var(--space-2); }
+  .link-list { list-style: none; padding: 0; margin: var(--space-2) 0 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .link-list a {
+    display: inline-flex; align-items: center; min-height: 2rem; padding: 0 var(--space-3);
+    border-radius: var(--radius-pill); background: var(--fill); font-size: var(--text-footnote);
+    font-weight: 600; text-decoration: none;
+  }
+  .link-list a:hover { background: var(--fill-hover); }
+  .server-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: var(--space-4); margin-bottom: var(--space-4); }
+  .server-grid fieldset.subtle { margin: 0; }
+  .server-grid input, .server-grid select { max-width: 100%; }
+
+  /* The recovery code: big, monospaced, easy to read aloud and copy by hand. */
+  .recovery { text-align: center; padding: var(--space-4) 0 var(--space-2); }
+  .recovery .glyph { margin: 0 auto var(--space-4); }
+  input.recovery-code {
+    display: block; width: 100%; max-width: 40rem; margin: 0 auto var(--space-2); text-align: center;
+    font: 600 clamp(1.125rem, 2.6vw, 1.625rem)/1.4 var(--font-mono); letter-spacing: .08em;
+    padding: var(--space-4); border-radius: var(--radius-m); border: 0; background: var(--inset); color: var(--text);
+  }
+  .recovery .button-row { justify-content: center; }
+  .checks { list-style: none; padding: 0; margin: var(--space-5) 0; display: grid; gap: var(--space-2); color: var(--text-2); }
+  .checks li { display: flex; gap: var(--space-2); align-items: center; margin: 0; }
+  .checks .icon { color: var(--accent-text); flex: none; }
+
+  .company-list .letter { padding: var(--space-1) 0; }
+  .company-picker { margin: 0; border-bottom: 0; }
+  .company-picker .company-list {
+    max-height: 26rem; overflow-y: auto; margin: 0 calc(-1 * var(--space-2)) var(--space-2);
+    padding: 0 var(--space-2); overscroll-behavior: contain;
+  }
+  .recovery p { margin-inline: auto; }
+  .card-head > div p { margin: var(--space-1) 0 0; }
+}
+
+@media print {
+  .sidebar, .toolbar, .steps, .button, .button-row, .checks, .choice, .help, .skip { display: none !important; }
+  .app { display: block; }
+  .card { box-shadow: none !important; border: 1px solid #999; }
+  input.recovery-code { background: none; border: 2px solid #000; color: #000; }
+  main > * { animation: none !important; }
+}

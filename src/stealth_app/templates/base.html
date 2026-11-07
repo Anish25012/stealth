@@ -27,7 +27,7 @@
           ("/cases", "Companies", "building-2", ["/cases"]),
           ("/needs", "Needs you", "inbox", ["/needs", "/approve"]),
           ("/reports", "Reports", "file-text", ["/reports"]),
-          ("/settings", "Settings", "settings", ["/settings"]),
+          ("/settings", "Settings", "settings", ["/settings", "/people"]),
           ("/help", "Help", "circle-help", ["/help", "/styleguide"]),
         ] %}
         {% set ns = namespace(current=(path == "/")) if href == "/" else namespace(current=False) %}

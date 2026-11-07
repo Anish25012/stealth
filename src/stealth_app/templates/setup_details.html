@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import steps_bar, error_summary, field, csrf_field, icon %}
+{% block main %}
+{{ steps_bar(steps, step) }}
+<div class="page-head">
+  <div>
+    <h1>{{ "Your" if not draft or draft.for_self else "Their" }} details</h1>
+    <p>Companies use these to find the right records. They stay on this computer and only go into
+    the letters you approve.</p>
+  </div>
+</div>
+{{ error_summary(errors) }}
+<form method="post" action="/setup/details" class="card">
+  {{ csrf_field(csrf) }}
+  {{ field("name", "Full name", errors, values, autocomplete="name", required=True) }}
+  {{ field("other_names", "Other names", errors, values, rows=2, hint="Maiden names or names used in the past. One per line.") }}
+  {{ field("emails", "Email addresses", errors, values, rows=3, required=True, hint="Every address companies might have, old ones too. One per line.") }}
+  {{ field("addresses", "Home addresses", errors, values, rows=3, hint="Current and past addresses, with postcodes. One per line.") }}
+  {{ field("phones", "Phone numbers", errors, values, rows=2, hint="One per line.") }}
+  <p class="muted small">Stealth never sends a date of birth.</p>
+  <div class="button-row">
+    <a class="button secondary" href="/setup">Back</a>
+    <button class="button" type="submit">Continue {{ icon("arrow-right") }}</button>
+  </div>
+</form>
+{% endblock %}

@@ -30,14 +30,15 @@
     anywhere, and the demo is deleted when you leave it or close Stealth.</p>
     <form method="post" action="/demo/start">
       {{ csrf_field(csrf) }}
-      <button class="button large" type="submit">{{ icon("play") }} Try the demo</button>
+      <button class="button secondary large" type="submit">{{ icon("play") }} Try the demo</button>
     </form>
   </section>
 
-  <section class="card quiet" aria-labelledby="setup">
+  <section class="card" aria-labelledby="setup">
     <h2 id="setup">Set up Stealth for yourself</h2>
-    <p class="muted">Step-by-step setup arrives in the next update. Until then, whoever installed
-    Stealth for you can set it up by running <code>stealth init</code> in a terminal.</p>
+    <p class="muted">About five minutes. You'll need the email address the letters should come
+    from, and an app password for it. Nothing is sent until you've read every letter.</p>
+    <a class="button large" href="/setup">Get started {{ icon("arrow-right") }}</a>
   </section>
 </div>
 {% endblock %}

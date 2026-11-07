@@ -13,8 +13,13 @@ document.querySelectorAll("[data-copy]").forEach((button) => {
     }
     const done = document.querySelector("[data-copied]");
     if (done) done.hidden = false;
-    toast("Copied. Paste it into a message to whoever is helping you.");
+    toast(button.dataset.copyText || "Copied. Paste it into a message to whoever is helping you.");
   });
+});
+
+// Print buttons (the recovery code). The page's print styles show only what matters.
+document.querySelectorAll("[data-print]").forEach((button) => {
+  button.addEventListener("click", () => window.print());
 });
 
 // Sheets: a button with data-open="id" opens <dialog id="id">. Buttons inside with

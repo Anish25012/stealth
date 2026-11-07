@@ -245,6 +245,20 @@ def _create_for(profile: Profile, selection: Selection, *, hold: bool) -> Case:
     return transition(profile.conn, case, Status.QUEUED, reason="new broker")
 
 
+def open_cases(profile: Profile, brokers: dict[str, Broker], *, hold: bool = True) -> list[str]:
+    """Open a case for every broker not yet written to. Sends nothing.
+
+    With `hold`, email letters wait as drafts for approval. Returns the web-form companies.
+    """
+    jurisdiction, settings = jurisdiction_of(profile), profile.settings()
+    forms = []
+    for selection in due_selections(profile, select_brokers(brokers, jurisdiction, settings)):
+        case = _create_for(profile, selection, hold=hold)
+        if case.status is Status.AWAITING_FORM:
+            forms.append(case.broker_name)
+    return forms
+
+
 def mark_sent(profile: Profile, case: Case, jurisdiction: Jurisdiction, *, actor: str) -> Case:
     """Start the clock on a request that has just gone out."""
     today = clock.local_date(jurisdiction.tz)
@@ -286,10 +300,7 @@ def send_requests(
     settings = profile.settings()
     report = SendReport()
 
-    for selection in due_selections(profile, select_brokers(brokers, jurisdiction, settings)):
-        case = _create_for(profile, selection, hold=hold_for_approval)
-        if case.status is Status.AWAITING_FORM:
-            report.forms.append(case.broker_name)
+    report.forms = open_cases(profile, brokers, hold=hold_for_approval)
     if not hold_for_approval:
         drafts = [c.broker_id for c in drafts_waiting(profile) if only in (None, c.broker_id)]
         approve(profile, drafts, actor="stealth", reason="sent from the command line")

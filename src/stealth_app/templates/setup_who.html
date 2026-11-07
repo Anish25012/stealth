@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "_macros.html" import steps_bar, error_summary, field, csrf_field, icon %}
+{% block main %}
+{{ steps_bar(steps, step) }}
+<div class="page-head">
+  <div>
+    <h1>Who are you setting Stealth up for?</h1>
+    <p>Stealth writes to companies that sell personal details, and asks them to delete them. It
+    uses the person's rights under UK data protection law, sends from their email, and keeps a
+    record of every reply.</p>
+  </div>
+</div>
+{{ error_summary(errors) }}
+<form method="post" action="/setup/who" class="card">
+  {{ csrf_field(csrf) }}
+  <fieldset>
+    <legend>This is for</legend>
+    <div class="choices tiles">
+      <div class="choice"><input type="radio" id="for-me" name="for" value="me"{% if values.get("for") != "someone" %} checked{% endif %}><label for="for-me">{{ icon("user") }} Me</label></div>
+      <div class="choice"><input type="radio" id="for-someone" name="for" value="someone"{% if values.get("for") == "someone" %} checked{% endif %}><label for="for-someone">{{ icon("users") }} Someone else, such as a family member</label></div>
+    </div>
+  </fieldset>
+  <fieldset class="subtle">
+    <legend>If it's for someone else</legend>
+    <p class="hint">Companies only have to act for someone who has agreed to the request. Stealth
+    keeps a note of how they agreed.</p>
+    {{ field("helper_name", "Your name", errors, values, autocomplete="name") }}
+    <div class="field{% if errors.consent_method %} has-error{% endif %}">
+      <label for="f-consent_method">How did they agree?</label>
+      {% if errors.consent_method %}<p class="error">{{ errors.consent_method }}</p>{% endif %}
+      <select id="f-consent_method" name="consent_method">
+        <option value="">Choose one</option>
+        {% for method in methods %}<option{% if values.get("consent_method") == method %} selected{% endif %}>{{ method }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="choice{% if errors.agreed %} has-error{% endif %}">
+      <input type="checkbox" id="f-agreed" name="agreed" value="yes"{% if values.get("agreed") == "yes" %} checked{% endif %}>
+      <label for="f-agreed">They've agreed that Stealth can write to companies for them</label>
+    </div>
+    {% if errors.agreed %}<p class="error">{{ errors.agreed }}</p>{% endif %}
+  </fieldset>
+  <div class="button-row"><button class="button" type="submit">Continue {{ icon("arrow-right") }}</button></div>
+</form>
+{% endblock %}
