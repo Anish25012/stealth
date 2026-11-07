@@ -126,7 +126,26 @@ def test_with_no_profile_the_welcome_page_offers_the_demo(client):
     page = client.get("/")
     assert "Welcome to Stealth" in page.text
     assert 'action="/demo/start"' in page.text
-    assert client.get("/cases").status_code == 303
+
+
+@pytest.mark.parametrize(
+    ("url", "title"),
+    [
+        ("/cases", "Companies"),
+        ("/scan", "Scan"),
+        ("/needs", "Needs you"),
+        ("/approve", "Waiting for your OK"),
+        ("/reports", "Reports"),
+    ],
+)
+def test_with_no_profile_every_tab_opens_and_says_why_its_empty(client, url, title):
+    # These used to bounce back to the welcome page, which looked like the click did nothing.
+    page = client.get(url)
+    assert page.status_code == 200
+    assert f"<h1>{title}</h1>" in page.text
+    assert "Nothing here until Stealth is set up" in page.text
+    assert 'href="/setup"' in page.text and 'action="/demo/start"' in page.text
+    assert 'aria-current="page"' in page.text  # the sidebar shows where you are
 
 
 def test_overview_counts_every_group(client, demo):

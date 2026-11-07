@@ -26,6 +26,7 @@ from stealth_app.dashboard import (
     State,
     changing,
     first,
+    not_set_up,
     opened,
     read_form,
     redirect,
@@ -159,7 +160,7 @@ def install(app: FastAPI, state: State) -> None:
     def scan(request: Request) -> Response:
         with opened(state) as profile:
             if profile is None:
-                return redirect("/")
+                return not_set_up(request)
             sites = state.workspace.scan_sites()
             all_results = scans.all_results(profile)
             return render(

@@ -81,6 +81,26 @@ def render(
     return HTMLResponse(page, status_code=status_code)
 
 
+# The sidebar's pages, for before there's a profile: say why they're empty instead of bouncing
+# back to the start, which looked like the click did nothing.
+EMPTY_PAGES: dict[str, tuple[str, str, str]] = {
+    "/cases": (
+        "Companies",
+        "Every company Stealth writes to, and where each one stands.",
+        "building-2",
+    ),
+    "/scan": ("Scan", "See what people-search sites show about you.", "search"),
+    "/needs": ("Needs you", "Replies to read and letters to approve.", "inbox"),
+    "/approve": ("Waiting for your OK", "Letters Stealth has written for you to read.", "mail"),
+    "/reports": ("Reports", "Monthly reports, your exposure score and evidence.", "file-text"),
+}
+
+
+def not_set_up(request: Request) -> HTMLResponse:
+    title, about, glyph = EMPTY_PAGES[request.url.path]
+    return render(request, "not_set_up.html", title=title, about=about, glyph=glyph)
+
+
 def redirect(url: str) -> RedirectResponse:
     return RedirectResponse(url, status_code=303)
 
@@ -180,7 +200,7 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
     def case_list(request: Request, group: str = "") -> Response:
         with opened(state) as profile:
             if profile is None:
-                return redirect("/")
+                return not_set_up(request)
             rows = views.rows(profile)
             if group in views.GROUPS:
                 rows = [r for r in rows if r.info.group == group]
@@ -256,7 +276,7 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
     def approve_page(request: Request) -> Response:
         with opened(state) as profile:
             if profile is None:
-                return redirect("/")
+                return not_set_up(request)
             drafts = engine.drafts_waiting(profile)
             letters = [(case, engine.draft_letter(profile, case)) for case in drafts]
             settings = profile.settings()
@@ -281,7 +301,7 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
     def needs(request: Request) -> Response:
         with opened(state) as profile:
             if profile is None:
-                return redirect("/")
+                return not_set_up(request)
             groups = views.grouped(views.rows(profile))
             return render(
                 request,
@@ -296,7 +316,7 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
     def reports(request: Request) -> Response:
         with opened(state) as profile:
             if profile is None:
-                return redirect("/")
+                return not_set_up(request)
             rows = views.rows(profile)
             groups = views.grouped(rows)
             return render(

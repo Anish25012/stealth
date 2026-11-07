@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, icon %}
+{% block main %}
+<div class="page-head">
+  <div>
+    <h1>{{ title }}</h1>
+    <p>{{ about }}</p>
+  </div>
+</div>
+
+<section class="card" aria-labelledby="empty-h">
+  <div class="empty">
+    <span class="glyph l">{{ icon(glyph, "xl") }}</span>
+    <h2 id="empty-h">Nothing here until Stealth is set up</h2>
+    <p>Set Stealth up for yourself and this page fills in as it writes to companies. Or try the
+    demo to see it with made-up details first.</p>
+    <form method="post" action="/demo/start" class="button-row">
+      {{ csrf_field(csrf) }}
+      <a class="button" href="/setup">Get started {{ icon("arrow-right") }}</a>
+      <button class="button secondary" type="submit">{{ icon("play") }} Try the demo</button>
+    </form>
+  </div>
+</section>
+{% endblock %}
