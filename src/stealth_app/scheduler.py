@@ -22,7 +22,7 @@ from stealth.core import clock
 from stealth.core.errors import MailAuthError, MailConnectionError, StealthError
 from stealth.core.logging_scrub import add_known_values
 from stealth.profiles.models import Settings
-from stealth_app import views
+from stealth_app import monthly, views
 from stealth_app.workspace import Workspace
 
 log = logging.getLogger("stealth.scheduler")
@@ -111,7 +111,29 @@ class Scheduler:
             if outcome.ran and outcome.notify:
                 self.notify(f"Stealth: {outcome.name}", outcome.result)
             outcomes.append(outcome)
+            self._announce_report(profile_id)
         return outcomes
+
+    def _announce_report(self, profile_id: str) -> None:
+        """Once a month, say that last month's report is ready. Only once, even across restarts."""
+        if not self.workspace.lock.acquire(blocking=False):
+            return  # busy: the next tick will do it
+        try:
+            with self.workspace.store.open(profile_id) as profile:
+                month = monthly.last_finished(profile)
+                if month is None or profile.settings().last_report_month == month.key:
+                    return
+                profile.save_settings(last_report_month=month.key)
+                name = profile.person().display_name
+        except Exception:  # a report notice must never stop the daily checks
+            log.exception("couldn't check for a monthly report")
+            return
+        finally:
+            self.workspace.lock.release()
+        self.notify(
+            f"Stealth: {name}",
+            f"Your {month.label} report is ready. Open Stealth and go to Reports to read it.",
+        )
 
     def _check(self, profile_id: str, now: datetime, *, force: bool) -> Outcome:
         if not self.workspace.lock.acquire(blocking=False):

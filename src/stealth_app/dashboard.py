@@ -27,7 +27,7 @@ from stealth.core.logging_scrub import add_known_values
 from stealth.inbox import responses
 from stealth.profiles.store import Profile
 from stealth.templates.render import format_date
-from stealth_app import autostart, views
+from stealth_app import autostart, monthly, views
 from stealth_app.workspace import DemoWorkspace, Job, Jobs, RealWorkspace, Workspace
 
 CSRF_FIELD = "csrf"
@@ -310,7 +310,41 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
                 ico=[r for r in rows if r.case.status in (Status.ICO_READY, Status.ESCALATED)],
                 sent=[r for r in rows if r.case.last_request_on],
                 score=views.exposure(profile),
+                months=monthly.available(profile),
                 nav_counts=views.nav_counts(groups),
+            )
+
+    # Registered before the page, so "2026-10.pdf" isn't read as a month called that.
+    @app.get("/reports/monthly/{key}.pdf")
+    def monthly_pdf(key: str) -> Response:
+        with opened(state) as profile:
+            if profile is None:
+                return redirect("/")
+            report = monthly.build(profile, monthly.Month.parse(key))
+        from stealth_app import monthly_pdf as pdf  # ReportLab loads only when asked for
+
+        return Response(
+            pdf.render(report),
+            media_type="application/pdf",
+            headers={"Content-Disposition": _attachment(f"stealth-report-{report.month.key}.pdf")},
+        )
+
+    @app.get("/reports/monthly/{key}", response_class=HTMLResponse)
+    def monthly_page(request: Request, key: str) -> Response:
+        with opened(state) as profile:
+            if profile is None:
+                return redirect("/")
+            report = monthly.build(profile, monthly.Month.parse(key))
+            months = monthly.available(profile)
+            newer = report.month.next()
+            return render(
+                request,
+                "monthly.html",
+                title=f"{report.month.label} report",
+                report=report,
+                older=report.month.previous() if report.month.previous() in months else None,
+                newer=newer if newer in months else None,
+                nav_counts=views.nav_counts(views.grouped(views.rows(profile))),
             )
 
     @app.get("/settings", response_class=HTMLResponse)

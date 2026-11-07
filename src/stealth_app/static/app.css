@@ -347,6 +347,11 @@
   .row-text { display: block; color: var(--text-2); font-size: var(--text-callout); margin-top: .1rem; }
   .row-end { display: flex; align-items: center; gap: var(--space-3); flex: none; }
   .row .chevron { color: var(--text-2); }
+  .month-events { display: flex; flex-direction: column; gap: .15rem; color: var(--text); }
+  .month-events .muted { display: inline-block; min-width: 3.25rem; font-variant-numeric: tabular-nums; }
+  .month-nav { justify-content: space-between; margin-top: var(--space-5); }
+  .month-nav .next { margin-left: auto; }
+  .stats.five { grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); }
   .card .rows:last-child { margin-bottom: calc(-1 * var(--space-5)); }
   .card .rows:first-child { margin-top: calc(-1 * var(--space-5)); }
   .card .card-head + .rows { margin-top: calc(-1 * var(--space-2)); }

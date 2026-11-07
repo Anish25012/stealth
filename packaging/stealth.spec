@@ -15,6 +15,7 @@ datas = (
     collect_data_files("stealth")  # broker list, schema, letter templates, migrations
     + collect_data_files("stealth_app")  # tray icon
     + collect_data_files("tzdata")  # Windows has no system time zone database
+    + collect_data_files("reportlab")  # the monthly report PDF's font metrics
     # The scan's browser driver (a small node runtime). Browsers aren't bundled: the scan uses
     # the Edge or Chrome already installed.
     + collect_data_files("playwright", include_py_files=False)
@@ -25,6 +26,7 @@ hiddenimports = (
     + collect_submodules("stealth_app")
     + collect_submodules("stealth")
     + collect_submodules("playwright")  # imported only when the search window opens
+    + collect_submodules("reportlab")  # imported only when a PDF report is made
 )
 
 analysis = Analysis(

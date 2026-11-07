@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, badge, help, icon, ring %}
+{% block toolbar_start %}<a class="back" href="/reports">{{ icon("arrow-left", "s") }} Reports</a>{% endblock %}
+{% block main %}
+<div class="page-head">
+  <div>
+    <h1>{{ report.month.label }}</h1>
+    <p>For {{ report.person }}. {% if report.so_far %}So far this month, up to {{ report.made_on|day }}.{% else %}The whole month.{% endif %}</p>
+  </div>
+  <a class="button" href="/reports/monthly/{{ report.month.key }}.pdf" download>{{ icon("download") }} Download PDF</a>
+</div>
+
+<section class="card hero" aria-labelledby="month-h">
+  {{ ring(report.score_end.value, report.score_end.value, "of 100",
+          label="Exposure score " ~ report.score_end.value ~ " out of 100",
+          tone={"low": "good", "medium": "waiting", "high": "problem"}[report.score_end.band]) }}
+  <div class="hero-text">
+    <p class="eyebrow">{{ icon("file-check", "s") }} Monthly report</p>
+    <h2 id="month-h" class="hero-title">{{ report.score_end.words }}</h2>
+    <p>{{ report.headline }}</p>
+    {% set change = report.score_change %}
+    <p class="small muted">
+      {% if change is none %}Stealth started this month, so there's no earlier score to compare.
+      {% elif change > 0 %}Your exposure score went up {{ change }} since 1 {{ report.month.name }}.
+      {% elif change < 0 %}Your exposure score went down {{ -change }} since 1 {{ report.month.name }}.
+      {% else %}Your exposure score is the same as on 1 {{ report.month.name }}.{% endif %}
+    </p>
+  </div>
+</section>
+
+<ul class="stats five" aria-label="This month">
+  {% for key, glyph, tone, number, label in [
+    ("letters", "send", "waiting", report.letters, "Removal requests sent"),
+    ("replies", "mail-open", "waiting", report.replies, "Replies received"),
+    ("confirmed", "circle-check", "good", report.confirmed, "Confirmed removals"),
+    ("complaints", "flag", "action", report.complaints, "Formal complaints"),
+    ("listings", "search", "problem", report.listings_found, "Listings found"),
+  ] %}
+  <li data-stat="{{ key }}">
+    <div class="card stat">
+      <span class="glyph tone-{{ tone if number else '' }}">{{ icon(glyph) }}</span>
+      <span class="stat-number">{{ number }}</span>
+      <span class="stat-label">{{ label }}</span>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+
+<div class="two-col">
+<div>
+  <section class="card" aria-labelledby="companies-h">
+    <div class="card-head">
+      <h2 id="companies-h">Company by company</h2>
+    </div>
+    {% if report.lines %}
+    {% if report.quiet %}<p class="muted">Nothing new this month: Stealth was waiting on answers.</p>{% endif %}
+    <ul class="rows">
+      {% for line in report.lines %}
+      <li><a class="row" href="/cases/{{ line.broker_id|urlencode }}">
+        {{ avatar(line.name) }}
+        <span class="row-main">
+          <span class="row-title">{{ line.name }}</span>
+          {% if line.happenings %}
+          <span class="row-text month-events">
+            {% for h in line.happenings %}<span><span class="muted">{{ h.on.day }} {{ h.on.strftime("%b") }}</span> {{ h.text }}</span>{% endfor %}
+          </span>
+          {% else %}
+          <span class="row-text">Nothing new this month</span>
+          {% endif %}
+        </span>
+        <span class="row-end">{{ badge(line.info) }}{{ icon("chevron-right", "s chevron") }}</span>
+      </a></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="empty">
+      <span class="glyph l">{{ icon("file-text", "xl") }}</span>
+      <h3>Nothing yet</h3>
+      <p>Stealth hadn't written to any companies by the end of this month.</p>
+    </div>
+    {% endif %}
+  </section>
+</div>
+<div>
+  <section class="card" aria-labelledby="waiting-h">
+    <h2 id="waiting-h">Waiting on you</h2>
+    {% if report.needs %}
+    <p class="muted">{% if report.so_far %}These need you now.{% else %}These were waiting on you when the month ended.{% endif %}</p>
+    <ul class="rows">
+      {% for line in report.needs %}
+      <li><a class="row" href="/cases/{{ line.broker_id|urlencode }}">
+        <span class="glyph tone-{{ line.info.tone }}">{{ icon("inbox") }}</span>
+        <span class="row-main"><span class="row-title">{{ line.name }}</span><span class="row-text">{{ line.info.label }}</span></span>
+        <span class="row-end">{{ icon("chevron-right", "s chevron") }}</span>
+      </a></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">Nothing. Stealth had everything in hand.</p>
+    {% endif %}
+  </section>
+  {% set score = report.score_end %}
+  {% include "_score.html" %}
+</div>
+</div>
+
+<nav class="button-row month-nav" aria-label="Other months">
+  {% if older %}<a class="button secondary" href="/reports/monthly/{{ older.key }}">{{ icon("arrow-left") }} {{ older.label }}</a>{% endif %}
+  {% if newer %}<a class="button secondary next" href="/reports/monthly/{{ newer.key }}">{{ newer.label }} {{ icon("arrow-right") }}</a>{% endif %}
+</nav>
+
+{% call help() %}
+<p>The report is worked out from the letters, replies and records Stealth keeps, so you can open
+any past month again and it says the same thing.</p>
+<p>The <strong>exposure score</strong> is the score at the end of the month{% if report.so_far %} (today, for this month){% endif %}.
+A company counts as <strong>done</strong> once it has removed you or said it holds nothing.</p>
+{% endcall %}
+{% endblock %}

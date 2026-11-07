@@ -18,7 +18,9 @@ import tempfile
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -35,6 +37,9 @@ SETUP = [
     "setup-finish",
 ]
 BEFORE_DEMO = {"welcome", *SETUP}
+# The demo's history starts about a month back, so last month has a full report.
+_TODAY = datetime.now(ZoneInfo("Europe/London")).date()  # the demo seeds in UK time
+_LAST_MONTH = (_TODAY.replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
 PAGES = [
     ("welcome", "/"),
     ("setup", "/setup"),
@@ -51,6 +56,7 @@ PAGES = [
     ("needs", "/needs"),
     ("approve", "/approve"),
     ("reports", "/reports"),
+    ("report-month", f"/reports/monthly/{_LAST_MONTH}"),
     ("settings", "/settings"),
     ("people", "/people"),
     ("scan", "/scan"),

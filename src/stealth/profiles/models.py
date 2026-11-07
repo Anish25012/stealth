@@ -22,6 +22,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "auto_run_hour": 9,
     "last_auto_run": None,  # ISO time of the last automatic cycle, or None
     "last_auto_result": "",  # one plain-English line about it
+    "last_report_month": None,  # "2026-10": the last monthly report the tray announced
 }
 
 
@@ -39,6 +40,7 @@ class Settings:
     auto_run_hour: int = 9
     last_auto_run: str | None = None
     last_auto_result: str = ""
+    last_report_month: str | None = None
 
 
 @dataclass

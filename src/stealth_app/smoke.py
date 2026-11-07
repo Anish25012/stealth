@@ -87,6 +87,23 @@ def check_demo() -> str:
     return f"{len(result.statuses)} cases"
 
 
+def check_report() -> str:
+    """Make last month's report for the dashboard demo, as a PDF, the way the Reports page does."""
+    from stealth_app import monthly, monthly_pdf
+    from stealth_app.workspace import DemoWorkspace
+
+    workspace = DemoWorkspace()
+    try:
+        with workspace.store.open() as profile:
+            month = monthly.last_finished(profile) or monthly.available(profile)[0]
+            data = monthly_pdf.render(monthly.build(profile, month))
+    finally:
+        workspace.close()
+    if not data.startswith(b"%PDF-"):
+        raise RuntimeError("the monthly report didn't come out as a PDF")
+    return f"{month.label}, {len(data) // 1024} KB PDF"
+
+
 def check_server() -> str:
     from stealth_app.server import TOKEN_HEADER, start_server
 
@@ -179,6 +196,7 @@ def run_checks(*, with_window: bool) -> list[Check]:
         # Linux runners have no Secret Service; there the app will fall back to a passphrase.
         _run("keyring", check_keyring, required=sys.platform != "linux"),
         _run("demo", check_demo),
+        _run("monthly report", check_report),
         _run("server", check_server),
         _run("tray", check_tray),
         _run("search window", check_search_window),

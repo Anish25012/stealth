@@ -42,6 +42,24 @@
 
 <div class="two-col">
 <div>
+  <section class="card" aria-labelledby="monthly-h">
+    <div class="card-head">
+      <h2 id="monthly-h">Monthly reports</h2>
+    </div>
+    <p class="muted">What Stealth did each month and where things stood, to read here or keep as a PDF.</p>
+    <ul class="rows">
+      {% for month in months %}
+      <li><a class="row" href="/reports/monthly/{{ month.key }}">
+        <span class="glyph">{{ icon("file-text") }}</span>
+        <span class="row-main">
+          <span class="row-title">{{ month.label }}</span>
+          <span class="row-text">{% if loop.first %}This month, so far{% else %}The whole month{% endif %}</span>
+        </span>
+        <span class="row-end">{{ icon("chevron-right", "s chevron") }}</span>
+      </a></li>
+      {% endfor %}
+    </ul>
+  </section>
   {% include "_score.html" %}
   <section class="card" aria-labelledby="evidence-h">
     <div class="card-head">

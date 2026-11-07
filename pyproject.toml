@@ -29,6 +29,7 @@ app = [
     "playwright>=1.45",     # the scan's search window; drives the Edge or Chrome already installed
     "pystray>=0.19",
     "pywebview>=5",
+    "reportlab>=4.2",       # the monthly report as a PDF
     "uvicorn>=0.30",
 ]
 build = [
@@ -95,5 +96,5 @@ mypy_path = "src"
 packages = ["stealth", "stealth_cli", "stealth_app"]
 
 [[tool.mypy.overrides]]
-module = ["sqlcipher3.*", "aiosmtpd.*", "keyring.*", "webview.*", "pystray.*"]
+module = ["sqlcipher3.*", "aiosmtpd.*", "keyring.*", "webview.*", "pystray.*", "reportlab.*"]
 ignore_missing_imports = true

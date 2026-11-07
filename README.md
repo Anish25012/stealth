@@ -63,7 +63,8 @@ These are from the demo, so the details are made up.
 More, in both themes: [welcome](docs/screenshots/welcome-light.png),
 [companies](docs/screenshots/companies-light.png),
 [approving letters](docs/screenshots/approve-light.png),
-[reports](docs/screenshots/reports-light.png), [scan](docs/screenshots/scan-light.png),
+[reports](docs/screenshots/reports-light.png),
+[a monthly report](docs/screenshots/report-month-light.png), [scan](docs/screenshots/scan-light.png),
 [adding a company](docs/screenshots/add-company-light.png), [settings](docs/screenshots/settings-light.png),
 [help](docs/screenshots/help-light.png) and the rest in [docs/screenshots](docs/screenshots).
 
@@ -100,6 +101,7 @@ Based on Incogni's public plans. Stealth is an independent project and isn't con
 | Handles replies for you | Yes | Yes for clear replies to its own letters; unclear ones come to you with a best guess |
 | Custom removals | Unlimited plans | Yes: give it a website and it finds the privacy address |
 | Finding your listings | Automatic | Assisted: you search, Stealth captures the evidence |
+| Progress reports | Dashboard | Dashboard, plus a monthly report you can keep as a PDF |
 | Dark web monitoring | Protect plan | Phase 3, breach monitoring only |
 | Identity theft insurance | Protect plan | **No, and it never will** |
 | Credit monitoring | Protect plan | **No.** Stealth reminds you to check your free reports |
