@@ -26,7 +26,7 @@ from stealth.core.errors import ProfileError, StealthError
 from stealth.core.logging_scrub import add_known_values
 from stealth.profiles.store import Profile
 from stealth.templates.render import format_date
-from stealth_app import views
+from stealth_app import autostart, views
 from stealth_app.workspace import DemoWorkspace, Job, Jobs, RealWorkspace, Workspace
 
 CSRF_FIELD = "csrf"
@@ -171,6 +171,7 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
                 total=len(rows),
                 running=state.jobs.running(),
                 settings=profile.settings(),
+                last_run=views.last_run(profile.settings()),
             )
 
     @app.get("/cases", response_class=HTMLResponse)
@@ -315,7 +316,28 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
                 person=profile.person(),
                 account=profile.mail_account(),
                 settings=profile.settings(),
+                last_run=views.last_run(profile.settings()),
+                autostart_available=autostart.available(),
+                autostart_on=autostart.is_enabled(),
+                hours=range(6, 23),
             )
+
+    @app.post("/settings/automation")
+    async def automation(request: Request) -> Response:
+        form = await read_form(request)
+        if state.workspace.demo:
+            raise StealthError(
+                "The demo doesn't run by itself.", hint="Leave the demo to change this."
+            )
+        hour = first(form, "hour", "9")
+        if not hour.isdigit() or not 0 <= int(hour) <= 23:
+            raise ProfileError("Choose a time from the list.")
+        with changing(state) as profile:
+            profile.save_settings(
+                auto_run=first(form, "auto_run") == "yes", auto_run_hour=int(hour)
+            )
+        autostart.set_enabled(first(form, "autostart") == "yes")
+        return redirect("/settings")
 
     @app.get("/help", response_class=HTMLResponse)
     def help_page(request: Request) -> Response:

@@ -1,7 +1,7 @@
-"""The agent: owns the local server and the tray icon, and opens windows on request.
+"""The agent: owns the local server, the tray icon and the daily checks, and opens windows.
 
-Scheduling and catch-up arrive in Phase 2.7. For now the agent serves pages and stays in the tray
-until the person quits.
+It stays in the tray until the person quits. With "Start with Windows" on, it starts at sign-in
+with no window, so the daily check happens even if Stealth is never opened.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ import threading
 from typing import Any
 
 from stealth_app import runtime
+from stealth_app.scheduler import Scheduler
 from stealth_app.server import RunningServer, start_server
 from stealth_app.tray import build_icon
 
@@ -66,11 +67,62 @@ def run_agent(*, open_on_start: bool = True) -> int:
     holder.append(agent)
     runtime.write(agent.info)
     log.info("agent started on port %s", agent.server.port)
+
+    def notify(title: str, message: str) -> None:
+        if icons:
+            try:
+                icons[0].notify(message, title)
+            except Exception:  # a notification is a nicety; never let it stop a check
+                log.exception("tray notification failed")
+
+    scheduler = Scheduler(server.dashboard.real, notify=notify)
+
+    def check_now() -> None:
+        threading.Thread(
+            target=lambda: _report(scheduler.tick(force=True), notify), daemon=True
+        ).start()
+
     try:
         if open_on_start:
             agent.show()
-        icons.append(build_icon(on_open=agent.show, on_quit=lambda: None))
+        icons.append(
+            build_icon(
+                on_open=agent.show,
+                on_quit=lambda: None,
+                on_check=check_now,
+                status=lambda: _status(server.dashboard.real),
+            )
+        )
+        scheduler.start()
         icons[0].run()
     finally:
+        scheduler.stop()
         agent.shutdown()
     return 0
+
+
+def _report(outcomes: list[Any], notify: Any) -> None:
+    """After "Check now" from the tray, always say something, even if nothing changed."""
+    for outcome in outcomes:
+        if outcome.ran and not outcome.notify:
+            notify(f"Stealth: {outcome.name}", outcome.result)
+        elif not outcome.ran and outcome.result:
+            notify("Stealth", outcome.result)
+
+
+def _status(workspace: Any) -> str:
+    """The tray menu's top line: when Stealth last checked by itself."""
+    from datetime import datetime
+
+    try:
+        store = workspace.store
+        if not store.list_ids():
+            return "Not set up yet"
+        with store.open() as profile:
+            last = profile.settings().last_auto_run
+    except Exception:
+        return "Daily checks"
+    if not last:
+        return "Not checked yet"
+    when = datetime.fromisoformat(last).astimezone()
+    return f"Last checked {when:%a %d %b, %H:%M}"

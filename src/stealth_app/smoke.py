@@ -118,7 +118,8 @@ def check_tray() -> str:
     from stealth_app.tray import build_icon, icon_image
 
     image = icon_image()
-    build_icon(lambda: None, lambda: None)  # builds the menu; not shown, it needs the main loop
+    # Builds the full menu, status line and "Check now" included; not shown: it needs the main loop.
+    build_icon(lambda: None, lambda: None, on_check=lambda: None, status=lambda: "Not set up yet")
     return f"icon {image.width}x{image.height}"
 
 

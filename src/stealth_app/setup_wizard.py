@@ -29,6 +29,7 @@ from stealth.profiles.models import (
 )
 from stealth.registry.loader import counts, select_brokers
 from stealth.setup import Consent, new_profile
+from stealth_app import autostart
 from stealth_app.dashboard import State, changing, first, read_form, redirect, render
 
 STEPS = ["Who it's for", "Your details", "Email", "Recovery code", "Companies", "Finish"]
@@ -291,14 +292,18 @@ def install(app: FastAPI, state: State) -> None:
                 by_form=len(due) - by_email,
                 person=profile.person(),
                 account=profile.mail_account(),
+                autostart_available=autostart.available(),
+                hour=profile.settings().auto_run_hour,
             )
 
     @app.post("/setup/finish")
     async def finish(request: Request) -> Response:
-        await read_form(request)
+        form = await read_form(request)
         profile_made()
         with changing(state) as profile:
             engine.open_cases(profile, state.workspace.brokers(), hold=True)
+        if first(form, "autostart") == "yes":
+            autostart.set_enabled(True)
         drafts.pop("current", None)
         return redirect("/approve")
 

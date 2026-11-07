@@ -1023,3 +1023,7 @@
   input.recovery-code { background: none; border: 2px solid #000; color: #000; }
   main > * { animation: none !important; }
 }
+
+@layer components {
+  select.compact { width: auto; min-width: 7.5rem; flex: none; }
+}

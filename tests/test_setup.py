@@ -202,3 +202,30 @@ def test_people_can_be_switched_and_deleted_only_after_typing_delete(client, sto
 def test_welcome_and_settings_lead_to_setup(client):
     assert 'href="/setup"' in client.get("/").text
     assert 'href="/setup"' in client.get("/settings").text
+
+
+def test_daily_checks_can_be_turned_off_and_moved(client, store, mail):
+    smtp, imap = mail
+    client.get("/setup")
+    post(client, "/setup/who", **{"for": "me"})
+    post(client, "/setup/details", name="Sam Sample", emails="sam@example.org")
+    post(client, "/setup/email", **server_fields(smtp, imap))
+    page = client.get("/settings").text
+    assert "Running by itself" in page and "hasn't checked by itself yet" in page
+    assert 'id="f-autostart"' in page and "Only the installed app" in page  # run from source
+
+    assert post(client, "/settings/automation", hour="7").status_code == 303
+    with store.open() as profile:
+        assert profile.settings().auto_run is False  # the switch wasn't sent: it's off
+        assert profile.settings().auto_run_hour == 7
+    assert "Daily checks are off" in client.get("/").text
+
+    post(client, "/settings/automation", auto_run="yes", hour="9")
+    assert "checks by itself every day at 09:00" in client.get("/").text
+    assert "Choose a time" in post(client, "/settings/automation", hour="25").text
+
+
+def test_the_demo_doesnt_run_by_itself(client):
+    post(client, "/demo/start")
+    response = post(client, "/settings/automation", auto_run="yes", hour="9")
+    assert response.status_code == 400 and "doesn&#39;t run by itself" in response.text

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import help, icon, avatar %}
+{% from "_macros.html" import help, icon, avatar, csrf_field %}
 {% block main %}
 <div class="page-head">
   <div>
@@ -34,6 +34,43 @@
 </section>
 {% endif %}
 {% if person %}
+<section class="card" aria-labelledby="auto-h">
+  <div class="card-head">
+    <span class="glyph tone-accent">{{ icon("clock") }}</span>
+    <div>
+      <h2 id="auto-h">Running by itself</h2>
+      <p class="muted">Once a day Stealth reads new replies, chases companies that are late, and
+      sends letters you've already approved. It never sends a new letter without your OK.</p>
+    </div>
+  </div>
+  <form method="post" action="/settings/automation">
+    {{ csrf_field(csrf) }}
+    <div class="toggle-row">
+      <label for="f-auto_run">Check every day</label>
+      <input type="checkbox" class="switch" role="switch" id="f-auto_run" name="auto_run" value="yes"{% if settings.auto_run %} checked{% endif %}>
+    </div>
+    <div class="toggle-row">
+      <label for="f-hour">At</label>
+      <select id="f-hour" name="hour" class="compact">
+        {% for h in hours %}<option value="{{ h }}"{% if h == settings.auto_run_hour %} selected{% endif %}>{{ "%02d:00"|format(h) }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="toggle-row">
+      <div>
+        <label for="f-autostart">Start with Windows</label>
+        <p class="muted small">{% if autostart_available %}Stealth opens quietly in the tray when you sign in, so the daily check happens even if you never open it.{% else %}Only the installed app can start with Windows.{% endif %}</p>
+      </div>
+      <input type="checkbox" class="switch" role="switch" id="f-autostart" name="autostart" value="yes"{% if autostart_on %} checked{% endif %}{% if not autostart_available %} disabled{% endif %}>
+    </div>
+    <p class="muted small">If your computer is off at that time, Stealth catches up shortly after it's next on.</p>
+    <div class="button-row"><button class="button secondary" type="submit"{% if demo %} disabled{% endif %}>Save</button></div>
+  </form>
+  <div class="notice{{ ' good' if last_run.when and 'Couldn' not in last_run.result else (' problem' if last_run.when else '') }}">
+    {{ icon("refresh-cw") }}
+    <p>{% if last_run.when %}<strong>Last check: {{ last_run.when }}.</strong> {{ last_run.result }}{% else %}Stealth hasn't checked by itself yet.{% endif %}</p>
+  </div>
+</section>
+
 <div class="two-col">
 <div>
   <section class="card" aria-labelledby="who-h">

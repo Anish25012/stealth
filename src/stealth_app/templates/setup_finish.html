@@ -21,9 +21,25 @@
   <li><div class="card stat"><span class="glyph tone-action">{{ icon("file-text") }}</span><span class="stat-number">{{ by_form }}</span><span class="stat-label">Web forms for you to fill in</span></div></li>
   <li><div class="card stat"><span class="glyph tone-waiting">{{ icon("clock") }}</span><span class="stat-number">1</span><span class="stat-label">Month for each to reply</span></div></li>
 </ul>
-<form method="post" action="/setup/finish" class="button-row">
+<form method="post" action="/setup/finish">
   {{ csrf_field(csrf) }}
-  <a class="button secondary" href="/setup/companies">Back</a>
-  <button class="button large" type="submit">{{ icon("sparkles") }} Write the letters</button>
+  <section class="card" aria-labelledby="auto-h">
+    <div class="toggle-row">
+      <div>
+        <h2 id="auto-h">Let Stealth run by itself</h2>
+        <p class="muted">Every day at {{ "%02d:00"|format(hour) }} it reads replies, chases late
+        companies and sends letters you've approved.{% if autostart_available %} Starting with
+        Windows means this happens even if you never open Stealth.{% endif %} You can change this
+        in Settings.</p>
+      </div>
+      {% if autostart_available %}
+      <input type="checkbox" class="switch" role="switch" id="f-autostart" name="autostart" value="yes" checked aria-label="Start Stealth with Windows">
+      {% endif %}
+    </div>
+  </section>
+  <div class="button-row">
+    <a class="button secondary" href="/setup/companies">Back</a>
+    <button class="button large" type="submit">{{ icon("sparkles") }} Write the letters</button>
+  </div>
 </form>
 {% endblock %}

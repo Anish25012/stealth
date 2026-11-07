@@ -31,7 +31,13 @@
       <button class="button" type="submit"{% if running %} disabled aria-disabled="true"{% endif %}>{{ icon("refresh-cw") }} Run cycle now</button>
       {% if groups.approve %}<a class="button secondary" href="/approve">Read and approve</a>{% endif %}
     </form>
+    {% if demo %}
     <p class="small muted">Checks for replies, chases late companies and sends approved letters.</p>
+    {% elif settings.auto_run %}
+    <p class="small muted">{{ icon("clock", "s") }} Stealth checks by itself every day at {{ "%02d:00"|format(settings.auto_run_hour) }}.{% if last_run.when %} Last check: {{ last_run.when|lower if last_run.when.startswith(("Today", "Yesterday")) else last_run.when }}.{% endif %}</p>
+    {% else %}
+    <p class="small muted">Daily checks are off. <a href="/settings">Turn them on</a></p>
+    {% endif %}
   </div>
 </section>
 

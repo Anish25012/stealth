@@ -43,6 +43,11 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs 
 Name: "{group}\Stealth"; Filename: "{app}\Stealth.exe"
 Name: "{userdesktop}\Stealth"; Filename: "{app}\Stealth.exe"; Tasks: desktopicon
 
+[Registry]
+; "Start with Windows" is switched on from inside the app (it writes this value). Writing nothing
+; here, but marking the value, makes uninstalling remove it.
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: none; ValueName: "Stealth"; Flags: uninsdeletevalue
+
 [UninstallRun]
 ; A running copy holds its files open, so ask it to quit before they're removed.
 Filename: "{app}\Stealth.exe"; Parameters: "--quit"; Flags: runhidden waituntilterminated; RunOnceId: "QuitStealth"

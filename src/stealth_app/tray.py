@@ -16,19 +16,34 @@ def icon_image() -> Image.Image:
     return image
 
 
-def build_icon(on_open: Callable[[], None], on_quit: Callable[[], None]) -> Any:
+def build_icon(
+    on_open: Callable[[], None],
+    on_quit: Callable[[], None],
+    on_check: Callable[[], None] | None = None,
+    status: Callable[[], str] | None = None,
+) -> Any:
     import pystray  # imported late: it picks a desktop backend as it loads
 
     def open_item(_icon: Any, _item: Any) -> None:
         on_open()
 
+    def check_item(_icon: Any, _item: Any) -> None:
+        if on_check is not None:
+            on_check()
+
     def quit_item(icon: Any, _item: Any) -> None:
         on_quit()
         icon.stop()
 
-    menu = pystray.Menu(
-        pystray.MenuItem("Open Stealth", open_item, default=True),
-        pystray.Menu.SEPARATOR,
-        pystray.MenuItem("Quit Stealth", quit_item),
-    )
-    return pystray.Icon("stealth", icon_image(), "Stealth", menu)
+    items = []
+    if status is not None:
+        # Worked out each time the menu opens, so it's always current.
+        items += [
+            pystray.MenuItem(lambda _item: status(), None, enabled=False),
+            pystray.Menu.SEPARATOR,
+        ]
+    items.append(pystray.MenuItem("Open Stealth", open_item, default=True))
+    if on_check is not None:
+        items.append(pystray.MenuItem("Check now", check_item))
+    items += [pystray.Menu.SEPARATOR, pystray.MenuItem("Quit Stealth", quit_item)]
+    return pystray.Icon("stealth", icon_image(), "Stealth", pystray.Menu(*items))

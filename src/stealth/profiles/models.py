@@ -16,6 +16,12 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "skip_brokers": [],
     "include_extended": False,
     "checklist_done": [],
+    # Running by itself: the desktop app checks once a day at this hour (local time), and catches
+    # up after the computer has been off. The last run is kept so the app can say what happened.
+    "auto_run": True,
+    "auto_run_hour": 9,
+    "last_auto_run": None,  # ISO time of the last automatic cycle, or None
+    "last_auto_result": "",  # one plain-English line about it
 }
 
 
@@ -29,6 +35,10 @@ class Settings:
     skip_brokers: list[str]
     include_extended: bool
     checklist_done: list[str]
+    auto_run: bool = True
+    auto_run_hour: int = 9
+    last_auto_run: str | None = None
+    last_auto_result: str = ""
 
 
 @dataclass

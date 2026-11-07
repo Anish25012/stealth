@@ -207,6 +207,27 @@ def summary(groups: dict[str, list[Row]]) -> Summary:
     )
 
 
+@dataclass(frozen=True)
+class LastRun:
+    when: str  # "Today at 09:02", "Yesterday at 09:00", "3 November at 09:01", or ""
+    result: str
+
+
+def last_run(settings: Any) -> LastRun:
+    """When Stealth last checked by itself, in words, in this computer's time zone."""
+    if not settings.last_auto_run:
+        return LastRun("", "")
+    when = datetime.fromisoformat(settings.last_auto_run).astimezone()
+    today = clock.now().astimezone().date()
+    if when.date() == today:
+        day = "Today"
+    elif (today - when.date()).days == 1:
+        day = "Yesterday"
+    else:
+        day = format_date(when.date())
+    return LastRun(f"{day} at {when:%H:%M}", settings.last_auto_result)
+
+
 def nav_counts(groups: dict[str, list[Row]]) -> dict[str, int]:
     """The number beside "Needs you" in the sidebar: everything waiting on the person."""
     return {"/needs": sum(len(groups[key]) for key in ("approve", "you", "problem"))}

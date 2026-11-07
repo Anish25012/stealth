@@ -38,6 +38,8 @@ Mac. Windows is the supported platform.
 - Setup in the app: who it's for (with consent recorded when it's someone else), their details,
   email checked before anything is saved, a recovery code, and the companies to write to
 - More than one person, each kept separately, from Settings > People
+- Runs by itself once a day, with catch-up after the computer was off, tray notifications, and an
+  optional start with Windows
 
 ## Screenshots
 
@@ -193,7 +195,14 @@ You can change the repeat intervals and the ICO wait.
 
 ## Scheduling
 
-**Windows Task Scheduler.** Run this once in a terminal, using the full path to `stealth.exe`:
+**The desktop app does this for you.** Once a day (09:00 unless you change it in Settings) it reads
+new replies, sends formal complaints to companies that missed their deadline, and sends letters
+you've approved. It never sends a new letter without your OK. If the computer was off, it catches up
+shortly after it's next on, and the tray tells you when something needs you. Turn on **Start with
+Windows** in Settings and it runs even if you never open it.
+
+**From the command line instead**, use Windows Task Scheduler. Run this once in a terminal, using the
+full path to `stealth.exe`:
 
 ```
 schtasks /Create /SC DAILY /ST 09:00 /TN "Stealth" /TR "C:\path\to\stealth\.venv\Scripts\stealth.exe cycle --live"
