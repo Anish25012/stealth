@@ -153,7 +153,8 @@ class Scheduler:
                 result = summary_line(report, needs)
                 profile.save_settings(last_auto_run=now.isoformat(), last_auto_result=result)
                 self._retry_at.pop(profile_id, None)
-                news = bool(report.inbox.replies or report.inbox.bounces or report.ico_ready)
+                inbox = report.inbox
+                news = bool(inbox.replies or inbox.resolved or inbox.bounces or report.ico_ready)
                 return Outcome(profile_id, person.display_name, True, result, needs, news)
         finally:
             self.workspace.lock.release()
@@ -162,6 +163,9 @@ class Scheduler:
 def summary_line(report: cycle.CycleReport, needs_you: int) -> str:
     """One calm sentence for the tray and the Settings page."""
     parts = []
+    if report.inbox.resolved:
+        settled = [name for name, _meaning in report.inbox.resolved]
+        parts.append(f"{len(settled)} repl{'y' if len(settled) == 1 else 'ies'} read and recorded")
     if report.inbox.replies:
         n = len(report.inbox.replies)
         parts.append(f"{n} new repl{'y' if n == 1 else 'ies'} to read")

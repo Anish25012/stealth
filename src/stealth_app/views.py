@@ -19,11 +19,14 @@ from email.message import EmailMessage
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from stealth.cases.state import TRANSITIONS, Case, Status, all_cases
 from stealth.core import clock
 from stealth.core.errors import ProfileError
 from stealth.db import events
+from stealth.inbox import classifier
+from stealth.inbox.responses import latest_reading, what_they_asked
 from stealth.profiles.store import Profile
 from stealth.templates.render import format_date
 
@@ -82,7 +85,7 @@ EXPLAIN: dict[Status, str] = {
     ),
     Status.SENT: "They must reply by {deadline}.",
     Status.EXTENDED: "They took the extra time the law allows. They must reply by {deadline}.",
-    Status.REPLIED: "They replied. Read it and tell Stealth what it said: only you can decide.",
+    Status.REPLIED: "They replied, and Stealth wasn't sure what it means. Read it and confirm.",
     Status.ID_REQUESTED: (
         "They asked you to prove who you are. Their time limit is paused until you send what "
         "they reasonably need."
@@ -134,6 +137,9 @@ class Row:
     overdue: bool
 
 
+READS_REPLIES = (Status.REPLIED, Status.NEEDS_YOU)
+
+
 def rows(profile: Profile) -> list[Row]:
     today = today_for(profile)
     result = []
@@ -143,7 +149,12 @@ def rows(profile: Profile) -> list[Row]:
             and case.deadline_on is not None
             and case.deadline_on < today
         )
-        result.append(Row(case, STATUS[case.status], explain(case, today), overdue))
+        explanation = explain(case, today)
+        if case.status in READS_REPLIES:
+            reading = latest_reading(profile, case)
+            if reading and reading.kind != classifier.UNKNOWN:
+                explanation = f"Stealth's reading: {reading.label.lower()}. Check it and confirm."
+        result.append(Row(case, STATUS[case.status], explanation, overdue))
     return result
 
 
@@ -271,6 +282,83 @@ def outcomes_for(case: Case) -> list[tuple[str, str]]:
     return choices
 
 
+# Stealth's reading of a reply ------------------------------------------------------------------
+
+SUGGESTED_OUTCOME = {
+    classifier.REMOVED: "removed",
+    classifier.NO_DATA: "no_data",
+    classifier.REFUSED: "refused",
+    classifier.ID_REQUESTED: "id_requested",
+    classifier.INFO_REQUESTED: "id_requested",
+    classifier.EXTENDED: "extended",
+}
+ADVICE = {
+    classifier.REMOVED: "If that's right, save it below. Stealth still asks again later, because "
+    "companies re-list people.",
+    classifier.NO_DATA: "If that's right, save it below. Stealth checks again later.",
+    classifier.REFUSED: "If that's right, save it below. You can then send them a formal "
+    "complaint, which they must answer.",
+    classifier.ID_REQUESTED: "Stealth has written a reply that gives them what the law allows "
+    "them to ask for, and no more. Read it below before sending.",
+    classifier.INFO_REQUESTED: "Stealth has written a reply with the details from your profile. "
+    "Read it below before sending.",
+    classifier.EXTENDED: "The law lets them take up to two extra months for a complex request. "
+    "If that's right, save it below and Stealth moves the deadline.",
+    classifier.FORM_REQUIRED: "Some companies insist on their own form. You don't have to use "
+    "it, but it is often the quickest way. If you'd rather not, Stealth keeps the clock running "
+    "on your email.",
+    classifier.ACKNOWLEDGED: "Nothing to do: their time limit keeps running.",
+    classifier.AUTO_REPLY: "Nothing to do: it's an automatic message.",
+}
+
+
+@dataclass(frozen=True)
+class Suggestion:
+    kind: str
+    label: str
+    quote: str
+    confident: bool
+    outcome: str | None  # the answer to preselect, if it's one of the choices
+    advice: str
+    link: str | None  # a web-form link, only when it's on the company's own website
+
+
+def _own_site(url: str, domains: set[str]) -> bool:
+    host = (urlsplit(url).hostname or "").lower()
+    return urlsplit(url).scheme == "https" and any(
+        host == d or host.endswith(f".{d}") for d in domains
+    )
+
+
+def suggestion(profile: Profile, case: Case, domains: set[str]) -> Suggestion | None:
+    """What Stealth thinks the latest reply means, for a case waiting on the person."""
+    if case.status not in (*READS_REPLIES, Status.ID_REQUESTED):
+        return None
+    reading = latest_reading(profile, case)
+    if reading is None or reading.kind == classifier.UNKNOWN:
+        return None
+    choices = {value for value, _label in outcomes_for(case)}
+    outcome = SUGGESTED_OUTCOME.get(reading.kind)
+    domains = {d.lower() for d in domains} | {case.broker_domain.lower()}
+    if case.contact:
+        domains.add(case.contact.rsplit("@", 1)[-1].lower())
+    link = next((u for u in reading.urls if _own_site(u, domains)), None)
+    return Suggestion(
+        kind=reading.kind,
+        label=reading.label,
+        quote=reading.quote,
+        confident=reading.confident,
+        outcome=outcome if outcome in choices else None,
+        advice=ADVICE.get(reading.kind, ""),
+        link=link if reading.kind == classifier.FORM_REQUIRED else None,
+    )
+
+
+def can_respond(profile: Profile, case: Case) -> str | None:
+    """ "id" or "info" when Stealth has a drafted answer to send for this case."""
+    return what_they_asked(profile, case)
+
+
 def can_skip(case: Case) -> bool:
     return Status.SKIPPED in TRANSITIONS[case.status]
 
@@ -291,6 +379,7 @@ EVENT_TEXT = {
 MESSAGE_TEXT = {
     ("out", "request"): "Removal request sent",
     ("out", "complaint"): "Formal complaint sent",
+    ("out", "response"): "Your answer to their request sent",
     ("in", "reply"): "Reply received",
     ("in", "bounce"): "Email bounced",
 }
@@ -320,6 +409,9 @@ def timeline(profile: Profile, case: Case) -> list[Entry]:
         payload = event["payload"]
         if event["type"] == "status_changed":
             text, detail = _status_text(payload), str(payload.get("reason", ""))
+        elif event["type"] == "reply_received" and payload.get("reading"):
+            label = classifier.LABELS.get(str(payload["reading"]), "")
+            text, detail = EVENT_TEXT["reply_received"], f"Stealth's reading: {label}"
         else:
             text, detail = (
                 EVENT_TEXT.get(event["type"], event["type"]),

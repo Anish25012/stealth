@@ -216,6 +216,41 @@ def test_sending_a_complaint_after_a_refusal(client, demo):
     assert demo.smtp.delivered[-1].recipients[0] == "privacy@refusing-corp.test"
 
 
+def test_the_case_page_shows_stealths_reading_and_a_drafted_answer(client, demo):
+    page = client.get("/cases/chatty-data").text
+    assert "Stealth's reading: they want more details." in page
+    assert "It isn't sure" in page  # a mixed reply: it deleted one thing, asked about another
+    assert re.search(r'value="id_requested" required checked', page)  # its guess, preselected
+    assert "Send them the details they asked for" in page
+    assert "alex.example@stealth-demo.test" in page  # the draft gives the details from the profile
+
+
+def test_sending_the_drafted_answer_restarts_their_clock(client, demo):
+    job, _page = wait_for_job(client, post(client, "/cases/chatty-data/respond"))
+    assert job.state == "done", job.error
+    sent = demo.smtp.delivered[-1]
+    assert sent.recipients[0] == "privacy@chatty-data.test"
+    assert sent.message["In-Reply-To"]  # threaded under their email
+    assert "details I use" in sent.message.get_body().get_content()
+    with demo.store.open() as profile:
+        case = find_case(profile.conn, "chatty-data")
+    assert case.status is Status.SENT and case.deadline_on is not None
+    page = client.get("/cases/chatty-data").text
+    assert "Your answer to their request sent" in page
+
+
+def test_there_is_nothing_to_answer_on_a_finished_case(client, demo):
+    before = len(demo.smtp.delivered)
+    response = post(client, "/cases/prompt-data/respond")
+    assert response.status_code == 400
+    assert len(demo.smtp.delivered) == before
+
+
+def test_replies_stealth_read_by_itself_say_so(client, demo):
+    page = client.get("/cases/prompt-data").text
+    assert "Stealth&#39;s reading: They&#39;ve deleted your data" in page
+
+
 def test_ico_draft_is_refused_until_ready(client, demo):
     response = post(client, "/cases/silent-lists/ico")
     assert response.status_code == 400

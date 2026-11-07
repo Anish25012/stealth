@@ -2,7 +2,10 @@
 
 import email
 import email.policy
+import email.utils
+import json
 from datetime import UTC, date, datetime, timedelta
+from email.message import EmailMessage
 
 import pytest
 
@@ -13,9 +16,11 @@ from stealth.core import clock
 from stealth.core.errors import ProfileError
 from stealth.db import events
 from stealth.devmail.servers import LocalImap, LocalSmtp, bounce_of, reply_to
+from stealth.inbox import responses
 from stealth.inbox.processor import process_inbox
 from stealth.mail.smtp_imap import ImapMailbox, SmtpTransport
 from stealth.profiles.models import MailAccount
+from stealth_app import views
 from tests.helpers import email_broker, form_broker, registry
 
 START = date(2026, 1, 15)
@@ -65,6 +70,12 @@ class World:
     def reply(self, broker="acme", text="Thanks", day=None):
         address = f"privacy@{broker}.example"
         self.imap.add(reply_to(self.sent_to(address).data, address, text, day=at(day or START)))
+
+    def imap_messages(self):
+        return [
+            email.message_from_bytes(m.raw, policy=email.policy.default)
+            for m in self.imap.state.mail
+        ]
 
     def bodies_to(self, address):
         return [
@@ -132,12 +143,78 @@ def test_ico_days_are_configurable(world):
     assert world.case().status is Status.ICO_READY
 
 
-def test_reply_marks_replied_but_never_removed(world):
+def test_a_clear_reply_to_our_letter_is_recorded_by_stealth(world):
     world.cycle()
-    world.reply(text="Your data has been removed.")
+    world.reply(text="Hello,\n\nYour data has been removed from our systems.\n\nThanks")
+    report = process_inbox(world.profile, world.mailbox, world.brokers)
+    assert report.resolved == [("acme Ltd", "They've deleted your data")]
+    assert report.replies == []
+    case = world.case()
+    assert case.status is Status.REMOVED
+    assert case.next_action_on is not None  # the repeat request is still scheduled
+    actors = world.profile.conn.execute(
+        "SELECT actor FROM event WHERE type = 'status_changed' ORDER BY id DESC LIMIT 1"
+    ).fetchone()[0]
+    assert actors == "stealth"
+
+
+def _unthreaded(sender, text):
+    message = EmailMessage()
+    message["From"] = sender
+    message["To"] = "test.person@example.org"
+    message["Subject"] = "Your request"
+    message["Date"] = email.utils.format_datetime(at(START))
+    message["Message-ID"] = email.utils.make_msgid(domain="acme.example")
+    message.set_content(text)
+    return message.as_bytes()
+
+
+def test_a_reply_matched_only_by_its_sender_is_never_acted_on(world):
+    """Anyone can write "From: privacy@acme.example". Only a person can close the case then."""
+    world.cycle()
+    world.imap.add(_unthreaded("privacy@acme.example", "Your data has been removed."))
+    report = process_inbox(world.profile, world.mailbox, world.brokers)
+    assert report.replies == ["acme Ltd"] and report.resolved == []
+    assert world.case().status is Status.REPLIED
+    stored = world.profile.conn.execute(
+        "SELECT classification FROM message WHERE direction = 'in'"
+    ).fetchone()[0]
+    assert json.loads(stored)["kind"] == "removed"  # still offered as Stealth's best guess
+
+
+def test_an_acknowledgement_is_filed_and_the_clock_keeps_running(world):
+    world.cycle()
+    world.reply(text="We have received your request and will respond within one month.")
+    report = process_inbox(world.profile, world.mailbox, world.brokers)
+    assert report.acknowledged == ["acme Ltd"] and report.replies == []
+    assert world.case().status is Status.SENT
+    go_to(date(2026, 2, 16))
+    assert world.cycle().complaints == ["acme Ltd"]  # "we got it" isn't an answer
+
+
+def test_an_unclear_reply_waits_for_a_person(world):
+    world.cycle()
+    world.reply(text="Done.")
     report = process_inbox(world.profile, world.mailbox, world.brokers)
     assert report.replies == ["acme Ltd"]
     assert world.case().status is Status.REPLIED
+
+
+def test_an_extension_moves_the_deadline(world):
+    world.cycle()
+    world.reply(text="Due to the complexity of your request we need a further two months.")
+    process_inbox(world.profile, world.mailbox, world.brokers)
+    case = world.case()
+    assert case.status is Status.EXTENDED
+    assert case.deadline_on == date(2026, 4, 15)
+
+
+def test_a_request_for_id_stops_the_clock(world):
+    world.cycle()
+    world.reply(text="Please send a copy of your passport so we can verify your identity.")
+    process_inbox(world.profile, world.mailbox, world.brokers)
+    case = world.case()
+    assert case.status is Status.ID_REQUESTED and case.deadline_on is None
 
 
 def test_inbox_handles_each_message_once(world):
@@ -610,3 +687,46 @@ def test_draft_letter_is_the_letter_that_would_be_sent(profile):
     assert preview["To"] == sent["To"] == "privacy@a.example"
     assert preview["Subject"] == sent["Subject"]
     assert case.ref in preview.get_body().get_content()
+
+
+def test_the_answer_to_an_id_request_cites_the_law_and_restarts_the_clock(world):
+    world.cycle()
+    world.reply(text="Please send a copy of your passport so we can verify your identity.")
+    process_inbox(world.profile, world.mailbox, world.brokers)
+    their_reply = world.imap_messages()[-1]
+    go_to(date(2026, 1, 25))
+    case = responses.send_response(world.profile, world.case(), world.transport)
+    assert case.status is Status.SENT
+    assert case.relevant_time == date(2026, 1, 25)
+    assert case.deadline_on == date(2026, 2, 25)
+    sent = world.smtp.delivered[-1].message
+    assert sent["In-Reply-To"] == their_reply["Message-ID"]
+    body = sent.get_body().get_content()
+    assert "Article 12(6)" in body
+    assert "I do not consent to sending a copy of a passport" in body
+    assert case.ref in sent["Subject"]
+
+
+def test_nothing_to_answer_is_refused(world):
+    world.cycle()
+    with pytest.raises(ProfileError):
+        responses.send_response(world.profile, world.case(), world.transport)
+
+
+def _form_reply(world, url):
+    world.cycle()
+    world.reply(text=f"Please use our online form at {url} to submit your request.")
+    process_inbox(world.profile, world.mailbox, world.brokers)
+    assert world.case().status is Status.REPLIED  # a form needs the person
+    return views.suggestion(world.profile, world.case(), {"acme.example"})
+
+
+def test_a_form_link_on_the_companys_own_site_is_offered(world):
+    suggestion = _form_reply(world, "https://privacy.acme.example/erase")
+    assert suggestion.kind == "form_required"
+    assert suggestion.link == "https://privacy.acme.example/erase"
+
+
+def test_a_form_link_anywhere_else_is_not(world):
+    suggestion = _form_reply(world, "https://acme-example.phish.test/erase")
+    assert suggestion.kind == "form_required" and suggestion.link is None

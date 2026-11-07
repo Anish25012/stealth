@@ -605,6 +605,10 @@
     padding: var(--space-4) var(--space-5); margin: 0 0 var(--space-4); max-width: 100%;
   }
   textarea.details { width: 100%; max-width: none; resize: vertical; }
+  .notice.reading .reading-quote { font-style: italic; overflow-wrap: anywhere; }
+  .notice.reading a { overflow-wrap: anywhere; }
+  details.draft { margin: 0 0 var(--space-4); }
+  details.draft > summary { margin-bottom: var(--space-3); }
   .mail-head { margin-bottom: var(--space-4); }
 
   /* Disclosure: <details>, used for letters, FAQs and per-page help. ------------------------ */

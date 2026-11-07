@@ -1,8 +1,11 @@
 """Reading replies. Read-only on the mailbox, and cautious with what it concludes.
 
-A reply marks a case `replied` and nothing more: a person decides whether it really means
-"removed". Anyone can put a company's domain in a From header, so matching on a sender never
-closes a case.
+Every reply is read (see `classifier`) and the reading is kept with it. Stealth acts by itself
+only when two things are both true: the reading is clear, and the email provably answers our
+letter (it's threaded to it, or quotes the case reference). Anyone can put a company's domain in
+a From header, so a reply matched only by its sender is never acted on: it waits for a person,
+with Stealth's best guess beside it. "We've received your request" and out-of-office replies are
+filed on the case without asking anyone to read them.
 """
 
 from __future__ import annotations
@@ -11,15 +14,18 @@ import email
 import email.policy
 import email.utils
 import hashlib
+import json
 import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from email.message import EmailMessage
 
-from stealth.cases.engine import jurisdiction_of, save_message
-from stealth.cases.state import Case, Status, all_cases, transition
+from stealth.cases.engine import OUTCOMES, apply_outcome, jurisdiction_of, save_message
+from stealth.cases.state import TRANSITIONS, Case, Status, all_cases, transition
 from stealth.core import clock
 from stealth.db import events
+from stealth.inbox import classifier
+from stealth.inbox.classifier import Classification
 from stealth.mail.base import Mailbox
 from stealth.profiles.store import Profile
 from stealth.registry.loader import Broker
@@ -32,13 +38,24 @@ FINAL_RECIPIENT = re.compile(r"^Final-Recipient:\s*[^;]*;\s*(\S+)", re.IGNORECAS
 
 AWAITING_REPLY = {Status.SENT, Status.EXTENDED, Status.ID_REQUESTED, Status.COMPLAINT_SENT}
 CAN_BOUNCE = {Status.SENT, Status.COMPLAINT_SENT}
+# What Stealth may record by itself from a clear reply. Web forms and "more details" always go
+# to the person: they need something only the person can do.
+ACTS_ON = (
+    classifier.REMOVED,
+    classifier.NO_DATA,
+    classifier.ID_REQUESTED,
+    classifier.EXTENDED,
+    classifier.REFUSED,
+)
 
 
 @dataclass
 class InboxReport:
-    replies: list[str] = field(default_factory=list)
+    replies: list[str] = field(default_factory=list)  # for a person to read
     bounces: list[str] = field(default_factory=list)
     unmatched: int = 0
+    resolved: list[tuple[str, str]] = field(default_factory=list)  # (company, what it meant)
+    acknowledged: list[str] = field(default_factory=list)  # filed: nothing to do
 
 
 def _body_text(message: EmailMessage) -> str:
@@ -87,17 +104,18 @@ class _Matcher:
                 names.update(broker.all_domains)
             self.domains[case.id] = names
 
-    def match(self, message: EmailMessage, sender: str, text: str) -> Case | None:
+    def match(self, message: EmailMessage, sender: str, text: str) -> tuple[Case | None, bool]:
+        """The case, and whether the email provably answers our letter (not just its sender)."""
         threaded = f"{message.get('In-Reply-To', '')} {message.get('References', '')}".split()
         for message_id in threaded:
             if message_id in self.sent_ids:
-                return self.by_id[self.sent_ids[message_id]]
+                return self.by_id[self.sent_ids[message_id]], True
         ref = REF_RE.search(f"{message.get('Subject', '')}\n{text}")
         if ref and ref.group() in self.by_ref:
-            return self.by_ref[ref.group()]
+            return self.by_ref[ref.group()], True
         sender_domain = _domain(sender)
         hits = [c for c in self.cases if _domain_matches(sender_domain, self.domains[c.id])]
-        return hits[0] if len(hits) == 1 else None
+        return (hits[0] if len(hits) == 1 else None), False
 
     def match_bounce(self, text: str) -> Case | None:
         ref = REF_RE.search(text)
@@ -169,16 +187,50 @@ def process_inbox(profile: Profile, mailbox: Mailbox, brokers: dict[str, Broker]
 
         if sender == own:
             continue  # our own BCC copy
-        case = matcher.match(message, sender, text)
+        case, proven = matcher.match(message, sender, text)
         if case is None:
             report.unmatched += 1
             continue
-        _record(profile, case, item.raw, message_id, sender, message, "reply")
-        events.append(profile.conn, "reply_received", case_id=case.id, sender=sender)
-        if case.status in AWAITING_REPLY:
-            transition(profile.conn, case, Status.REPLIED, reason="reply received")
-        report.replies.append(case.broker_name)
+        reading = classifier.classify(str(message.get("Subject", "")), text, message)
+        _record(profile, case, item.raw, message_id, sender, message, "reply", reading)
+        events.append(
+            profile.conn,
+            "reply_received",
+            case_id=case.id,
+            sender=sender,
+            reading=reading.kind,
+            confident=reading.confident,
+        )
+        _act_on(profile, case, reading, proven, report)
     return report
+
+
+def _act_on(
+    profile: Profile, case: Case, reading: Classification, proven: bool, report: InboxReport
+) -> None:
+    if reading.needs_nothing and case.status in AWAITING_REPLY:
+        report.acknowledged.append(case.broker_name)  # filed on the case; the clock keeps running
+        return
+    if proven and reading.confident and reading.kind in ACTS_ON and _can_apply(case, reading):
+        apply_outcome(
+            profile, case, reading.kind, actor="stealth", reason=f"reply read: {reading.label}"
+        )
+        report.resolved.append((case.broker_name, reading.label))
+        return
+    if case.status in AWAITING_REPLY:
+        transition(profile.conn, case, Status.REPLIED, reason="reply received")
+    report.replies.append(case.broker_name)
+
+
+def _can_apply(case: Case, reading: Classification) -> bool:
+    target = OUTCOMES[reading.kind]
+    if target is Status.EXTENDED and case.relevant_time is None:
+        return False
+    if target is Status.REFUSED and case.complaint_on:
+        return False  # refused after a complaint means the ICO: a person takes that step
+    if target in (Status.REMOVED, Status.NO_DATA) and case.last_request_on is None:
+        return False
+    return target in TRANSITIONS[case.status] and target is not case.status
 
 
 def _record(
@@ -189,6 +241,7 @@ def _record(
     sender: str,
     message: EmailMessage,
     kind: str,
+    reading: Classification | None = None,
 ) -> None:
     save_message(
         profile,
@@ -199,4 +252,14 @@ def _record(
         rfc_message_id=message_id,
         sender=sender,
         subject=str(message.get("Subject", "")),
+        classification=json.dumps(_stored(reading)) if reading else None,
     )
+
+
+def _stored(reading: Classification) -> dict[str, object]:
+    return {
+        "kind": reading.kind,
+        "confident": reading.confident,
+        "quote": reading.quote,
+        "urls": list(reading.urls),
+    }

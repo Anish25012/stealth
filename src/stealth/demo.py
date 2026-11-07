@@ -187,13 +187,18 @@ def _story(
     dead = "privacy@dead-address.test"
     imap.add(bounce_of(_sent_to(smtp, dead).data, dead, day=day))
     report = run()
-    _expect(len(report.inbox.replies), 3, "three replies matched")
+    _expect(
+        sorted(report.inbox.resolved),
+        [
+            ("Find-a-Neighbour", "They hold nothing about you"),
+            ("Prompt Data Ltd", "They've deleted your data"),
+            ("Refusing Corp", "They've refused"),
+        ],
+        "three clear replies read and recorded",
+    )
+    _expect(report.inbox.replies, [], "nothing left for you to read")
     _expect(report.inbox.bounces, ["Dead Address Ltd"], "bounce detected")
-    say("  3 replies matched and marked 'replied'. Only you can confirm 'removed'.")
-    engine.confirm(profile, "prompt-data", "removed")
-    engine.confirm(profile, "find-a-neighbour", "no_data")
-    engine.confirm(profile, "refusing-corp", "refused")
-    say("  You read them and confirmed: removed, no data, refused.")
+    say("  Stealth read the 3 replies and recorded them: removed, no data, refused.")
     case = next(c for c in all_cases(profile.conn) if c.broker_id == "refusing-corp")
     engine.send_complaint(profile, case, transport, grievance=engine.REFUSED)
     say("  You sent Refusing Corp a formal complaint.")
@@ -305,10 +310,7 @@ def seed_dashboard_demo(store: ProfileStore, smtp: LocalSmtp, imap: LocalImap, t
                 )
             dead = "privacy@dead-address.test"
             imap.add(bounce_of(_sent_to(smtp, dead).data, dead, day=_morning(replied)))
-            run(first_round)
-            engine.confirm(profile, "prompt-data", "removed")
-            engine.confirm(profile, "find-a-neighbour", "no_data")
-            engine.confirm(profile, "refusing-corp", "refused")
+            run(first_round)  # Stealth reads these three clear replies by itself
         later = start + timedelta(days=12)
         with clock.frozen_at(_morning(later)):
             engine.send_requests(
@@ -321,7 +323,9 @@ def seed_dashboard_demo(store: ProfileStore, smtp: LocalSmtp, imap: LocalImap, t
                 reply_to(
                     _sent_to(smtp, chatty).data,
                     chatty,
-                    "Thanks for your email. We are looking into this and will be in touch.",
+                    "Thanks for your email. We are looking into this. We have removed you "
+                    "from our mailing list, but to find your account please tell us which "
+                    "email address you used when you registered.",
                     day=_morning(yesterday),
                 )
             )

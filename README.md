@@ -20,6 +20,10 @@ Mac. Windows is the supported platform.
 - Preview by default: nothing is sent until you add `--live`
 - A daily sending limit and pacing, so your mailbox isn't flagged for bulk sending
 - Reply detection that only reads your mailbox and never changes it
+- A reply reader: clear answers ("deleted", "we hold nothing", "we need more time", "send ID",
+  refusals) are recorded automatically, acknowledgements are filed quietly, and unclear replies come
+  to you with Stealth's best guess
+- Drafted answers to requests for ID or more details, citing Article 12(6)
 - Bounce detection, which flags dead contacts
 - A formal complaint under section 164A of the Data Protection Act 2018 once the deadline passes
 - A drafted ICO complaint when a company has had its chance
@@ -86,7 +90,7 @@ Based on Incogni's public plans. Stealth is an independent project and isn't con
 | Evidence you can export | Limited | Every email, with hashes |
 | ICO escalation drafted for you | No | Yes |
 | Can you check the broker list? | No | Yes, and you can fix it |
-| Handles replies for you | Yes | Partly: it matches replies, and you decide what they mean |
+| Handles replies for you | Yes | Yes for clear replies to its own letters; unclear ones come to you with a best guess |
 | Custom removals | Unlimited plans | Phase 2 |
 | Dark web monitoring | Protect plan | Phase 3, breach monitoring only |
 | Identity theft insurance | Protect plan | **No, and it never will** |
@@ -171,8 +175,11 @@ through the rest.
 | `stealth ico <company>` | Drafts an ICO complaint |
 | `stealth checklist` | Lists the UK steps only you can do |
 
-Only you can mark a company as finished. Stealth marks a case `replied`, and `stealth confirm`
-records whether that reply was `removed`, `no_data`, `refused`, `id_requested` or `extended`. When
+Stealth reads each reply with fixed, testable rules (no AI service, nothing leaves the computer).
+It records the outcome itself only when the reply is clear **and** provably answers its letter:
+threaded to it, or quoting the case reference. A reply matched only by its sender's domain is never
+acted on, because anyone can fake a From address. Everything else is marked `replied`, and
+`stealth confirm` records whether that reply was `removed`, `no_data`, `refused`, `id_requested` or `extended`. When
 you send the ID a company reasonably asked for, use `info_supplied`: UK law restarts the time limit
 from that point, and Stealth moves the date to match.
 

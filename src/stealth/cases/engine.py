@@ -133,12 +133,13 @@ def save_message(
     rfc_message_id: str | None,
     sender: str | None,
     subject: str | None,
+    classification: str | None = None,
 ) -> Path:
     path = _evidence_file(profile, case.broker_id, kind)
     path.write_bytes(raw)
     profile.conn.execute(
         "INSERT INTO message (case_id, direction, kind, rfc_message_id, sender, subject, "
-        "occurred_at, path, sha256) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "occurred_at, path, sha256, classification) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             case.id,
             direction,
@@ -149,6 +150,7 @@ def save_message(
             clock.now().isoformat(),
             str(path.relative_to(profile.folder)),
             hashlib.sha256(raw).hexdigest(),
+            classification,
         ),
     )
     return path
@@ -395,23 +397,29 @@ OUTCOMES = {
 
 
 def confirm(profile: Profile, broker: str, outcome: str) -> Case:
-    """Record what a reply actually meant. Only a person decides a case is finished."""
+    """Record what a reply meant, as the person read it."""
     case = find_case(profile.conn, broker)
-    jurisdiction = jurisdiction_of(profile)
-    settings = profile.settings()
-    conn = profile.conn
-
     if outcome == "info_supplied":
-        return _clock_restarted(profile, case, jurisdiction)
+        return _clock_restarted(profile, case, jurisdiction_of(profile))
     if outcome not in OUTCOMES:
         choices = ", ".join([*OUTCOMES, "info_supplied"])
         raise ProfileError(f"Unknown outcome '{outcome}'.", hint=f"Choose from: {choices}.")
+    return apply_outcome(profile, case, outcome, actor="you")
+
+
+def apply_outcome(
+    profile: Profile, case: Case, outcome: str, *, actor: str, reason: str = "confirmed"
+) -> Case:
+    """Move a case to what a reply meant. `actor` is "you", or "stealth" for a clear reply."""
+    jurisdiction = jurisdiction_of(profile)
+    settings = profile.settings()
+    conn = profile.conn
 
     target = OUTCOMES[outcome]
     if target is Status.REFUSED and case.complaint_on:
         # They have refused after a formal complaint, so there's nothing left to wait for.
         return transition(
-            conn, case, Status.ICO_READY, actor="you", reason="refused after complaint"
+            conn, case, Status.ICO_READY, actor=actor, reason="refused after complaint"
         )
     if target in (Status.REMOVED, Status.NO_DATA):
         assert case.last_request_on
@@ -419,8 +427,8 @@ def confirm(profile: Profile, broker: str, outcome: str) -> Case:
             conn,
             case,
             target,
-            actor="you",
-            reason="confirmed",
+            actor=actor,
+            reason=reason,
             next_action_on=deadlines.resend_on(case.last_request_on, case.category, settings),
         )
     if target is Status.ID_REQUESTED:
@@ -429,7 +437,7 @@ def confirm(profile: Profile, broker: str, outcome: str) -> Case:
             conn,
             case,
             target,
-            actor="you",
+            actor=actor,
             reason="clock stopped until ID is supplied",
             deadline_on=None,
             next_action_on=None,
@@ -441,15 +449,17 @@ def confirm(profile: Profile, broker: str, outcome: str) -> Case:
             conn,
             case,
             target,
-            actor="you",
+            actor=actor,
             reason="company took its extension",
             deadline_on=deadline,
             next_action_on=deadline,
         )
-    return transition(conn, case, target, actor="you", reason="confirmed", next_action_on=None)
+    return transition(conn, case, target, actor=actor, reason=reason, next_action_on=None)
 
 
-def _clock_restarted(profile: Profile, case: Case, jurisdiction: Jurisdiction) -> Case:
+def _clock_restarted(
+    profile: Profile, case: Case, jurisdiction: Jurisdiction, *, reason: str = "ID supplied"
+) -> Case:
     today = clock.local_date(jurisdiction.tz)
     deadline = deadlines.response_deadline(today, jurisdiction)
     return transition(
@@ -457,7 +467,7 @@ def _clock_restarted(profile: Profile, case: Case, jurisdiction: Jurisdiction) -
         case,
         Status.SENT,
         actor="you",
-        reason=f"ID supplied, clock restarted, reply due {deadline.isoformat()}",
+        reason=f"{reason}, clock restarted, reply due {deadline.isoformat()}",
         relevant_time=today,
         deadline_on=deadline,
         next_action_on=deadline,

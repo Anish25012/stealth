@@ -54,23 +54,50 @@
     {% if reply %}
     <p class="muted">Their latest reply, from {{ reply.sender }}:</p>
     <pre class="mail">{{ reply.body }}</pre>
-    <p>Choose what it meant. Stealth uses your answer to decide what to do next.</p>
-    {% else %}
-    <p>Choose what the company told you. Stealth uses your answer to decide what to do next.</p>
     {% endif %}
+    {% if suggestion %}
+    <div class="notice reading{{ ' action' if suggestion.kind == 'form_required' }}">
+      {{ icon("sparkles") }}
+      <div>
+        <p><strong>Stealth's reading: {{ suggestion.label|lower }}.</strong>{% if not suggestion.confident %} It isn't sure, so check the reply yourself.{% endif %}</p>
+        {% if suggestion.quote %}<p class="reading-quote">“{{ suggestion.quote }}”</p>{% endif %}
+        {% if suggestion.advice %}<p>{{ suggestion.advice }}</p>{% endif %}
+        {% if suggestion.link %}<p>Their form: <a href="{{ suggestion.link }}" target="_blank" rel="noopener noreferrer">{{ suggestion.link }}</a> (opens in your web browser)</p>
+        {% elif suggestion.kind == "form_required" %}<p>Stealth won't link to an address in an email it can't check. Use the privacy page on {{ case.broker_domain }} instead.</p>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+    <p>{% if reply %}Choose what it meant.{% else %}Choose what the company told you.{% endif %} Stealth uses your answer to decide what to do next.</p>
     <form method="post" action="/cases/{{ case.broker_id|urlencode }}/outcome">
       {{ csrf_field(csrf) }}
       <fieldset class="choices tiles">
         <legend class="visually-hidden">Their answer</legend>
         {% for value, label in outcomes %}
         <div class="choice">
-          <input type="radio" id="o-{{ value }}" name="outcome" value="{{ value }}" required>
+          <input type="radio" id="o-{{ value }}" name="outcome" value="{{ value }}" required{{ " checked" if suggestion and suggestion.outcome == value }}>
           <label for="o-{{ value }}">{{ label }}</label>
         </div>
         {% endfor %}
       </fieldset>
       <button class="button" type="submit">Save answer</button>
     </form>
+  </section>
+  {% endif %}
+
+  {% if draft %}
+  <section class="card" aria-labelledby="respond-h">
+    <h2 id="respond-h">{% if asked == "id" %}Answer their request for ID{% else %}Send them the details they asked for{% endif %}</h2>
+    <p>Stealth has written this for you. It goes to {{ draft["To"] }}, in reply to their email, and
+    restarts their one-month time limit.</p>
+    <details class="draft">
+      <summary>Read the reply: {{ draft["Subject"] }}</summary>
+      <pre class="mail">{{ draft.get_content() }}</pre>
+    </details>
+    <form method="post" action="/cases/{{ case.broker_id|urlencode }}/respond">
+      {{ csrf_field(csrf) }}
+      <button class="button" type="submit">{{ icon("send") }} Send this reply</button>
+    </form>
+    {% if asked == "id" %}<p class="muted small">If you'd rather send them a document yourself, do that from your email, then choose "I've sent them the ID or details they asked for" above.</p>{% endif %}
   </section>
   {% endif %}
 
@@ -148,9 +175,13 @@
 
 {% call help() %}
 <p><strong>Where this stands</strong> says what's happening now and what Stealth will do next.</p>
-<p><strong>What did they say?</strong> appears when there's a reply to read. Companies sometimes
-say "we're looking into it" without doing anything, so only you can mark a company as having
-removed you.</p>
+<p><strong>What did they say?</strong> appears when there's a reply to read. Stealth reads every
+reply. When a reply clearly says what happened, and it really is an answer to Stealth's letter, Stealth
+records it by itself and you'll see "Stealth's reading" in the history. Anything unclear, or any email
+that only claims to be from the company, waits here for you, with Stealth's best guess already
+chosen.</p>
+<p>If a company asks for ID or more details, Stealth drafts an answer for you to read and send. It
+asks for nothing a company isn't entitled to.</p>
 <p><strong>History</strong> is every step, in order. Select an email to read it. The evidence pack
 is what you'd attach to a complaint to the ICO.</p>
 {% endcall %}

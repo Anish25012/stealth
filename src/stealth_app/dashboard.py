@@ -24,6 +24,7 @@ from stealth.cases import engine
 from stealth.cases.state import Status, find_case
 from stealth.core.errors import ProfileError, StealthError
 from stealth.core.logging_scrub import add_known_values
+from stealth.inbox import responses
 from stealth.profiles.store import Profile
 from stealth.templates.render import format_date
 from stealth_app import autostart, views
@@ -199,6 +200,8 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
                 return redirect("/")
             case = _case(profile, broker_id)
             broker = state.workspace.brokers().get(case.broker_id)
+            asked = views.can_respond(profile, case)
+            draft = responses.response_message(profile, case, asked) if asked else None
             return render(
                 request,
                 "case.html",
@@ -210,6 +213,11 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
                 timeline=views.timeline(profile, case),
                 outcomes=views.outcomes_for(case),
                 reply=views.latest_reply(profile, case),
+                suggestion=views.suggestion(
+                    profile, case, set(broker.all_domains) if broker else set()
+                ),
+                asked=asked,
+                draft=draft,
                 can_skip=views.can_skip(case),
                 can_complain=views.can_complain(case),
                 can_ico=case.status in (Status.ICO_READY, Status.ESCALATED),
@@ -439,6 +447,24 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
 
         return redirect(f"/jobs/{start_job(state, 'Sending a complaint', work, target).id}")
 
+    @app.post("/cases/{broker_id}/respond")
+    async def respond(request: Request, broker_id: str) -> Response:
+        await read_form(request)
+        target = f"/cases/{quote(broker_id)}"
+        with opened(state) as profile:
+            if profile is None or views.can_respond(profile, _case(profile, broker_id)) is None:
+                raise ProfileError("There's nothing for Stealth to answer here.")
+
+        def work(profile: Profile, job: Job) -> None:
+            case = _case(profile, broker_id)
+            transport, _mailbox = state.workspace.mail(profile)
+            case = responses.send_response(profile, case, transport)
+            job.lines.append(f"Your answer was sent to {case.broker_name}.")
+            if case.deadline_on:
+                job.lines.append(f"They now have until {format_date(case.deadline_on)} to act.")
+
+        return redirect(f"/jobs/{start_job(state, 'Sending your answer', work, target).id}")
+
     @app.post("/cases/{broker_id}/ico")
     async def ico(request: Request, broker_id: str) -> Response:
         await read_form(request)
@@ -484,6 +510,13 @@ def _attachment(filename: str) -> str:
 
 def _cycle_summary(report: cycle.CycleReport) -> list[str]:
     lines = []
+    for company, meaning in report.inbox.resolved:
+        lines.append(f"{company} replied: {meaning[0].lower()}{meaning[1:]}. Stealth recorded it.")
+    if report.inbox.acknowledged:
+        lines.append(
+            f"{_names(report.inbox.acknowledged)} confirmed they got your letter. "
+            "Their time limit keeps running."
+        )
     if report.inbox.replies:
         lines.append(
             f"Replies from: {_names(report.inbox.replies)}. Read them and say what they mean."
