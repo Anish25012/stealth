@@ -422,3 +422,60 @@ def test_inbox_counts_replies_it_settled_by_itself(ready, monkeypatch):
     assert "My Test Inbox: They've deleted your data. Recorded." in output
     assert "Acme Data: acknowledged your request" in output
     assert "Reply from Vague Ltd: read it" in output
+
+
+# Google sign-in from the command line -----------------------------------------------------------
+
+
+@pytest.fixture
+def google(cli, monkeypatch):
+    """Google sign-in offered, with the browser round trip replaced."""
+    from stealth.mail import google_oauth
+
+    monkeypatch.setattr(google_oauth, "client", lambda: google_oauth.Client("id", "secret"))
+    calls = []
+
+    def sign_in(hint=""):
+        calls.append(hint)
+        return "signed.in@gmail.com", "refresh-token"
+
+    monkeypatch.setattr(main, "_google_sign_in", sign_in)
+    return calls
+
+
+def test_init_can_sign_in_with_google_instead_of_an_app_password(google):
+    lines = ANSWERS.split("\n")
+    # Up to "not for someone else", then yes to Google, then the sending preferences.
+    answers = [*lines[:9], "y", *lines[15:]]
+    result = runner.invoke(main.app, ["init"], input="\n".join(answers) + "\n")
+    assert result.exit_code == 0, result.output
+    assert google == ["test.person@example.org"]
+    assert "SMTP server" not in result.output
+    with main._profile(None) as profile:
+        account = profile.mail_account()
+        assert account.provider == "gmail-oauth"
+        assert account.address == "signed.in@gmail.com"
+        assert account.smtp_host is None
+        assert main._secrets().get(profile.mail_secret_name) == "refresh-token"
+
+
+def test_init_without_google_still_asks_for_an_app_password(google):
+    lines = ANSWERS.split("\n")
+    answers = [*lines[:9], "n", *lines[9:]]
+    result = runner.invoke(main.app, ["init"], input="\n".join(answers) + "\n")
+    assert result.exit_code == 0, result.output
+    assert google == []
+    with main._profile(None) as profile:
+        assert profile.mail_account().provider == "smtp"
+
+
+def test_stealth_google_switches_an_app_password_profile_over(ready, google):
+    result = run("google")
+    assert result.exit_code == 0, result.output
+    with main._profile(None) as profile:
+        assert profile.mail_account().provider == "gmail-oauth"
+        assert main._secrets().get(profile.mail_secret_name) == "refresh-token"
+    assert google == ["test.person@example.org"]
+    refused = run("password", input="x\n")
+    assert refused.exit_code == 1
+    assert "signs in with Google" in refused.output

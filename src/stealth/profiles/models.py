@@ -149,3 +149,11 @@ def provider_account(provider: Provider, address: str, *, is_own_mailbox: bool) 
         username=address,
         is_own_mailbox=is_own_mailbox,
     )
+
+
+# Signed in with Google: mail goes over the Gmail API, so no servers or app password are stored.
+GOOGLE_PROVIDER = "gmail-oauth"
+
+
+def google_account(address: str, *, is_own_mailbox: bool) -> MailAccount:
+    return MailAccount(provider=GOOGLE_PROVIDER, address=address, is_own_mailbox=is_own_mailbox)

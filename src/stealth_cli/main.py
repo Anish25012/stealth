@@ -24,9 +24,16 @@ from stealth.core.jurisdictions import for_country
 from stealth.core.logging_scrub import setup_logging
 from stealth.core.secrets import KeyringStore, SecretStore
 from stealth.demo import run_demo
+from stealth.mail import gmail_api, google_oauth
 from stealth.mail.factory import open_mail
 from stealth.mail.smtp_imap import check_connection
-from stealth.profiles.models import GMAIL_DEFAULTS, MailAccount, Person
+from stealth.profiles.models import (
+    GMAIL_DEFAULTS,
+    GOOGLE_PROVIDER,
+    MailAccount,
+    Person,
+    google_account,
+)
 from stealth.profiles.store import Profile, ProfileStore
 from stealth.registry.loader import Broker, counts, load_registry, select_brokers
 
@@ -144,6 +151,21 @@ def _ask_password(account: MailAccount) -> str:
         return password
 
 
+def _google_sign_in(hint: str = "") -> tuple[str, str]:
+    """Sign in with Google in the browser. Returns (address, refresh token)."""
+    client = google_oauth.client()
+    if client is None:
+        raise StealthError("Google sign-in isn't set up in this copy of Stealth.")
+    sign_in = google_oauth.start(client, hint=hint)
+    typer.echo("\nYour browser will open so you can sign in to Google. If it doesn't, open:")
+    typer.echo(sign_in.url)
+    google_oauth.open_browser(sign_in.url)
+    typer.echo(f"Waiting up to {google_oauth.SIGN_IN_MINUTES} minutes for you to finish...")
+    address, token = gmail_api.finish_sign_in(sign_in, sign_in.wait())
+    typer.secho(f"Signed in as {address}.", fg="green")
+    return address, token
+
+
 def _ask_list(label: str, first: str | None = None) -> list[str]:
     """Ask for any number of values, one per line, ending with a blank."""
     items = [first] if first else []
@@ -154,20 +176,11 @@ def _ask_list(label: str, first: str | None = None) -> list[str]:
         items.append(value.strip())
 
 
-@app.command()
-@guarded
-def init() -> None:
-    """Set up a new profile: your details, email account and sending preferences."""
-    typer.echo("Stealth keeps everything on this computer. Let's set up your profile.\n")
-    name = typer.prompt("Your full name")
-    names = _ask_list("Any other names you've used", first=name)
-    email_address = _ask_email("Your main email address")
-    emails = _ask_list("Any other email addresses", first=email_address)
-    addresses = _ask_list("Home address, past or present")
-    phones = _ask_list("Phone number")
-    for_someone_else = typer.confirm("Are you setting this up for someone else?", default=False)
-
-    typer.echo("\nStealth sends from your own mailbox. These defaults are for Gmail.")
+def _ask_app_password_account(
+    email_address: str, for_someone_else: bool
+) -> tuple[MailAccount, str]:
+    """The mail servers and app password, for providers other than Google sign-in."""
+    typer.echo("These defaults are for Gmail.")
     typer.echo("Gmail needs an app password: https://myaccount.google.com/apppasswords\n")
     sender = _ask_email("Send from this address", default=email_address)
     smtp_host = typer.prompt("SMTP server", default=GMAIL_DEFAULTS["smtp_host"])
@@ -186,7 +199,31 @@ def init() -> None:
         username=sender,
         is_own_mailbox=not for_someone_else,
     )
-    password = _ask_password(account)
+    return account, _ask_password(account)
+
+
+@app.command()
+@guarded
+def init() -> None:
+    """Set up a new profile: your details, email account and sending preferences."""
+    typer.echo("Stealth keeps everything on this computer. Let's set up your profile.\n")
+    name = typer.prompt("Your full name")
+    names = _ask_list("Any other names you've used", first=name)
+    email_address = _ask_email("Your main email address")
+    emails = _ask_list("Any other email addresses", first=email_address)
+    addresses = _ask_list("Home address, past or present")
+    phones = _ask_list("Phone number")
+    for_someone_else = typer.confirm("Are you setting this up for someone else?", default=False)
+
+    typer.echo("\nStealth sends from your own mailbox.")
+    use_google = google_oauth.client() is not None and typer.confirm(
+        "Sign in with Google? (For Gmail. No app password needed)", default=True
+    )
+    if use_google:
+        sender, password = _google_sign_in(hint=email_address)
+        account = google_account(sender, is_own_mailbox=not for_someone_else)
+    else:
+        account, password = _ask_app_password_account(email_address, for_someone_else)
 
     typer.echo("")
     people_search = typer.prompt("Days before repeating people-search requests", default=60)
@@ -235,6 +272,11 @@ def password(profile_id: ProfileOption = None, address: str | None = None) -> No
         account = profile.mail_account()
         if account is None:
             raise StealthError("This profile has no email account yet.", hint="Run `stealth init`.")
+        if account.provider == GOOGLE_PROVIDER:
+            raise StealthError(
+                "This profile signs in with Google, so it has no app password.",
+                hint="Run `stealth google` to sign in again.",
+            )
         if address:
             if not EMAIL_RE.match(address):
                 raise StealthError(f"{address!r} isn't an email address.")
@@ -243,6 +285,18 @@ def password(profile_id: ProfileOption = None, address: str | None = None) -> No
         new = _ask_password(account)
         profile.save_mail_account(account, password=new)
     typer.echo("Saved.")
+
+
+@app.command()
+@guarded
+def google(profile_id: ProfileOption = None) -> None:
+    """Sign in with Google (again), so mail goes over the Gmail API instead of an app password."""
+    with _profile(profile_id) as profile:
+        current = profile.mail_account()
+        address, token = _google_sign_in(hint=current.address if current else "")
+        own = current.is_own_mailbox if current else True
+        profile.save_mail_account(google_account(address, is_own_mailbox=own), password=token)
+    typer.echo("Saved. Stealth will send and read mail through Google from now on.")
 
 
 def _print_preview(report: engine.SendReport, profile: Profile) -> None:
