@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy policy · Stealth</title>
+<meta name="description" content="How the Stealth desktop app handles your data, including Google user data.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <a class="name" href="./">Stealth</a>
+  <nav><a href="./">Home</a><a href="https://github.com/Anish25012/stealth">Source code</a></nav>
+</header>
+<main>
+  <h1>Privacy policy</h1>
+  <p class="muted">Last updated 8 November 2026</p>
+
+  <p>Stealth is a free, open-source desktop app that sends data-removal requests to companies for
+  you. This policy explains what happens to your data when you use it. In short: <strong>Stealth
+  runs on your own computer, and we never receive or store your data.</strong></p>
+
+  <h2>Stealth runs on your computer</h2>
+  <p>There is no Stealth account, server or cloud service. Everything Stealth knows about you (your
+  name, addresses, email addresses, phone numbers, the companies you've contacted, their replies
+  and the evidence Stealth keeps of them) is stored only on your own computer, in an encrypted
+  file. Its encryption key, and your email sign-in, are kept in your computer's own password store
+  (Windows Credential Manager, the macOS Keychain, or the Linux secret service).</p>
+  <p>The people who make Stealth never receive, see or store any of it. Stealth has no analytics,
+  tracking, advertising or crash reporting.</p>
+
+  <h2>Google user data</h2>
+  <p>If you choose <strong>Sign in with Google</strong>, Stealth asks Google for two permissions
+  for your Gmail account, and uses them only for these purposes:</p>
+  <ul>
+    <li><strong>Send email on your behalf</strong> (<code>gmail.send</code>): to send the removal
+    requests and follow-up letters that you approve, from your own address.</li>
+    <li><strong>View your email messages and settings</strong> (<code>gmail.readonly</code>): to
+    find companies' replies to those requests, so Stealth can tell whether they've removed your
+    data and keep a copy as evidence. Stealth also reads your Gmail address, to send from it.</li>
+  </ul>
+  <p>Stealth can't change, label, move or delete anything in your mailbox.</p>
+  <ul>
+    <li><strong>Where it goes:</strong> Stealth talks to Google directly from your computer. Messages
+    it reads are processed on your computer, and only replies to your requests are kept, in the
+    encrypted file described above. Nothing is sent to us or anyone else.</li>
+    <li><strong>Sharing:</strong> we don't share, sell or transfer Google user data to anyone. It
+    isn't used for advertising, and it isn't used to develop or train AI or machine-learning
+    models. No person reads it.</li>
+    <li><strong>Keeping and deleting it:</strong> your Google sign-in (a "refresh token") stays in
+    your computer's password store until you remove it. You can end Stealth's access at any time at
+    <a href="https://myaccount.google.com/connections">myaccount.google.com/connections</a>, and
+    deleting your profile in Stealth deletes everything it kept.</li>
+  </ul>
+  <p>Stealth's use and transfer of information received from Google APIs adheres to the
+  <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services
+  User Data Policy</a>, including the Limited Use requirements.</p>
+
+  <h2>What Stealth sends, and to whom</h2>
+  <ul>
+    <li><strong>Removal requests</strong> go only to the companies you choose, and only when you
+    approve them. Each one contains the details you entered that the company needs to find and
+    delete your records, such as your name, address and email address.</li>
+    <li><strong>Your email provider</strong> (such as Google, Yahoo or Apple) carries those letters
+    and the replies, as it does for any email you send.</li>
+    <li><strong>GitHub:</strong> Stealth downloads its updated list of companies and checks for new
+    versions from this project's page on GitHub. These requests contain no personal data.</li>
+    <li><strong>Company websites:</strong> if you ask Stealth to look up a company, it visits that
+    company's website to find its privacy contact. These requests contain no personal data.</li>
+  </ul>
+
+  <h2>Your choices</h2>
+  <p>You can see, change or delete everything Stealth keeps from within the app, or uninstall it
+  and delete its folder. Because we hold no data about you, there's nothing for us to delete, but
+  you're welcome to ask us questions at any time.</p>
+
+  <h2>Children</h2>
+  <p>Stealth is meant for adults. A parent or guardian can use it on behalf of a child.</p>
+
+  <h2>Changes</h2>
+  <p>If this policy changes, the new version will be published on this page with a new date. Its
+  history is public in the
+  <a href="https://github.com/Anish25012/stealth/commits/main/site/privacy.html">project's code</a>.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about this policy or about Stealth:
+  <a href="mailto:iphone42501@gmail.com">iphone42501@gmail.com</a>.</p>
+</main>
+<footer>
+  <p><a href="./">Stealth</a> is a personal open-source project, not a company.</p>
+</footer>
+</body>
+</html>
