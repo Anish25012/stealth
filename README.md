@@ -226,6 +226,7 @@ through the rest.
 | `stealth complain <company>` | Sends a formal complaint now, after a refusal |
 | `stealth ico <company>` | Drafts an ICO complaint |
 | `stealth checklist` | Lists the UK steps only you can do |
+| `stealth password` | Replaces the app password, checking it works first. `--address` fixes the sending address |
 
 Stealth reads each reply with fixed, testable rules (no AI service, nothing leaves the computer).
 It records the outcome itself only when the reply is clear **and** provably answers its letter:

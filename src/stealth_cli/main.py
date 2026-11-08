@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import csv
+import dataclasses
 import functools
 import logging
+import re
 import sys
 import time
 from collections.abc import Callable, Iterator
@@ -23,6 +25,7 @@ from stealth.core.logging_scrub import setup_logging
 from stealth.core.secrets import KeyringStore, SecretStore
 from stealth.demo import run_demo
 from stealth.mail.factory import open_mail
+from stealth.mail.smtp_imap import check_connection
 from stealth.profiles.models import GMAIL_DEFAULTS, MailAccount, Person
 from stealth.profiles.store import Profile, ProfileStore
 from stealth.registry.loader import Broker, counts, load_registry, select_brokers
@@ -98,6 +101,49 @@ def _startup(
     setup_logging(paths.logs_dir())
 
 
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _ask_email(label: str, default: str | None = None) -> str:
+    while True:
+        value = str(typer.prompt(label, default=default)).strip()
+        if EMAIL_RE.match(value):
+            return value
+        typer.secho(f"{value!r} isn't an email address. Try again.", fg="red")
+
+
+def _ask_password(account: MailAccount) -> str:
+    """An app password the provider accepts, or one the person chose to save unchecked.
+
+    Proving it works here, before anything is saved, is what the desktop app does too. Without
+    it, a mistyped password is only discovered when the first letter fails to send.
+    """
+    while True:
+        password = typer.prompt(
+            "App password (stored in your computer's keychain)", hide_input=True
+        )
+        password = str(password).replace(" ", "")  # Google shows app passwords in groups of four
+        if account.smtp_host == GMAIL_DEFAULTS["smtp_host"] and len(password) != 16:
+            typer.secho(
+                f"That's {len(password)} characters, but a Gmail app password is 16 letters. "
+                "Make one at https://myaccount.google.com/apppasswords",
+                fg="red",
+            )
+            continue
+        typer.echo("Checking Stealth can send and read mail...")
+        try:
+            check_connection(account, password)
+        except StealthError as exc:
+            typer.secho(exc.message, fg="red")
+            if exc.hint:
+                typer.echo(exc.hint)
+            if typer.confirm("Save it anyway and fix this later?", default=False):
+                return password
+            continue
+        typer.secho("It works.", fg="green")
+        return password
+
+
 def _ask_list(label: str, first: str | None = None) -> list[str]:
     """Ask for any number of values, one per line, ending with a blank."""
     items = [first] if first else []
@@ -115,7 +161,7 @@ def init() -> None:
     typer.echo("Stealth keeps everything on this computer. Let's set up your profile.\n")
     name = typer.prompt("Your full name")
     names = _ask_list("Any other names you've used", first=name)
-    email_address = typer.prompt("Your main email address")
+    email_address = _ask_email("Your main email address")
     emails = _ask_list("Any other email addresses", first=email_address)
     addresses = _ask_list("Home address, past or present")
     phones = _ask_list("Phone number")
@@ -123,12 +169,24 @@ def init() -> None:
 
     typer.echo("\nStealth sends from your own mailbox. These defaults are for Gmail.")
     typer.echo("Gmail needs an app password: https://myaccount.google.com/apppasswords\n")
-    sender = typer.prompt("Send from this address", default=email_address)
+    sender = _ask_email("Send from this address", default=email_address)
     smtp_host = typer.prompt("SMTP server", default=GMAIL_DEFAULTS["smtp_host"])
     smtp_port = typer.prompt("SMTP port", default=GMAIL_DEFAULTS["smtp_port"], type=int)
     imap_host = typer.prompt("IMAP server", default=GMAIL_DEFAULTS["imap_host"])
     imap_port = typer.prompt("IMAP port", default=GMAIL_DEFAULTS["imap_port"], type=int)
-    password = typer.prompt("App password (stored in your computer's keychain)", hide_input=True)
+    account = MailAccount(
+        provider="smtp",
+        address=sender,
+        smtp_host=smtp_host,
+        smtp_port=smtp_port,
+        smtp_security="ssl" if smtp_port == 465 else "starttls",
+        imap_host=imap_host,
+        imap_port=imap_port,
+        imap_security="ssl",
+        username=sender,
+        is_own_mailbox=not for_someone_else,
+    )
+    password = _ask_password(account)
 
     typer.echo("")
     people_search = typer.prompt("Days before repeating people-search requests", default=60)
@@ -149,21 +207,7 @@ def init() -> None:
                 phones=phones,
             )
         )
-        profile.save_mail_account(
-            MailAccount(
-                provider="smtp",
-                address=sender,
-                smtp_host=smtp_host,
-                smtp_port=smtp_port,
-                smtp_security="ssl" if smtp_port == 465 else "starttls",
-                imap_host=imap_host,
-                imap_port=imap_port,
-                imap_security="ssl",
-                username=sender,
-                is_own_mailbox=not for_someone_else,
-            ),
-            password=password,
-        )
+        profile.save_mail_account(account, password=password)
         profile.save_settings(
             resend_days_people_search=int(people_search),
             resend_days_other=int(other),
@@ -181,6 +225,24 @@ def init() -> None:
     typer.echo("Write this down and keep it safe. It's the only way back in if this computer's")
     typer.echo("keychain is lost, and Stealth can't show it again.")
     typer.echo("\nNext: `stealth send` to preview your letters.")
+
+
+@app.command()
+@guarded
+def password(profile_id: ProfileOption = None, address: str | None = None) -> None:
+    """Replace the app password (and optionally the sending address), checking it works first."""
+    with _profile(profile_id) as profile:
+        account = profile.mail_account()
+        if account is None:
+            raise StealthError("This profile has no email account yet.", hint="Run `stealth init`.")
+        if address:
+            if not EMAIL_RE.match(address):
+                raise StealthError(f"{address!r} isn't an email address.")
+            account = dataclasses.replace(account, address=address, username=address)
+        typer.echo(f"Sending from: {account.address}")
+        new = _ask_password(account)
+        profile.save_mail_account(account, password=new)
+    typer.echo("Saved.")
 
 
 def _print_preview(report: engine.SendReport, profile: Profile) -> None:

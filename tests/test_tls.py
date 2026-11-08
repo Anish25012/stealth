@@ -70,3 +70,34 @@ def test_mail_uses_it(monkeypatch):
     account = MailAccount("smtp", "a@b.test", "smtp.b.test", 465, "ssl")
     SmtpTransport(account, "pw")._connect()
     assert type(contexts[0]).__module__.startswith("truststore")
+
+
+# Naming the antivirus when it blocks a mail connection --------------------------------------
+
+
+def test_a_certificate_signed_by_norton_names_norton_and_the_setting():
+    import ssl
+
+    from stealth.mail import smtp_imap
+
+    def norton(host, port):
+        return "Norton Web/Mail Shield"
+
+    error = smtp_imap._network_error(
+        "imap.gmail.com", ssl.SSLCertVerificationError("untrusted root"), 993, issuer=norton
+    )
+    assert error.message == "Norton is blocking Stealth's connection to imap.gmail.com."
+    assert "Settings, Antivirus, Email Protection" in error.hint
+
+
+def test_an_unknown_issuer_keeps_the_general_message():
+    import ssl
+
+    from stealth.mail import smtp_imap
+
+    error = smtp_imap._network_error(
+        "imap.gmail.com", ssl.SSLCertVerificationError("x"), 993, issuer=lambda h, p: None
+    )
+    assert error.message.startswith("Stealth couldn't confirm it was really talking to")
+    assert tls.antivirus_named("Avast Web/Mail Shield Root") == "Avast"
+    assert tls.antivirus_named("Google Trust Services") is None

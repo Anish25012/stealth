@@ -32,9 +32,24 @@ def _connection_error(host: str | None) -> MailConnectionError:
     )
 
 
-def _network_error(host: str | None, exc: Exception) -> MailConnectionError:
+def _network_error(
+    host: str | None,
+    exc: Exception,
+    port: int | None = None,
+    issuer: Callable[[str, int], str | None] = tls.presented_issuer,
+) -> MailConnectionError:
     """The most useful message for a failed connection. People act on this text alone."""
     if isinstance(exc, ssl.SSLCertVerificationError):
+        # Antivirus that can't vouch for a mail server signs it with a root nobody trusts, so the
+        # connection fails on purpose. Name it, because the fix is in its settings, not Stealth's.
+        product = tls.antivirus_named(issuer(host, port)) if host and port else None
+        if product:
+            where = " (Settings, Antivirus, Email Protection)" if product == "Norton" else ""
+            return MailConnectionError(
+                f"{product} is blocking Stealth's connection to {host}.",
+                hint=f"{product}'s email scanning re-signs the connection with a certificate it "
+                f"marks as untrusted. Turn off its email scanning{where}, then try again.",
+            )
         return MailConnectionError(
             f"Stealth couldn't confirm it was really talking to {host}, so it stopped.",
             hint="Antivirus email or web scanning is the usual cause. Turn off its email scanning, "
@@ -83,7 +98,7 @@ class SmtpTransport:
         except smtplib.SMTPAuthenticationError as exc:
             raise _auth_error() from exc
         except (OSError, smtplib.SMTPException) as exc:
-            raise _network_error(self.account.smtp_host, exc) from exc
+            raise _network_error(self.account.smtp_host, exc, self.account.smtp_port) from exc
 
     def send(self, message: EmailMessage, bcc: str | None = None) -> None:
         # A fresh connection per message: with long pacing delays, providers drop idle sessions.
@@ -116,7 +131,7 @@ class SmtpTransport:
                 hint="You may have reached its daily sending limit. Stealth will try again.",
             ) from exc
         except (OSError, smtplib.SMTPException) as exc:
-            raise _network_error(self.account.smtp_host, exc) from exc
+            raise _network_error(self.account.smtp_host, exc, self.account.smtp_port) from exc
 
 
 class ImapMailbox:
@@ -143,7 +158,7 @@ class ImapMailbox:
         try:
             server = self._connect()
         except OSError as exc:
-            raise _network_error(self.account.imap_host, exc) from exc
+            raise _network_error(self.account.imap_host, exc, self.account.imap_port) from exc
         try:
             server.login(self.account.username or self.account.address, self.password)
             status, _ = server.select(self.folder, readonly=True)
@@ -155,7 +170,7 @@ class ImapMailbox:
                 raise _auth_error() from exc
             raise _connection_error(self.account.imap_host) from exc
         except OSError as exc:
-            raise _network_error(self.account.imap_host, exc) from exc
+            raise _network_error(self.account.imap_host, exc, self.account.imap_port) from exc
         finally:
             # Already disconnected is fine: the work above has finished or failed by now.
             with contextlib.suppress(imaplib.IMAP4.error, OSError):

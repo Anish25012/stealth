@@ -50,6 +50,9 @@ def cli(tmp_path, monkeypatch):
     monkeypatch.setenv(paths.HOME_ENV, str(tmp_path))
     secrets = MemoryStore()
     monkeypatch.setattr(main, "_secrets", lambda: secrets)
+    # Setup proves the account works before saving. The fake servers in these answers don't
+    # exist, so the check is replaced; the tests below that need it record what it was given.
+    monkeypatch.setattr(main, "check_connection", lambda account, password: None)
     return tmp_path
 
 
@@ -334,3 +337,68 @@ def test_only_explains_a_broker_that_would_send_nothing(ready):
     assert result.exit_code == 1
     assert "isn't on your list" in result.output
     assert run("send", "--only", "nobody").exit_code == 1
+
+
+# Setup catches mistakes before saving -----------------------------------------------------------
+
+
+def _answers(**changes):
+    """ANSWERS with some lines changed: i9="x" replaces the tenth answer."""
+    lines = ANSWERS.split("\n")
+    for index, value in changes.items():
+        lines[int(index[1:])] = value
+    return "\n".join(lines) + "\n"
+
+
+def test_init_refuses_a_send_from_that_isnt_an_email_address(cli):
+    # The real slip that prompted this: a name typed where the address goes.
+    answers = _answers(i9="Risha0407\nme@example.org")
+    result = runner.invoke(main.app, ["init"], input=answers)
+    assert result.exit_code == 0, result.output
+    assert "'Risha0407' isn't an email address" in result.output
+    with main._profile(None) as profile:
+        assert profile.mail_account().address == "me@example.org"
+
+
+def test_init_checks_the_password_and_lets_you_try_again(cli, monkeypatch):
+    tried = []
+
+    def check(account, password):
+        tried.append(password)
+        if password != "right":
+            raise MailAuthError("Your email provider rejected the sign-in.", hint="App password.")
+
+    monkeypatch.setattr(main, "check_connection", check)
+    answers = _answers(i14="wrong\nn\nright")
+    result = runner.invoke(main.app, ["init"], input=answers)
+    assert result.exit_code == 0, result.output
+    assert tried == ["wrong", "right"]
+    assert "rejected the sign-in" in result.output
+    assert "It works." in result.output
+    with main._profile(None) as profile:
+        assert main._secrets().get(profile.mail_secret_name) == "right"
+
+
+def test_a_gmail_app_password_must_be_sixteen_letters(cli):
+    answers = _answers(
+        i10="smtp.gmail.com",
+        i11="587",
+        i12="imap.gmail.com",
+        i13="993",
+        i14="short\nabcd efgh ijkl mnop",
+    )
+    result = runner.invoke(main.app, ["init"], input=answers)
+    assert result.exit_code == 0, result.output
+    assert "That's 5 characters, but a Gmail app password is 16 letters" in result.output
+    with main._profile(None) as profile:
+        assert main._secrets().get(profile.mail_secret_name) == "abcdefghijklmnop"
+
+
+def test_password_replaces_the_app_password_and_can_fix_the_address(ready):
+    result = run("password", "--address", "new@example.org", input="new-password\n")
+    assert result.exit_code == 0, result.output
+    with main._profile(None) as profile:
+        assert profile.mail_account().address == "new@example.org"
+        assert profile.mail_account().username == "new@example.org"
+        assert main._secrets().get(profile.mail_secret_name) == "new-password"
+    assert run("password", "--address", "nope", input="x\n").exit_code == 1
