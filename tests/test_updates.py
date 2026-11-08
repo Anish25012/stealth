@@ -252,3 +252,8 @@ def test_without_a_checker_the_scheduler_never_goes_online(store):
 
     scheduler = Scheduler(RealWorkspace(store))
     assert scheduler.check_updates is None
+
+
+def test_signing_ignores_a_byte_order_mark_from_powershell(key):
+    sig = signing.sign(b"list", "﻿" + key + "\r\n")
+    assert signing.verify(b"list", sig)

@@ -30,5 +30,8 @@ def verify(data: bytes, signature: str | bytes, public_key: str | None = None) -
 
 def sign(data: bytes, private_key: str) -> str:
     """A base64 signature of these bytes. Used by `tools/sign_broker_list.py` in CI."""
-    key = Ed25519PrivateKey.from_private_bytes(base64.b64decode(private_key.strip()))
+    # Windows PowerShell adds a byte order mark when it pipes text to another program, so a
+    # secret set with `Get-Content key.txt | gh secret set` arrives with one in front.
+    cleaned = private_key.replace("﻿", "").strip()
+    key = Ed25519PrivateKey.from_private_bytes(base64.b64decode(cleaned))
     return base64.b64encode(key.sign(data)).decode("ascii")
