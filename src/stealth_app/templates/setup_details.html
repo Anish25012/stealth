@@ -13,6 +13,14 @@
 <form method="post" action="/setup/details" class="card">
   {{ csrf_field(csrf) }}
   {{ field("name", "Full name", errors, values, autocomplete="name", required=True) }}
+  <div class="field{% if errors.country %} has-error{% endif %}">
+    <label for="f-country">Where {{ "you live" if not draft or draft.for_self else "they live" }}</label>
+    <p class="hint" id="h-country">This decides which law the letters use. Outside the UK the letters are checked against the law but haven't been used for real yet, and some places give fewer rights.</p>
+    {% if errors.country %}<p class="error" id="e-country">{{ errors.country }}</p>{% endif %}
+    <select id="f-country" name="country" aria-describedby="h-country">
+      {% for code, label in countries %}<option value="{{ code }}"{% if values.get("country", "GB") == code %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
   {{ field("other_names", "Other names", errors, values, rows=2, hint="Maiden names or names used in the past. One per line.") }}
   {{ field("emails", "Email addresses", errors, values, rows=3, required=True, hint="Every address companies might have, old ones too. One per line.") }}
   {{ field("addresses", "Home addresses", errors, values, rows=3, hint="Current and past addresses, with postcodes. One per line.") }}

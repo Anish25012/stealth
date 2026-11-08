@@ -1,0 +1,19 @@
+Subject: Re: Direct marketing opt-out [Ref {{ ref }}]
+
+To the Privacy Officer,
+
+Thank you for your reply about my request of {{ request_date }}, reference {{ ref }}.
+
+{% include "_shared/on_behalf.j2" %}{% if asked == "id" %}You have asked me to prove my identity. This request comes from the same email address as my original request{% if emails|length > 1 %}, one of the addresses listed below{% endif %}. Opting out of direct marketing only stops you using my information; it does not ask you to disclose anything to me, so a reply to this address is normally enough. I do not consent to sending a copy of a passport, driver licence or other identity document for this purpose. If you have a specific doubt, please tell me exactly what it is.
+{% else %}You have asked for more details so that you can find my records. These are the details I use:
+{% endif %}
+{% include "_shared/details.j2" %}
+Please search for every one of these details, and do not add any of them to your records if you do not already hold them.
+
+Please now give effect to my requests and confirm that you have done so by {{ deadline }}.
+
+Please reply to this email address, quoting reference {{ ref }}.
+
+Yours sincerely,
+
+{{ sign_off }}

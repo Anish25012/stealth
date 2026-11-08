@@ -19,6 +19,7 @@ from starlette.responses import Response
 
 from stealth.cases import engine
 from stealth.core.errors import ProfileError, StealthError
+from stealth.core.jurisdictions import choices
 from stealth.profiles.models import (
     MICROSOFT_DOMAINS,
     PROVIDERS,
@@ -135,7 +136,7 @@ def install(app: FastAPI, state: State) -> None:
     @app.get("/setup/details", response_class=HTMLResponse)
     def details_page(request: Request) -> Response:
         draft()
-        return step(request, "setup_details.html", 2, errors={}, values={})
+        return step(request, "setup_details.html", 2, errors={}, values={}, countries=choices())
 
     @app.post("/setup/details")
     async def details(request: Request) -> Response:
@@ -150,10 +151,16 @@ def install(app: FastAPI, state: State) -> None:
             errors["emails"] = "Enter at least one email address."
         elif bad := [e for e in emails if not EMAIL_RE.match(e)]:
             errors["emails"] = f"This doesn't look like an email address: {bad[0]}"
+        country = form.get("country", "GB").upper()
+        if country not in dict(choices()):
+            errors["country"] = "Choose where they live from the list."
         if errors:
-            return step(request, "setup_details.html", 2, errors=errors, values=form)
+            return step(
+                request, "setup_details.html", 2, errors=errors, values=form, countries=choices()
+            )
         current.person = Person(
             display_name=name,
+            country=country,
             names=[name, *_lines(form.get("other_names", ""))],
             emails=emails,
             addresses=_lines(form.get("addresses", "")),
@@ -254,6 +261,7 @@ def install(app: FastAPI, state: State) -> None:
                 numbers=counts(brokers, jurisdiction),
                 core=sorted(core, key=lambda b: b.name.lower()),
                 settings=settings,
+                profile=profile,
             )
 
     @app.post("/setup/companies")

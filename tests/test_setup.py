@@ -229,3 +229,31 @@ def test_the_demo_doesnt_run_by_itself(client):
     post(client, "/demo/start")
     response = post(client, "/settings/automation", auto_run="yes", hour="9")
     assert response.status_code == 400 and "doesn&#39;t run by itself" in response.text
+
+
+def test_setup_asks_where_they_live_and_uses_that_law(client, store, mail):
+    smtp, imap = mail
+    post(client, "/setup/who", **{"for": "me"})
+    page = client.get("/setup/details").text
+    assert '<option value="GB" selected>United Kingdom</option>' in page
+    assert 'value="CH"' in page and 'value="US-CA"' in page
+
+    bad = post(client, "/setup/details", name="Sam", emails="sam@example.org", country="ZZ")
+    assert "Choose where they live from the list." in bad.text
+
+    response = post(client, "/setup/details", name="Sam", emails="sam@example.org", country="CH")
+    assert response.headers["location"] == "/setup/email"
+    post(client, "/setup/email", **server_fields(smtp, imap))
+    post(client, "/setup/recovery", kept="yes")
+    with store.open() as profile:
+        assert profile.person().country == "CH"
+
+    companies = client.get("/setup/companies").text
+    # Nothing on the list is clearly under Swiss law: say so and point at the wider list.
+    assert "None of the companies on Stealth's list are clearly covered" in companies
+    assert "people in Switzerland" in companies
+
+    settings = client.get("/settings").text
+    assert "Switzerland" in settings and "asked for, not set by law" in settings
+    assert "haven't been used for real yet" in settings
+    assert "Ready for the FDPIC" in settings and "ICO" not in settings

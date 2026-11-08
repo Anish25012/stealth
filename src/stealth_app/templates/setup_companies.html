@@ -5,13 +5,16 @@
 <div class="page-head">
   <div>
     <h1>Choose the companies</h1>
-    <p>Stealth starts with the companies UK law clearly covers. They're all included; you can
+    {% set uk = jurisdiction.code == "GB" %}
+    {% if core %}<p>Stealth starts with the companies {{ "UK law" if uk else "the law in " ~ jurisdiction.name }} clearly covers. They're all included; you can
     leave any out, now or later.</p>
+    {% else %}<p>None of the companies on Stealth's list are clearly covered by the law in {{ jurisdiction.name }}. You can still write to the ones that may hold your details: turn on the wider list below.</p>{% endif %}
   </div>
 </div>
 <form method="post" action="/setup/companies">
   {{ csrf_field(csrf) }}
   {% set by_form = core|selectattr("method", "equalto", "form")|list|length %}
+  {% if core %}
   <section class="card" aria-labelledby="core-h">
     <div class="card-head">
       <span class="glyph tone-accent">{{ icon("building-2") }}</span>
@@ -41,12 +44,13 @@
       </fieldset>
     </details>
   </section>
+  {% endif %}
 
   <section class="card" aria-labelledby="extended-h">
     <div class="toggle-row">
       <div>
         <h2 id="extended-h">Also write to {{ numbers.optional }} more</h2>
-        <p class="muted">Companies abroad that may hold UK data, but where it's less clear the law
+        <p class="muted">Companies abroad that may hold data about people in {{ "the UK" if uk else jurisdiction.name }}, but where it's less clear the law
         reaches them. Writing to them shares your name and email address with them.</p>
       </div>
       <input type="checkbox" class="switch" id="f-extended" name="extended" value="yes"{% if settings.include_extended %} checked{% endif %} aria-labelledby="extended-h">

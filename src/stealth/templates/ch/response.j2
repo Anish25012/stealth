@@ -1,0 +1,21 @@
+Subject: Re: Objection and deletion request [Ref {{ ref }}]
+
+Dear Sir or Madam,
+
+Thank you for your reply about my request of {{ request_date }}, reference {{ ref }}.
+
+{% include "_shared/on_behalf.j2" %}{% if asked == "id" %}You have asked me to prove my identity. This request comes from the same email address as my original request{% if emails|length > 1 %}, one of the addresses listed below{% endif %}. My request only stops processing and removes data; it does not ask you to disclose anything to me, so a reply to this address is normally enough. I do not consent to sending a copy of a passport, identity card or other identity document for this purpose.
+
+If you hold information that can be checked against the details below, please use it. If you still have a specific doubt, please tell me exactly what it is and which piece of information would resolve it.
+{% else %}You have asked for more details so that you can find my records. These are the details I use:
+{% endif %}
+{% include "_shared/details.j2" %}
+Please search for every one of these details, and do not add any of them to your records if you do not already hold them.
+
+Please now stop processing my personal data and delete it, and confirm that you have done so by {{ deadline }}.
+
+Please reply to this email address, quoting reference {{ ref }}.
+
+Yours faithfully,
+
+{{ sign_off }}

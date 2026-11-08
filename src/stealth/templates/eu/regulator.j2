@@ -1,0 +1,8 @@
+Subject: Draft complaint to the data protection authority about {{ broker_name }}
+
+DRAFT: check this reads correctly, then send it to the data protection authority in the country
+where you live, using its own complaint form. The list of authorities is at
+https://www.edpb.europa.eu/about-edpb/about-edpb/members_en . Attach the emails from your
+evidence folder. Many authorities accept complaints in English; some ask for their own language.
+
+{% set what_happened = "On " ~ request_date ~ " I asked " ~ broker_name ~ " to erase my personal data under Article 17 of the GDPR and objected to its use for direct marketing and profiling under Article 21." %}{% set ask = "I lodge this complaint under Article 77 of the GDPR. Please consider whether " ~ broker_name ~ " has complied with Articles 12, 17, 19 and 21, and ask it to erase my data and confirm that it has done so." %}{% include "_shared/regulator_body.j2" %}

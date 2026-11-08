@@ -1,0 +1,23 @@
+Subject: Re: Erasure request [Ref {{ ref }}]
+
+To the Data Protection Officer,
+
+Thank you for your reply about my request of {{ request_date }}, reference {{ ref }}.
+
+{% include "_shared/on_behalf.j2" %}{% if asked == "id" %}You have asked me to prove my identity. Under Article 12(6) of the GDPR you may ask for additional information only where you have reasonable doubts about who is making the request, and only for what is necessary to confirm it.
+
+This request comes from the same email address as my original request{% if emails|length > 1 %}, one of the addresses listed below{% endif %}. For an erasure and an objection to marketing, a reply to this address is normally enough to show that the data is mine: the request only removes data, it does not disclose any. I do not consent to sending a copy of a passport, identity card or other identity document for this purpose.
+
+If you hold information that can be checked against the details below, please use it. If you still have a specific, reasonable doubt, please tell me exactly what that doubt is, which piece of information would resolve it, and why nothing less intrusive would do.
+{% else %}You have asked for more details so that you can find my records. These are the details I use:
+{% endif %}
+{% include "_shared/details.j2" %}
+Please search for every one of these details, and do not add any of them to your records if you do not already hold them.
+
+With this reply you have everything you reasonably need. Please complete the erasure without further delay, and in any event by {{ deadline }}.
+
+Please reply to this email address, quoting reference {{ ref }}.
+
+Yours faithfully,
+
+{{ sign_off }}

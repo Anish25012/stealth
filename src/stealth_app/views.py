@@ -12,6 +12,7 @@ import email.policy
 import hashlib
 import io
 import json
+import re
 import zipfile
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -25,6 +26,7 @@ from stealth import __version__, score
 from stealth.cases.state import TRANSITIONS, Case, Status, all_cases
 from stealth.core import clock
 from stealth.core.errors import ProfileError
+from stealth.core.jurisdictions import UK, Jurisdiction, for_country
 from stealth.db import events
 from stealth.inbox import classifier
 from stealth.inbox.responses import latest_reading, what_they_asked
@@ -631,3 +633,29 @@ def dead_contact_link(profile: Profile, case: Case) -> str | None:
         }
     )
     return f"{ISSUES_URL}?{query}"
+
+
+_ICO_WORD = re.compile(r"\bICO\b")
+
+
+def jurisdiction_for(profile: Profile | None) -> Jurisdiction:
+    if profile is None:
+        return UK
+    try:
+        return for_country(profile.person().country)
+    except ProfileError:
+        return UK
+
+
+def regulator_wording(text: str, jurisdiction: Jurisdiction) -> str:
+    """Pages are written for the UK. Elsewhere, name that place's regulator instead of the ICO."""
+    if jurisdiction.code == UK.code:
+        return text
+    text = text.replace(", the UK's data protection regulator", "")
+    text = text.replace(", the UK regulator,", ",")
+    text = text.replace("the ICO's", f"{jurisdiction.regulator_short}'s")
+    text = text.replace(
+        "The ICO", jurisdiction.regulator_short[:1].upper() + jurisdiction.regulator_short[1:]
+    )
+    text = text.replace("the ICO", jurisdiction.regulator_short)
+    return _ICO_WORD.sub(jurisdiction.regulator_abbr, text)

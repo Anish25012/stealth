@@ -1,0 +1,30 @@
+Subject: Objection and request to delete my personal data under the FADP [Ref {{ ref }}]
+
+Dear Sir or Madam,
+
+{% include "_shared/on_behalf.j2" %}I am writing about your processing of my personal data under the Swiss Federal Act on Data Protection of 25 September 2020 (FADP).
+{% if extended %}
+The FADP applies to circumstances that have an effect in Switzerland, even if they were initiated abroad (Article 3(1)). To the extent that your processing of my personal data has such an effect, this letter is made on that basis.
+{% endif %}
+The details below are given only so that you can find my records:
+
+{% include "_shared/details.j2" %}{% if listing %}
+My details appear on your website here: {{ listing }}
+{% endif %}
+Please do not add any of these details to your records if you do not already hold them.
+
+1. Objection. I expressly object to any further processing of my personal data by you, including its use for marketing, profiling and its disclosure to third parties. Under Article 30(2)(b) of the FADP, processing personal data contrary to the express wishes of the data subject is a breach of their personality rights, which is unlawful unless it is justified (Article 31).
+
+2. Deletion. Please delete or destroy all personal data you hold about me. Under Article 6(4), personal data must be destroyed or anonymised as soon as they are no longer required for the purpose of processing, and after my objection you have no purpose for which I accept them being processed.
+
+3. Recipients. Please tell every third party to whom you have disclosed my personal data about this objection and deletion, and tell me who they are.
+
+4. Suppression only. You may keep the minimum information needed to make sure I am not contacted or added to your records again, such as a hashed email address. It must be used for that purpose and no other.
+
+5. Reply. Please confirm within 30 days, by {{ deadline }}, that you have done this. If you will not delete my data, please tell me which personal data you hold about me, the purpose of processing and where the data came from. I request that information under Article 25, which provides that it shall in general be given within 30 days.
+
+Please reply to this email address, quoting reference {{ ref }}.
+
+Yours faithfully,
+
+{{ sign_off }}

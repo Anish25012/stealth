@@ -1,0 +1,30 @@
+Subject: Direct marketing opt-out and request to destroy my personal information [Ref {{ ref }}]
+
+To the Privacy Officer,
+
+{% include "_shared/on_behalf.j2" %}I am writing under the Privacy Act 1988 (Cth) and the Australian Privacy Principles (APPs).
+{% if extended %}
+To the extent that the Privacy Act applies to you, this request is made on that basis.
+{% endif %}
+The details below are given only so that you can find my records:
+
+{% include "_shared/details.j2" %}{% if listing %}
+My details appear on your website here: {{ listing }}
+{% endif %}
+Please do not add any of these details to your records if you do not already hold them.
+
+1. No direct marketing (APP 7.6). Please do not send me direct marketing communications.
+
+2. No facilitating direct marketing (APP 7.6). Please do not use or disclose my personal information for the purpose of facilitating direct marketing by other organisations.
+
+3. Source (APP 7.6). Please tell me where you got my personal information.
+
+4. Under APP 7.7 you must give effect to these requests within a reasonable period after they are made, and free of charge. The OAIC's APP guidelines say a reasonable period would generally be no more than 30 days, which is {{ deadline }}.
+
+5. Destruction (APP 11.2). Once you no longer need my personal information for any purpose for which you may use or disclose it under the APPs, you must take reasonable steps to destroy it or ensure it is de-identified. After these requests I do not believe you have such a purpose, so please destroy or de-identify it, keeping only what you need to honour my opt-out.
+
+Please reply to this email address, quoting reference {{ ref }}.
+
+Yours sincerely,
+
+{{ sign_off }}

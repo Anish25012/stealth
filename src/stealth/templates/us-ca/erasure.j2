@@ -1,0 +1,30 @@
+Subject: CCPA request to delete and to opt out of sale or sharing [Ref {{ ref }}]
+
+To the Privacy Team,
+
+{% include "_shared/on_behalf.j2" %}I am a California resident, and I am exercising my rights under the California Consumer Privacy Act (Cal. Civ. Code section 1798.100 and following, the CCPA).
+{% if extended %}
+To the extent that the CCPA applies to your business, this request is made on that basis.
+{% endif %}
+The details below are given only so that you can find my records:
+
+{% include "_shared/details.j2" %}{% if listing %}
+My details appear on your website here: {{ listing }}
+{% endif %}
+Please do not add any of these details to your records if you do not already hold them.
+
+1. Request to delete (section 1798.105). Please delete all personal information about me that you have collected from me, notify your service providers and contractors to delete it, and notify every third party to whom you have sold or shared it to delete it, as section 1798.105(c)(1) requires.
+
+2. Opt-out of sale or sharing (section 1798.120). Whether or not you collected it from me, do not sell or share any personal information about me with third parties.
+
+3. Suppression only. You may keep a confidential record of this request solely to prevent my personal information from being sold, as section 1798.105(c)(2) allows. Please use it for that purpose and no other.
+
+4. Time limit. Under section 1798.130(a)(2)(A) you must act on this request within 45 days of receiving it, by {{ deadline }}. That period may be extended once by a further 45 days only if you tell me within the first 45 days.
+
+5. Verification. Please ask only for the information you reasonably need to verify this request. A copy of a government ID should not be needed to stop selling my information.
+
+Please reply to this email address, quoting reference {{ ref }}.
+
+Sincerely,
+
+{{ sign_off }}

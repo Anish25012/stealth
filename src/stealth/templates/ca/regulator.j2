@@ -1,0 +1,8 @@
+Subject: Draft complaint to the Privacy Commissioner of Canada about {{ broker_name }}
+
+DRAFT: check this reads correctly, then file it with the Office of the Privacy Commissioner of
+Canada using its online form at https://www.priv.gc.ca/en/report-a-concern/ . Attach the emails
+from your evidence folder. If you live in Quebec, British Columbia or Alberta, a provincial
+commissioner may be the right place instead, because those provinces have their own private-sector privacy laws.
+
+{% set what_happened = "On " ~ request_date ~ " I withdrew my consent to " ~ broker_name ~ " collecting, using and disclosing my personal information, and asked it to destroy that information, under clauses 4.3.8 and 4.5.3 of Schedule 1 to PIPEDA." %}{% set ask = "I file this complaint under section 11(1) of PIPEDA. Please consider whether " ~ broker_name ~ " has followed the principles in clauses 4.3.8, 4.5.3 and 4.10 of Schedule 1, and ask it to stop using my personal information and destroy it." %}{% include "_shared/regulator_body.j2" %}

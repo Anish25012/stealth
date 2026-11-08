@@ -1,0 +1,32 @@
+Subject: Erasure request and objection under the GDPR [Ref {{ ref }}]
+
+To the Data Protection Officer,
+
+{% include "_shared/on_behalf.j2" %}I am writing to exercise my rights under the General Data Protection Regulation (EU) 2016/679 (GDPR).
+{% if extended %}
+You may hold personal data about people in the European Union. To the extent that you offer goods or services to individuals in the EU, or monitor their behaviour there, the GDPR applies to you under Article 3(2), and this request is made on that basis.
+{% endif %}
+The details below are given only so that you can find my records:
+
+{% include "_shared/details.j2" %}{% if listing %}
+My details appear on your website here: {{ listing }}
+{% endif %}
+Please do not add any of these details to your records if you do not already hold them.
+
+1. Erasure (Article 17). Please erase all personal data you hold about me.
+
+2. Objection (Article 21). I object to the processing of my personal data for direct marketing, including any profiling related to it, under Article 21(2). Under Article 21(3) you must stop processing it for those purposes. I also object under Article 21(1) to any other processing you carry out on the basis of legitimate interests, including profiling.
+
+3. Recipients (Article 19). Please tell every recipient to whom you have disclosed my personal data about this erasure, and give me the name of each recipient.
+
+4. Suppression only. You may keep the minimum information needed to make sure I am not contacted or added to your records again, such as a hashed email address. It must be used for that purpose and no other.
+
+5. Time limit. Under Article 12(3) you must respond without undue delay and in any event within one month of receiving this request. That means by {{ deadline }}. If you need to extend this period, Article 12(3) requires you to tell me within that month and give your reasons.
+
+6. Identity. If you have reasonable doubts about my identity you may ask for the information necessary to confirm it, under Article 12(6). Please ask only for what is reasonable and proportionate. A copy of a passport or identity card should not be needed to stop marketing to me.
+
+Please reply to this email address, quoting reference {{ ref }}.
+
+Yours faithfully,
+
+{{ sign_off }}

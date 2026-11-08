@@ -1,0 +1,9 @@
+Subject: Draft report to the FDPIC about {{ broker_name }}
+
+DRAFT: check this reads correctly, then send it to the Federal Data Protection and Information
+Commissioner (FDPIC) using the contact options at https://www.edoeb.admin.ch/ . Attach the emails
+from your evidence folder. The FDPIC can investigate and must tell you what it did (Article 49(4)
+FADP), but it doesn't decide individual claims: deletion itself is enforced through the civil
+courts (Article 32(2)).
+
+{% set what_happened = "On " ~ request_date ~ " I expressly objected to " ~ broker_name ~ " processing my personal data and asked it to delete the data, under Articles 6(4), 30(2)(b) and 31 of the FADP." %}{% set ask = "I report this processing under Article 49 of the FADP. Please consider opening an investigation into whether " ~ broker_name ~ " is processing my personal data contrary to my express wishes without justification, and tell me the steps taken." %}{% include "_shared/regulator_body.j2" %}

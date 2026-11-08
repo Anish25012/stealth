@@ -1,0 +1,9 @@
+Subject: Draft complaint to the OAIC about {{ broker_name }}
+
+DRAFT: check this reads correctly, then lodge it in writing with the Office of the Australian
+Information Commissioner (OAIC) using its online form at
+https://www.oaic.gov.au/privacy/privacy-complaints/lodge-a-privacy-complaint-with-us . The OAIC
+asks you to complain to the organisation first and give it 30 days to respond, which Stealth has
+done. Attach the emails from your evidence folder.
+
+{% set what_happened = "On " ~ request_date ~ " I asked " ~ broker_name ~ " not to use my personal information for direct marketing, not to disclose it to others for direct marketing, to tell me its source, and to destroy or de-identify it, under APPs 7.6 and 11.2." %}{% set ask = "Please consider whether " ~ broker_name ~ " has complied with APPs 7 and 11, and ask it to give effect to my requests and destroy or de-identify my personal information." %}{% include "_shared/regulator_body.j2" %}

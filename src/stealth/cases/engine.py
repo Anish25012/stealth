@@ -526,23 +526,26 @@ def send_complaint(
 
 
 def draft_ico_complaint(profile: Profile, broker: str) -> Path:
-    """Write a complaint for the person to submit to the ICO themselves."""
+    """Write a complaint for the person to send the regulator (the ICO in the UK) themselves."""
     case = find_case(profile.conn, broker)
+    jurisdiction = jurisdiction_of(profile)
     if case.status not in (Status.ICO_READY, Status.ESCALATED):
         wait = ""
         if case.status is Status.COMPLAINT_SENT and case.next_action_on:
             wait = f" It will be ready on {format_date(case.next_action_on)}."
         raise ProfileError(
-            f"{case.broker_name} isn't ready for an ICO complaint yet.{wait}",
-            hint="The ICO expects a company to have had the chance to answer a complaint first.",
+            f"{case.broker_name} isn't ready for a complaint to "
+            f"{jurisdiction.regulator_short} yet.{wait}",
+            hint=f"{jurisdiction.regulator_short[0].upper()}{jurisdiction.regulator_short[1:]} "
+            "expects a company to have had the chance to answer a complaint first.",
         )
     assert case.last_request_on and case.deadline_on
-    person, account, jurisdiction = profile.person(), _account(profile), jurisdiction_of(profile)
+    person, account = profile.person(), _account(profile)
     request_date = format_date(case.last_request_on)
     complaint_date = format_date(case.complaint_on) if case.complaint_on else "(not sent)"
     letter = render(
         jurisdiction,
-        "ico",
+        "regulator",
         person_name=person.display_name,
         contact_email=account.address,
         broker_name=case.broker_name,

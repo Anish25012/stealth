@@ -1,0 +1,6 @@
+{% for name in names %}Name: {{ name }}
+{% endfor %}{% for email in emails %}Email: {{ email }}
+{% endfor %}{% for address in addresses %}Address: {{ address }}
+{% endfor %}{% for phone in phones %}Phone: {{ phone }}
+{% endfor %}{% if date_of_birth is defined and date_of_birth %}Date of birth: {{ date_of_birth }}
+{% endif %}

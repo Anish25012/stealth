@@ -130,6 +130,17 @@ and does more of the work for you.
   [docs/antivirus.md](docs/antivirus.md) explains how to check the download, report a false
   positive to Norton, Microsoft Defender or Avast, and what Stealth does about HTTPS-inspecting
   antivirus.
+- **Outside the UK the letters are lighter and less tested.** Stealth also writes for the EU and
+  EEA, Switzerland, California, Canada and Australia. Those letters are checked against the law
+  they cite, but haven't been used for real yet. Several of those places give fewer rights:
+  - **Australia and Canada:** no right to erasure, so Stealth opts out of marketing or withdraws
+    consent instead.
+  - **Switzerland:** no deadline for deletion.
+  - **California:** the right to delete misses most broker data, so also use the state's free
+    [DROP](https://consumer.drop.privacy.ca.gov) service.
+
+  Each place's deadline and its source are in `src/stealth/core/jurisdictions.py`. Quebec and US
+  states other than California aren't covered.
 - **This isn't legal advice.** Check anything you send.
 
 ## Try it

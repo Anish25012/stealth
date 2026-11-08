@@ -274,7 +274,7 @@ def test_replies_stealth_read_by_itself_say_so(client, demo):
 def test_ico_draft_is_refused_until_ready(client, demo):
     response = post(client, "/cases/silent-lists/ico")
     assert response.status_code == 400
-    assert "ready for an ICO complaint yet" in response.text
+    assert "ready for a complaint to the ICO yet" in response.text
 
 
 def test_a_second_job_waits_for_the_first(client, demo):

@@ -1,0 +1,30 @@
+Subject: Withdrawal of consent and request to destroy my personal information [Ref {{ ref }}]
+
+To the Privacy Officer,
+
+{% include "_shared/on_behalf.j2" %}I am writing under the Personal Information Protection and Electronic Documents Act (PIPEDA) and the principles in its Schedule 1.
+{% if extended %}
+To the extent that PIPEDA applies to your handling of personal information about people in Canada, this letter is made on that basis.
+{% endif %}
+The details below are given only so that you can find my records:
+
+{% include "_shared/details.j2" %}{% if listing %}
+My details appear on your website here: {{ listing }}
+{% endif %}
+Please do not add any of these details to your records if you do not already hold them.
+
+1. Withdrawal of consent (Schedule 1, clause 4.3.8). I withdraw any consent I may have given, expressly or by implication, to your collection, use or disclosure of my personal information, including for marketing and for disclosure to others.
+
+2. Destruction (Schedule 1, clause 4.5.3). Having withdrawn my consent, my personal information is no longer required for any purpose I have agreed to. Please destroy, erase or make it anonymous, and stop disclosing it to others.
+
+3. Implications. Clause 4.3.8 requires you to tell me the implications of this withdrawal. If any law or contract requires you to keep some of my information, please tell me which information, and the law or contract that requires it.
+
+4. Suppression only. You may keep the minimum information needed to make sure I am not contacted or added to your records again, such as a hashed email address. It must be used for that purpose and no other.
+
+5. Reply. Please confirm within 30 days, by {{ deadline }}, that you have done this.
+
+Please reply to this email address, quoting reference {{ ref }}.
+
+Yours sincerely,
+
+{{ sign_off }}

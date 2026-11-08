@@ -89,6 +89,11 @@
       <div><dt>Home addresses</dt><dd>{{ person.addresses|length }}</dd></div>
       <div><dt>Phone numbers</dt><dd>{{ person.phones|length }}</dd></div>
     </dl>
+    <dl class="facts">
+      <div><dt>Where</dt><dd>{{ jurisdiction.name }}</dd></div>
+      <div><dt>Reply due</dt><dd>{% if jurisdiction.deadline_months %}{{ jurisdiction.deadline_months }} month{{ "s" if jurisdiction.deadline_months > 1 }}{% else %}{{ jurisdiction.deadline_days }} days{% endif %}{{ "" if jurisdiction.deadline_is_statutory else " (asked for, not set by law)" }}</dd></div>
+    </dl>
+    {% if not jurisdiction.tested %}<div class="notice"><p>{{ icon("info") }} {{ jurisdiction.notes }} Letters for {{ jurisdiction.name }} are checked against the law, but haven't been used for real yet: read each one before approving it.</p></div>{% endif %}
   </section>
 
   <section class="card" aria-labelledby="mail-h">

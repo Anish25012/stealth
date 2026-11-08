@@ -1,0 +1,21 @@
+Subject: Re: CCPA request [Ref {{ ref }}]
+
+To the Privacy Team,
+
+Thank you for your reply about my request of {{ request_date }}, reference {{ ref }}.
+
+{% include "_shared/on_behalf.j2" %}{% if asked == "id" %}You have asked me to verify my identity. This request comes from the same email address as my original request{% if emails|length > 1 %}, one of the addresses listed below{% endif %}. Please match it against the information you already hold. I do not consent to sending a copy of a passport, driver's license or other government ID for this purpose. If you need something specific to verify my request, please tell me exactly what it is.
+
+Whatever you decide about verifying the request to delete, my request not to sell or share my personal information under section 1798.120 stands, and please act on it now.
+{% else %}You have asked for more details so that you can find my records. These are the details I use:
+{% endif %}
+{% include "_shared/details.j2" %}
+Please search for every one of these details, and do not add any of them to your records if you do not already hold them.
+
+Section 1798.130(a)(2)(A) gives you 45 days from receiving my request, whatever time verification takes. Please complete it without further delay, and in any event by {{ deadline }}.
+
+Please reply to this email address, quoting reference {{ ref }}.
+
+Sincerely,
+
+{{ sign_off }}

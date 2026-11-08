@@ -73,14 +73,16 @@ def render(
     state: State = request.app.state.dashboard
     if profile is not None and "nav_counts" not in context:
         context["nav_counts"] = views.nav_counts(views.grouped(views.rows(profile)))
+    jurisdiction = views.jurisdiction_for(profile)
     page = TEMPLATES.get_template(name).render(
         csrf=state.csrf,
         demo=state.workspace.demo,
         version=__version__,
         path=request.url.path,
+        jurisdiction=jurisdiction,
         **context,
     )
-    return HTMLResponse(page, status_code=status_code)
+    return HTMLResponse(views.regulator_wording(page, jurisdiction), status_code=status_code)
 
 
 # The sidebar's pages, for before there's a profile: say why they're empty instead of bouncing

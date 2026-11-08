@@ -1,0 +1,8 @@
+Subject: Draft complaint to the California Privacy Protection Agency about {{ broker_name }}
+
+DRAFT: check this reads correctly, then file it with the California Privacy Protection Agency
+(CalPrivacy) using the complaint form on https://cppa.ca.gov/ . Attach the emails from your
+evidence folder. If {{ broker_name }} is a registered data broker, also make sure you've signed up
+for DROP (https://consumer.drop.privacy.ca.gov), which reaches every registered broker at once.
+
+{% set what_happened = "On " ~ request_date ~ " I asked " ~ broker_name ~ " to delete my personal information under section 1798.105 of the CCPA and not to sell or share it under section 1798.120." %}{% set ask = "Please consider whether " ~ broker_name ~ " has complied with sections 1798.105, 1798.120 and 1798.130 of the CCPA, and ask it to delete my personal information, stop selling or sharing it, and confirm that it has done so." %}{% include "_shared/regulator_body.j2" %}

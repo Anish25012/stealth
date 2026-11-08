@@ -1,0 +1,28 @@
+Complainant: {{ person_name }}
+Contact email: {{ contact_email }}
+Organisation complained about: {{ broker_name }} ({{ broker_domain }})
+Our reference: {{ ref }}
+
+What happened
+
+{{ what_happened }} The response was due by {{ deadline }}.
+
+{{ outcome }}
+
+On {{ complaint_date }} I complained to the organisation directly and gave it a further chance to put this right.
+
+{{ complaint_outcome }}
+
+What I would like you to do
+
+{{ ask }}
+
+Timeline
+
+{% for entry in timeline %}{{ entry }}
+{% endfor %}
+Evidence
+
+Copies of every email listed above are in my records and can be provided.
+
+{{ sign_off }}
