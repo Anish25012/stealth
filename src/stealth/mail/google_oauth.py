@@ -25,12 +25,13 @@ import json
 import os
 import secrets
 import threading
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
 import webbrowser
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from stealth.core import tls
 from stealth.core.errors import MailAuthError, MailConnectionError
@@ -196,6 +197,18 @@ class SignIn:
     redirect_uri: str
     verifier: str
     _listener: _Listener
+    started: float = field(default_factory=time.monotonic)
+
+    def poll(self) -> Callback | None:
+        """Google's answer if it has arrived (closing the listener), a timeout once too long has
+        passed, or None to ask again later. For the app, which can't block a page on it."""
+        if self._listener.arrived.is_set():
+            self.close()
+            return self._listener.result
+        if time.monotonic() - self.started > SIGN_IN_MINUTES * 60:
+            self.close()
+            return Callback(error="timeout")
+        return None
 
     def wait(self, timeout: float = SIGN_IN_MINUTES * 60) -> Callback:
         try:

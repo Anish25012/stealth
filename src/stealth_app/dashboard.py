@@ -26,6 +26,7 @@ from stealth.cases.state import Status, find_case
 from stealth.core.errors import ProfileError, StealthError
 from stealth.core.logging_scrub import add_known_values
 from stealth.inbox import responses
+from stealth.mail import google_oauth
 from stealth.profiles.store import Profile
 from stealth.templates.render import format_date
 from stealth_app import autostart, monthly, updates, views
@@ -414,6 +415,7 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
                 autostart_available=autostart.available(),
                 autostart_on=autostart.is_enabled(),
                 hours=range(6, 23),
+                google_available=google_oauth.client() is not None,
                 **update_context(),
             )
 

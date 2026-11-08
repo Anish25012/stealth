@@ -20,18 +20,28 @@ from starlette.responses import Response
 from stealth.cases import engine
 from stealth.core.errors import ProfileError, StealthError
 from stealth.core.jurisdictions import choices
+from stealth.mail import gmail_api, google_oauth
 from stealth.profiles.models import (
     MICROSOFT_DOMAINS,
     PROVIDERS,
     MailAccount,
     Person,
     Settings,
+    google_account,
     provider_account,
 )
 from stealth.registry.loader import counts, select_brokers
 from stealth.setup import Consent, new_profile
 from stealth_app import autostart
-from stealth_app.dashboard import State, changing, first, read_form, redirect, render
+from stealth_app.dashboard import (
+    State,
+    changing,
+    first,
+    opened,
+    read_form,
+    redirect,
+    render,
+)
 
 STEPS = ["Who it's for", "Your details", "Email", "Recovery code", "Companies", "Finish"]
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -53,6 +63,7 @@ class Draft:
     profile_id: str | None = None
     recovery_code: str | None = None
     values: dict[str, str] = field(default_factory=dict)  # last form, to refill after an error
+    google: google_oauth.SignIn | None = None  # a Google sign-in waiting for the browser
 
 
 def _lines(text: str) -> list[str]:
@@ -74,6 +85,7 @@ def _flat(form: dict[str, list[str]]) -> dict[str, str]:
 
 def install(app: FastAPI, state: State) -> None:
     drafts: dict[str, Draft] = {}
+    app.state.setup_drafts = drafts  # for tests that play the browser's part
 
     def draft() -> Draft:
         if state.workspace.demo:
@@ -176,7 +188,13 @@ def install(app: FastAPI, state: State) -> None:
             return redirect("/setup/details")
         values = {"address": current.person.emails[0], **values}
         return step(
-            request, "setup_email.html", 3, errors=errors, values=values, providers=PROVIDERS
+            request,
+            "setup_email.html",
+            3,
+            errors=errors,
+            values=values,
+            providers=PROVIDERS,
+            google=google_oauth.client() is not None,
         )
 
     @app.get("/setup/email", response_class=HTMLResponse)
@@ -219,6 +237,131 @@ def install(app: FastAPI, state: State) -> None:
             state.workspace.lock.release()
         current.profile_id, current.recovery_code = profile_id, code
         return redirect("/setup/recovery")
+
+    # 3b. Or sign in with Google ------------------------------------------------------------
+
+    @app.post("/setup/email/google")
+    async def google_start(request: Request) -> Response:
+        await read_form(request)  # checks the CSRF token
+        current = draft()
+        client = google_oauth.client()
+        if current.person is None or client is None:
+            return redirect("/setup/email")
+        if current.google is not None:
+            current.google.close()
+        current.google = google_oauth.start(client, hint=current.person.emails[0])
+        google_oauth.open_browser(current.google.url)
+        return redirect("/setup/email/google")
+
+    @app.get("/setup/email/google", response_class=HTMLResponse)
+    def google_wait(request: Request) -> Response:
+        current = draft()
+        sign_in = current.google
+        if sign_in is None or current.person is None:
+            return redirect("/setup/email")
+        answer = sign_in.poll()
+        if answer is None:
+            return step(
+                request,
+                "setup_google.html",
+                3,
+                url=sign_in.url,
+                cancel_url="/setup/email/google/cancel",
+                cancel_label="Cancel and use an app password instead",
+            )
+        current.google = None
+        try:
+            address, token = gmail_api.finish_sign_in(sign_in, answer)
+        except StealthError as exc:
+            message = exc.message + (f" {exc.hint}" if exc.hint else "")
+            return email_step(request, {"google": message}, {})
+        # Signed in to an address of theirs: their mailbox. Otherwise it's the helper's own.
+        own = current.for_self or address.lower() in {e.lower() for e in current.person.emails}
+        consent = None
+        if not current.for_self:
+            consent = Consent(
+                given_by=current.person.display_name,
+                method=current.consent_method,
+                recorded_by=current.helper_name,
+            )
+        if not state.workspace.lock.acquire(blocking=False):
+            raise StealthError("Stealth is busy with something else right now.")
+        try:
+            profile_id, code = new_profile(
+                state.workspace.store,
+                current.person,
+                google_account(address, is_own_mailbox=own),
+                token,
+                consent=consent,
+                check_mail=False,  # finish_sign_in has just proved Gmail works
+            )
+        finally:
+            state.workspace.lock.release()
+        current.profile_id, current.recovery_code = profile_id, code
+        return redirect("/setup/recovery")
+
+    @app.post("/setup/email/google/cancel")
+    async def google_cancel(request: Request) -> Response:
+        await read_form(request)
+        current = draft()
+        if current.google is not None:
+            current.google.close()
+            current.google = None
+        return redirect("/setup/email")
+
+    # Signing in to Google again, from Settings ----------------------------------------------
+    # Needed when Google stops honouring the sign-in (a password change, access removed, six
+    # months unused), and to move an app-password Gmail profile over to Google sign-in.
+
+    reconnecting: dict[str, google_oauth.SignIn] = {}
+    app.state.google_reconnecting = reconnecting
+
+    @app.post("/settings/google")
+    async def reconnect_start(request: Request) -> Response:
+        await read_form(request)
+        client = google_oauth.client()
+        if client is None or state.workspace.demo:
+            return redirect("/settings")
+        with opened(state) as profile:
+            account = profile.mail_account() if profile else None
+        if account is None:
+            return redirect("/settings")
+        if "current" in reconnecting:
+            reconnecting.pop("current").close()
+        sign_in = google_oauth.start(client, hint=account.address)
+        reconnecting["current"] = sign_in
+        google_oauth.open_browser(sign_in.url)
+        return redirect("/settings/google")
+
+    @app.get("/settings/google", response_class=HTMLResponse)
+    def reconnect_wait(request: Request) -> Response:
+        sign_in = reconnecting.get("current")
+        if sign_in is None:
+            return redirect("/settings")
+        answer = sign_in.poll()
+        if answer is None:
+            return render(
+                request,
+                "setup_google.html",
+                title="Sign in with Google",
+                url=sign_in.url,
+                cancel_url="/settings/google/cancel",
+                cancel_label="Cancel",
+            )
+        reconnecting.pop("current", None)
+        address, token = gmail_api.finish_sign_in(sign_in, answer)  # errors show as a page
+        with changing(state) as profile:
+            previous = profile.mail_account()
+            own = previous.is_own_mailbox if previous else True
+            profile.save_mail_account(google_account(address, is_own_mailbox=own), password=token)
+        return redirect("/settings#mail-h")
+
+    @app.post("/settings/google/cancel")
+    async def reconnect_cancel(request: Request) -> Response:
+        await read_form(request)
+        if "current" in reconnecting:
+            reconnecting.pop("current").close()
+        return redirect("/settings")
 
     # 4. Recovery code -----------------------------------------------------------------------
 

@@ -257,3 +257,105 @@ def test_setup_asks_where_they_live_and_uses_that_law(client, store, mail):
     assert "Switzerland" in settings and "asked for, not set by law" in settings
     assert "haven't been used for real yet" in settings
     assert "Ready for the FDPIC" in settings and "ICO" not in settings
+
+
+# Signing in with Google ------------------------------------------------------------------------
+
+
+@pytest.fixture
+def google(monkeypatch):
+    """Google sign-in offered; the browser isn't opened, and Google's answer is faked."""
+    from stealth.mail import gmail_api, google_oauth
+
+    monkeypatch.setattr(google_oauth, "client", lambda: google_oauth.Client("id", "secret"))
+    opened = []
+    monkeypatch.setattr(google_oauth, "open_browser", opened.append)
+    finished = []
+
+    def finish(sign_in, callback, http=None):
+        finished.append(callback)
+        if callback.code is None:
+            raise google_oauth.explain(callback)
+        return "sam@example.org", "refresh-token"
+
+    monkeypatch.setattr(gmail_api, "finish_sign_in", finish)
+    return opened, finished
+
+
+def _google_answers(client, **params):
+    """Play the browser: come back from Google to the wizard's local listener."""
+    import urllib.parse
+    import urllib.request
+
+    sign_in = client.app.state.setup_drafts["current"].google
+    query = {"state": sign_in._listener.expected_state, **params}
+    url = f"{sign_in.redirect_uri}/?{urllib.parse.urlencode(query)}"
+    with urllib.request.urlopen(url, timeout=5) as page:
+        page.read()
+
+
+def test_the_email_step_offers_google_only_when_it_is_set_up(client, google, monkeypatch):
+    through_details(client)
+    assert "Sign in with Google" in client.get("/setup/email").text
+    from stealth.mail import google_oauth
+
+    monkeypatch.setattr(google_oauth, "client", lambda: None)
+    assert "Sign in with Google" not in client.get("/setup/email").text
+
+
+def test_signing_in_with_google_makes_the_profile_without_an_app_password(client, store, google):
+    opened, finished = google
+    through_details(client)
+    assert post(client, "/setup/email/google").headers["location"] == "/setup/email/google"
+    assert opened and opened[0].startswith("https://accounts.google.com/")
+    assert "Waiting for Google" in client.get("/setup/email/google").text  # not back yet
+
+    _google_answers(client, code="the-code")
+    assert client.get("/setup/email/google").headers["location"] == "/setup/recovery"
+    assert finished[0].code == "the-code"
+    with store.open() as profile:
+        account = profile.mail_account()
+        assert account.provider == "gmail-oauth"
+        assert account.address == "sam@example.org"
+        assert account.is_own_mailbox
+        assert profile.secrets.get(profile.mail_secret_name) == "refresh-token"
+
+
+def test_a_cancelled_google_sign_in_goes_back_to_the_email_step(client, store, google):
+    through_details(client)
+    post(client, "/setup/email/google")
+    _google_answers(client, error="access_denied")
+    page = client.get("/setup/email/google").text
+    assert "Google sign-in was cancelled." in page
+    assert store.list_ids() == []
+
+
+def test_cancel_closes_the_waiting_sign_in(client, google):
+    through_details(client)
+    post(client, "/setup/email/google")
+    assert post(client, "/setup/email/google/cancel").headers["location"] == "/setup/email"
+    assert client.get("/setup/email/google").headers["location"] == "/setup/email"
+
+
+def test_settings_can_switch_an_app_password_profile_to_google(client, store, mail, google):
+    smtp, imap = mail
+    through_details(client)
+    post(client, "/setup/email", **server_fields(smtp, imap))
+    assert "Switch to signing in with Google" in client.get("/settings").text
+
+    assert post(client, "/settings/google").headers["location"] == "/settings/google"
+    assert "Waiting for Google" in client.get("/settings/google").text
+    sign_in = client.app.state.google_reconnecting["current"]
+    import urllib.parse
+    import urllib.request
+
+    query = urllib.parse.urlencode({"code": "c", "state": sign_in._listener.expected_state})
+    with urllib.request.urlopen(f"{sign_in.redirect_uri}/?{query}", timeout=5) as page:
+        page.read()
+    assert client.get("/settings/google").headers["location"] == "/settings#mail-h"
+    with store.open() as profile:
+        assert profile.mail_account().provider == "gmail-oauth"
+        assert profile.secrets.get(profile.mail_secret_name) == "refresh-token"
+    page = client.get("/settings").text
+    assert "Signing in with Google" in page
+    assert "Sign in with Google again" in page

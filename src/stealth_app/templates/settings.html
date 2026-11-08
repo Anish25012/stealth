@@ -101,9 +101,23 @@
     {% if account %}
     <dl class="facts">
       <div><dt>Letters are sent from</dt><dd>{{ account.address }}</dd></div>
+      {% if account.provider == "gmail-oauth" %}
+      <div><dt>Connected by</dt><dd>Signing in with Google</dd></div>
+      {% else %}
       <div><dt>Replies are read from</dt><dd>{{ account.imap_host or "The same account" }}</dd></div>
+      {% endif %}
     </dl>
+    {% if account.provider == "gmail-oauth" %}
+    <p class="muted small">{{ icon("lock", "s") }} Stealth can send mail and read it, but not change or delete anything. Its sign-in is kept in Windows Credential Manager, not in Stealth's files. You can remove its access any time at <a href="https://myaccount.google.com/connections" target="_blank" rel="noopener noreferrer">myaccount.google.com/connections</a>.</p>
+    {% else %}
     <p class="muted small">{{ icon("lock", "s") }} The password is kept in Windows Credential Manager, not in Stealth's files.</p>
+    {% endif %}
+    {% if google_available and not demo %}
+    <form method="post" action="/settings/google" class="button-row">
+      {{ csrf_field(csrf) }}
+      <button class="button secondary" type="submit">{{ icon("lock") }} {{ "Sign in with Google again" if account.provider == "gmail-oauth" else "Switch to signing in with Google" }}</button>
+    </form>
+    {% endif %}
     {% else %}
     <p class="muted">No email account is set up, so Stealth can't send letters yet.</p>
     {% endif %}

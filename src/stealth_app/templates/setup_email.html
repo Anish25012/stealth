@@ -10,6 +10,20 @@
   </div>
 </div>
 {{ error_summary(errors) }}
+{% if google %}
+<form method="post" action="/setup/email/google" class="card{% if errors.google %} has-error{% endif %}">
+  {{ csrf_field(csrf) }}
+  <h2>Gmail: sign in with Google</h2>
+  <p>The easiest way for a Gmail address. Your browser opens Google's own sign-in page, so Stealth
+  never sees your Google password, and there's no app password to make. It also works with
+  antivirus that blocks email programs, such as Norton.</p>
+  {% if errors.google %}<p class="error" id="e-google">{{ errors.google }}</p>{% endif %}
+  <div class="button-row">
+    <button class="button" type="submit" id="f-google">{{ icon("lock") }} Sign in with Google</button>
+  </div>
+</form>
+<p class="muted">Or, for Yahoo, iCloud or another provider, use an app password:</p>
+{% endif %}
 <form method="post" action="/setup/email" class="card">
   {{ csrf_field(csrf) }}
   {% if draft and not draft.for_self %}

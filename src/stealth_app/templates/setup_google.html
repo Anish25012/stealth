@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import steps_bar, csrf_field, icon %}
+{% block body_attrs %} class="refreshing"{% endblock %}
+{% block head %}<meta http-equiv="refresh" content="2">{% endblock %}
+{% block main %}
+{% if steps %}{{ steps_bar(steps, step) }}{% endif %}
+<div class="page-head">
+  <div>
+    <h1>Finish signing in to Google</h1>
+    <p>Your web browser has opened Google's sign-in page. Choose your account there, and tick
+    both boxes when Google asks: Stealth needs to <strong>send</strong> its letters and
+    <strong>read</strong> the replies. It can't change or delete anything in your email.</p>
+  </div>
+</div>
+<section class="card" aria-live="polite">
+  <p>{{ icon("refresh-cw") }} Waiting for Google. This page moves on by itself when you're done.</p>
+  <p class="muted small">Google may say "Google hasn't verified this app". Stealth is a free
+  project shared with family and friends, not a company, so it hasn't paid for Google's review.
+  Choose <strong>Advanced</strong>, then <strong>Go to Stealth</strong> to carry on.</p>
+  <p class="muted small">No browser window? <a href="{{ url }}" target="_blank" rel="noopener noreferrer">Open Google's sign-in page</a>.</p>
+</section>
+<form method="post" action="{{ cancel_url }}" class="button-row">
+  {{ csrf_field(csrf) }}
+  <button class="button secondary" type="submit">{{ cancel_label }}</button>
+</form>
+{% endblock %}
