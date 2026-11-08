@@ -15,7 +15,10 @@ You need:
 
 - **A Windows 10 or 11 PC.** Macs aren't supported yet.
 - **A Gmail, Yahoo or iCloud email address** for the letters to come from. Outlook and Hotmail
-  addresses don't work, because Microsoft no longer lets apps sign in with a password.
+  addresses don't work, because Microsoft no longer lets apps sign in with a password. If that's
+  the only email you have, make a free Gmail just for Stealth. That has an upside: companies'
+  replies go there and stay out of your main inbox. Put your main address in the **Details** step
+  anyway, so companies can find the records they hold under it.
 - **An app password for that email account.** This is a separate password just for Stealth, so
   it never sees your real one. Step 3 below shows how to make one.
 - **Somewhere safe to write down a recovery code**: paper, or a password manager.
