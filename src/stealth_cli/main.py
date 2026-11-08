@@ -297,6 +297,7 @@ def send(
         if not live:
             _print_preview(engine.preview_requests(profile, brokers), profile)
             typer.echo("Nothing was sent. Add --live to send for real.")
+            typer.echo("References are made when a letter is really sent, so they'll differ.")
             return
         if not yes:
             _confirm_send(brokers, profile)
