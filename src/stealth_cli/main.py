@@ -316,7 +316,10 @@ def _confirm_send(brokers: dict[str, Broker], profile: Profile) -> None:
     typer.echo(f"Companies due a letter: {len(emails)} by email, {len(due) - len(emails)} by form")
     limit = settings.daily_send_limit - engine.sent_today(profile, jurisdiction)
     typer.echo(f"Sending up to {max(0, limit)} today, {settings.send_delay_seconds}s apart.")
-    typer.echo(f"The rest go on later days. A copy of each is BCCed to {account.address}.")
+    if account.provider == GOOGLE_PROVIDER:
+        typer.echo("The rest go on later days. A copy of each goes in your Gmail Sent folder.")
+    else:
+        typer.echo(f"The rest go on later days. A copy of each is BCCed to {account.address}.")
     if not typer.confirm("Send these now?", default=False):
         raise typer.Abort
 
