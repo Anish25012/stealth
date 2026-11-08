@@ -5,10 +5,23 @@ sell your data, tells them to delete it, keeps track of who answered, and helps 
 Information Commissioner's Office (ICO) when they don't. It runs on your own computer. There is no
 account, no server and no telemetry.
 
-**Status: Phase 2 of 4, in progress.** The engine, command line and desktop dashboard work
-today, and installers are built and tested on every change. The desktop app sets itself up in six
-steps, with Gmail, Yahoo, iCloud or any provider that allows app passwords. Outlook and Hotmail
-need Microsoft sign-in, which is still to come.
+**Status: Phase 2 of 4, nearly done.** The engine, command line and Windows desktop app work
+today, and installers are built, virus-scanned and smoke-tested on every change. The app sets
+itself up in six steps, with Gmail, Yahoo, iCloud or any provider that allows app passwords.
+Outlook and Hotmail aren't supported, because Microsoft no longer allows app passwords.
+
+## Install it
+
+Download `Stealth-<version>-windows-setup.exe` from the
+[Releases page](https://github.com/Anish25012/stealth/releases) and run it. Windows will warn that
+it's from an unknown publisher, because the app isn't code-signed: choose **More info**, then
+**Run anyway**.
+
+- [Getting started](docs/getting-started.md): setting it up for yourself or a family member,
+  step by step, no technical knowledge needed.
+- [Installing Stealth](docs/installing.md): the SmartScreen warning, checking the download is
+  genuine, updating and uninstalling.
+- [Stealth and antivirus](docs/antivirus.md): if Norton, Avast or Defender blocks it.
 
 **macOS is untested for now.** The Mac build is made and checked in CI, but its window doesn't
 load yet ([#1](https://github.com/Anish25012/stealth/issues/1)) and nobody has tried it on a real
@@ -50,6 +63,15 @@ Mac. Windows is the supported platform.
   profile), you search for yourself, and Stealth captures the page as evidence. A listing you
   confirm goes in the letter, and a later capture without you proves it's gone
 - An exposure score out of 100, with its formula on screen
+- Broker-list updates that install only when signed with the project's ed25519 key, and can't be
+  rolled back to an older list
+- A daily check for a new version of Stealth (it tells you, and never installs anything itself)
+- A link on each company's page to report an address that bounced, as a prefilled GitHub issue
+- A read-only phone view over your home Wi-Fi, for 30 minutes at a time
+- Works alongside antivirus that inspects HTTPS, such as Norton, by trusting Windows' own
+  certificate store
+- Lighter, clearly labelled letters for the EU and EEA, Switzerland, California, Canada and
+  Australia (see [Limitations](#limitations))
 
 ## Screenshots
 
@@ -163,8 +185,7 @@ fast-forwarding through three months.
 
 **1. Create a Gmail app password.** Turn on 2-Step Verification on your Google account, then create
 an app password at <https://myaccount.google.com/apppasswords>. Your normal password won't work.
-Outlook and Hotmail no longer allow app passwords, so those accounts need the Microsoft sign-in
-arriving in Phase 2.
+Outlook and Hotmail no longer allow app passwords, so those accounts can't be used.
 
 **2. Set up your profile.** In the desktop app, choose **Get started** on the welcome screen.
 From the command line instead:
@@ -328,8 +349,9 @@ python tools/screenshots.py
 ## Roadmap
 
 1. **Core engine and command line** (done)
-2. **Desktop app:** installers, setup wizard, Google and Microsoft sign-in, dashboard, reply
-   classifier, custom removals, assisted people-search scan, reports, other jurisdictions
+2. **Desktop app:** installers, setup wizard, dashboard, reply classifier, custom removals,
+   assisted people-search scan, reports, other jurisdictions, signed broker-list updates, update
+   checks, read-only phone view (done apart from the first tagged release)
 3. **Protect equivalents:** breach monitoring, credit report reminders, Cifas tracking, recovery
    playbook
 4. **Planned only:** form pre-fill and a mobile app
