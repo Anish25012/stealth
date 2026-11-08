@@ -126,6 +126,10 @@ and does more of the work for you.
 - **Only two UK people-search sites are suggested** (192.com and ukphonebook), because those are
   the ones on the broker list. "Search the web for your name" finds others, and any company
   can be added by its website.
+- **The Windows app isn't code-signed,** so antivirus may warn about it.
+  [docs/antivirus.md](docs/antivirus.md) explains how to check the download, report a false
+  positive to Norton, Microsoft Defender or Avast, and what Stealth does about HTTPS-inspecting
+  antivirus.
 - **This isn't legal advice.** Check anything you send.
 
 ## Try it

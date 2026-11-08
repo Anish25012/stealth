@@ -1,0 +1,21 @@
+<!--
+  Windows Sandbox (Windows 10/11 Pro or Enterprise): try a Stealth installer on a throwaway,
+  clean Windows with only Microsoft Defender. See docs/antivirus.md.
+
+  1. Put ONLY the installer (Stealth-...-windows-setup.exe) in a folder of its own.
+  2. Change HostFolder below to that folder's full path.
+  3. Double-click this file.
+-->
+<Configuration>
+  <Networking>Enable</Networking>
+  <MappedFolders>
+    <MappedFolder>
+      <HostFolder>C:\StealthTest</HostFolder>
+      <SandboxFolder>C:\Users\WDAGUtilityAccount\Desktop\StealthTest</SandboxFolder>
+      <ReadOnly>true</ReadOnly>
+    </MappedFolder>
+  </MappedFolders>
+  <LogonCommand>
+    <Command>powershell -NoProfile -ExecutionPolicy Bypass -Command "$s = Get-ChildItem C:\Users\WDAGUtilityAccount\Desktop\StealthTest\Stealth-*-windows-setup.exe | Select-Object -First 1; Start-Process $s.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait; Start-Process \"$env:LOCALAPPDATA\Programs\Stealth\Stealth.exe\""</Command>
+  </LogonCommand>
+</Configuration>

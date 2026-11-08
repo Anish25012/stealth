@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from stealth import __version__
-from stealth.core import paths
+from stealth.core import paths, tls
 from stealth.core.errors import RegistryError, StealthError
 from stealth.registry import signing
 
@@ -43,7 +43,7 @@ def fetch_bytes(url: str) -> bytes:
         url, headers={"User-Agent": f"Stealth/{__version__} (+https://github.com/{REPO})"}
     )
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:  # noqa: S310
+        with urllib.request.urlopen(request, timeout=TIMEOUT, context=tls.context()) as response:  # noqa: S310
             body: bytes = response.read(MAX_BYTES + 1)
     except urllib.error.HTTPError as exc:
         raise StealthError(f"GitHub answered {exc.code} for {url}.") from exc

@@ -51,6 +51,21 @@ jobs:
       - name: Build
         run: python packaging/build.py
 
+      # A fresh runner is the closest thing to a family member's PC we can test on every push.
+      # Defender is the antivirus everyone has; if it flags the build, nobody else should get it.
+      - name: Microsoft Defender scan (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $mp = "$env:ProgramFiles\Windows Defender\MpCmdRun.exe"
+          if (-not (Test-Path $mp)) { Write-Warning "Defender isn't on this runner"; exit 0 }
+          & $mp -SignatureUpdate | Out-Host  # best effort: stale definitions still scan
+          foreach ($target in @((Get-Content dist/artifact.txt), (Resolve-Path dist/Stealth).Path)) {
+            & $mp -Scan -ScanType 3 -File $target -DisableRemediation | Out-Host
+            if ($LASTEXITCODE -eq 2) { throw "Defender flagged $target" }
+            if ($LASTEXITCODE -ne 0) { Write-Warning "Defender scan of $target exited $LASTEXITCODE" }
+          }
+
       - name: Install, smoke test, uninstall (Windows)
         if: runner.os == 'Windows'
         shell: pwsh

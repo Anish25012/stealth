@@ -18,6 +18,7 @@ from urllib.parse import urljoin, urlsplit
 from urllib.robotparser import RobotFileParser
 
 from stealth import __version__
+from stealth.core import tls
 from stealth.core.errors import StealthError
 from stealth.custom.email_extract import Candidate, find_addresses, registrable
 
@@ -91,7 +92,7 @@ def http_get(url: str) -> Page:
     headers = {"User-Agent": USER_AGENT, "Accept": "text/html"}
     request = urllib.request.Request(url, headers=headers)  # noqa: S310 - https only
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:  # noqa: S310 - https only
+        with urllib.request.urlopen(request, timeout=TIMEOUT, context=tls.context()) as response:  # noqa: S310 - https only
             body = response.read(MAX_BYTES)
             charset = response.headers.get_content_charset() or "utf-8"
             return Page(response.geturl(), response.status, body.decode(charset, errors="replace"))

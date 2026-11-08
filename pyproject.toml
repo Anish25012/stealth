@@ -15,6 +15,7 @@ dependencies = [
     "jinja2>=3.1",
     "jsonschema>=4.21",
     "keyring>=25",
+    "truststore>=0.9",      # verify TLS with the OS trust store, so HTTPS-inspecting antivirus works
     "platformdirs>=4",
     "sqlcipher3-wheels>=0.5.7",
     "typer>=0.12",

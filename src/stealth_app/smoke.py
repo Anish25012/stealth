@@ -50,6 +50,31 @@ def check_registry() -> str:
     return f"{numbers['default']} default, {numbers['optional']} optional"
 
 
+def check_tls() -> str:
+    """truststore made it into the build, so TLS is checked by the operating system."""
+    from stealth.core import tls
+
+    kind = type(tls.context()).__module__
+    if not kind.startswith("truststore"):
+        raise RuntimeError(f"TLS falls back to {kind}; truststore is missing from the build")
+    return "operating system trust store"
+
+
+def check_https() -> str:
+    """A real update check's connection. Not required: the build machine may be offline."""
+    import socket
+
+    from stealth.core import tls
+
+    host = "api.github.com"
+    with (
+        socket.create_connection((host, 443), timeout=15) as raw,
+        tls.context().wrap_socket(raw, server_hostname=host) as conn,
+    ):
+        issuer = dict(item[0] for item in conn.getpeercert()["issuer"])  # type: ignore[index, misc]
+    return f"{host} verified, issued by {issuer.get('commonName', '?')}"
+
+
 def check_database() -> str:
     from stealth.core.errors import DatabaseKeyError
     from stealth.db.connection import migrate, open_db
@@ -193,6 +218,8 @@ def run_checks(*, with_window: bool) -> list[Check]:
     checks = [
         _run("registry", check_registry),
         _run("database", check_database),
+        _run("tls", check_tls),
+        _run("https", check_https, required=False),
         # Linux runners have no Secret Service; there the app will fall back to a passphrase.
         _run("keyring", check_keyring, required=sys.platform != "linux"),
         _run("demo", check_demo),

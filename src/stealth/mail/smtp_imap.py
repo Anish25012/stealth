@@ -14,6 +14,7 @@ from collections.abc import Callable
 from datetime import date
 from email.message import EmailMessage
 
+from stealth.core import tls
 from stealth.core.errors import MailAuthError, MailConnectionError, MailSendError
 from stealth.mail.base import IncomingMail
 from stealth.profiles.models import MailAccount
@@ -65,11 +66,11 @@ class SmtpTransport:
     def _connect(self) -> smtplib.SMTP:
         host, port = self.account.smtp_host or "", self.account.smtp_port or 587
         if self.account.smtp_security == "ssl":
-            context = ssl.create_default_context()
+            context = tls.context()
             return smtplib.SMTP_SSL(host, port, EHLO_NAME, timeout=TIMEOUT_SECONDS, context=context)
         server = smtplib.SMTP(host, port, EHLO_NAME, timeout=TIMEOUT_SECONDS)
         if self.account.smtp_security == "starttls":
-            server.starttls(context=ssl.create_default_context())
+            server.starttls(context=tls.context())
         return server
 
     def check(self) -> None:
@@ -127,7 +128,7 @@ class ImapMailbox:
     def _connect(self) -> imaplib.IMAP4:
         host, port = self.account.imap_host or "", self.account.imap_port or 993
         if self.account.imap_security == "ssl":
-            context = ssl.create_default_context()
+            context = tls.context()
             return imaplib.IMAP4_SSL(host, port, ssl_context=context, timeout=TIMEOUT_SECONDS)
         return imaplib.IMAP4(host, port, timeout=TIMEOUT_SECONDS)
 

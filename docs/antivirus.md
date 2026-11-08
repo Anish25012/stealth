@@ -1,0 +1,126 @@
+# Stealth and antivirus
+
+Antivirus can get in Stealth's way on Windows in two ways. This page covers both, and how to
+report Stealth to Norton, Microsoft Defender and Avast if one of them wrongly flags it.
+
+## Why antivirus may distrust Stealth
+
+- **It isn't code-signed.** A signing certificate costs money every year, so Windows and
+  antivirus see "unknown publisher" and have no reputation to go on.
+- **It's built with PyInstaller.** Plenty of malware is built the same way, so some scanners flag
+  the shared start-up code rather than anything Stealth does.
+
+What the build already does to reduce this:
+
+- **One-folder build, not one-file** (`packaging/stealth.spec`). A one-file build unpacks itself
+  into a temp folder on every start, which is exactly what droppers do.
+- **No UPX compression.** Packed executables are a classic false-positive trigger.
+- **A Microsoft Defender scan in CI.** On every push, a fresh Windows runner updates Defender's
+  definitions, scans the installer and the built app, and fails the build if anything is flagged.
+  The same job installs the app, runs its smoke test, upgrades it over a running copy and
+  uninstalls it.
+
+## Problem 1: HTTPS inspection (Norton Web/Mail Shield, Avast, Kaspersky, work networks)
+
+These products sit in the middle of every HTTPS and email connection. They re-sign each website's
+certificate with their own root certificate, which they add to Windows' trust store. Programs
+that only trust a bundled list of public certificates (Python's `certifi`) then refuse to connect.
+
+Stealth verifies certificates with **Windows' own trust store** through the `truststore` package
+(`src/stealth/core/tls.py`). That covers update checks, broker-list downloads, reading company
+websites, and sending and reading email. Anything your browser trusts, Stealth trusts too. It
+still refuses certificates that don't match the site name, and certificates nobody vouches for.
+
+Checked on a PC running Norton (November 2026): the installed app's `--smoke-test` reports
+`https: api.github.com verified, issued by Norton Web/Mail Shield Root`.
+
+One side effect: with Norton running, the phone-view fingerprint in Settings won't match what a
+browser **on the same computer** sees, because Norton re-signs that connection too. A phone on the
+Wi-Fi connects directly and sees the real certificate.
+
+## Problem 2: the installer or app is blocked or quarantined
+
+### First, check the file is genuine
+
+Download Stealth only from the project's GitHub releases page. Then, in PowerShell:
+
+```powershell
+Get-FileHash "$env:USERPROFILE\Downloads\Stealth-*-windows-setup.exe"
+```
+
+Compare the result with the SHA-256 shown for that file on the release page. You can also upload
+the installer to [VirusTotal](https://www.virustotal.com/). One or two engines flagging a
+PyInstaller app while the other sixty-odd say it's clean is typical of a false positive.
+
+### Report it as a false positive
+
+Report the file that was actually flagged: usually the installer (`Stealth-…-windows-setup.exe`,
+about 57 MB) or `Stealth.exe` from `%LOCALAPPDATA%\Programs\Stealth`. Upload the file itself, not
+a zip of it, and not a password-protected archive. In the description, say:
+
+> Stealth is open-source (MIT) personal data-removal software: https://github.com/Anish25012/stealth.
+> It is built with PyInstaller (one-folder mode, no UPX) and isn't code-signed. The file was
+> downloaded from the project's GitHub releases page. Please review this detection.
+
+Add the detection name the antivirus showed (for example `Win64:Evo-gen [Trj]`) and the version.
+
+**Norton**
+1. Go to Norton's submission portal, [submit.norton.com](https://submit.norton.com/).
+2. Choose your Norton version. On Norton 24 or newer, choose **URL and File Submission**. On older
+   versions choose **File Submission**, or go straight to
+   [safeweb.norton.com/file_dispute](https://safeweb.norton.com/file_dispute).
+3. Report it as an incorrect (false positive) detection and upload the file. The limit is 90 MB.
+
+Norton's support page says it emails you when analysis is complete. Some users report getting no
+email, the form sometimes failing to send, or reviews sitting at "being processed" for weeks. If
+the form fails, try another browser.
+
+**Microsoft Defender**
+1. Go to [aka.ms/wdsi](https://aka.ms/wdsi) (Microsoft Security Intelligence, "Submit a file")
+   and sign in with a Microsoft account.
+2. Choose **Software developer** if you're the project's maintainer. Otherwise choose **Home
+   customer**.
+3. Choose **Incorrectly detected as malware/malicious**, upload the file and add the description
+   above.
+
+Expect a week or more. The results page has a contact form if you disagree with the outcome.
+Until reputation builds, each new unsigned version may be flagged again and need another
+submission.
+
+**Avast (and AVG, which uses the same engine)**
+1. Use Avast's false positive form:
+   [avast.com/false-positive-file-form.php](https://www.avast.com/false-positive-file-form.php).
+2. Or, in Avast itself, open the quarantine (Virus Chest), select the file's **…** menu and choose
+   **Send for analysis**, or report it from the warning pop-up.
+
+### While you wait: let it run
+
+Only do this if the file's hash matches the release page.
+
+- **Norton:** open Norton, go to **Security** › **History**, find the Stealth item, and choose
+  **Restore & exclude this file**.
+- **Microsoft Defender:** go to **Windows Security** › **Virus & threat protection** ›
+  **Protection history**, select the item and choose **Allow on device**.
+- **Avast:** go to **Protection** › **Virus Chest**, select the file and choose **Restore and add
+  exception**.
+
+## Testing on a clean Windows PC
+
+The CI runner is a fresh Windows VM on every push, and it's what the installers are built and
+tested on. To try an installer by hand without touching your own setup, Windows 10/11 **Pro or
+Enterprise** includes Windows Sandbox. Windows Home doesn't. To use it:
+
+1. Turn it on: **Turn Windows features on or off** › **Windows Sandbox**, then restart.
+2. Put the installer in a folder of its own, for example `C:\StealthTest`.
+3. Edit `packaging/sandbox/try-installer.wsb` so `HostFolder` points at that folder, then
+   double-click the file.
+
+The sandbox starts with only Microsoft Defender, installs Stealth silently and opens it.
+Everything is thrown away when you close the sandbox.
+
+## Building on a PC with Norton
+
+Installers built on a PC running Norton have failed to install with "Source file corrupted:
+SHA-256 hash mismatch". The installer built by CI installed fine on that same PC. Use CI-built
+installers for anyone else. If you build locally, exclude the project's `build\` and `dist\`
+folders from Norton's scans first.
