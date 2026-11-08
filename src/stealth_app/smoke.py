@@ -75,6 +75,42 @@ def check_https() -> str:
     return f"{host} verified, issued by {issuer.get('commonName', '?')}"
 
 
+def check_letters() -> str:
+    """Every place's letters are in the build and render."""
+    from stealth.core.jurisdictions import for_country
+    from stealth.templates.render import render
+
+    context = {
+        "ref": "STL-SMOKE",
+        "deadline": "1 January 2027",
+        "listing": None,
+        "person_name": "Smoke Test",
+        "sign_off": "Smoke Test",
+        "on_behalf": False,
+        "extended": False,
+        "names": ["Smoke Test"],
+        "emails": ["smoke@example.test"],
+        "addresses": [],
+        "phones": [],
+        "date_of_birth": None,
+        "request_date": "1 December 2026",
+        "grievance": "No reply.",
+        "contact_email": "smoke@example.test",
+        "broker_name": "Smoke Ltd",
+        "broker_domain": "smoke.test",
+        "complaint_date": "1 December 2026",
+        "outcome": "No reply.",
+        "complaint_outcome": "No reply.",
+        "timeline": [],
+        "asked": "id",
+    }
+    places = ["GB", "FR", "CH", "US-CA", "CA", "AU"]
+    for code in places:
+        for name in ("erasure", "complaint", "regulator", "response"):
+            render(for_country(code), name, **context)
+    return f"{len(places) * 4} letters"
+
+
 def check_database() -> str:
     from stealth.core.errors import DatabaseKeyError
     from stealth.db.connection import migrate, open_db
@@ -218,6 +254,7 @@ def run_checks(*, with_window: bool) -> list[Check]:
     checks = [
         _run("registry", check_registry),
         _run("database", check_database),
+        _run("letters", check_letters),
         _run("tls", check_tls),
         _run("https", check_https, required=False),
         # Linux runners have no Secret Service; there the app will fall back to a passphrase.
