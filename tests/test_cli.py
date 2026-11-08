@@ -402,3 +402,23 @@ def test_password_replaces_the_app_password_and_can_fix_the_address(ready):
         assert profile.mail_account().username == "new@example.org"
         assert main._secrets().get(profile.mail_secret_name) == "new-password"
     assert run("password", "--address", "nope", input="x\n").exit_code == 1
+
+
+def test_inbox_counts_replies_it_settled_by_itself(ready, monkeypatch):
+    """The real Gmail test: a clear "we've removed it" closed the case, yet it said 0 replies."""
+    from stealth.inbox import processor
+
+    def fake_process(profile, mailbox, brokers):
+        return processor.InboxReport(
+            resolved=[("My Test Inbox", "They've deleted your data")],
+            acknowledged=["Acme Data"],
+            replies=["Vague Ltd"],
+        )
+
+    monkeypatch.setattr(main, "open_mail", lambda profile: (None, None))
+    monkeypatch.setattr(processor, "process_inbox", fake_process)
+    output = run("inbox").output
+    assert "3 replies, 0 bounces." in output
+    assert "My Test Inbox: They've deleted your data. Recorded." in output
+    assert "Acme Data: acknowledged your request" in output
+    assert "Reply from Vague Ltd: read it" in output

@@ -319,7 +319,14 @@ def inbox(profile_id: ProfileOption = None) -> None:
     with _profile(profile_id) as profile:
         _, mailbox = open_mail(profile)
         report = process_inbox(profile, mailbox, _brokers())
-    typer.echo(f"{len(report.replies)} replies, {len(report.bounces)} bounces.")
+    # Every reply Stealth matched counts, including the ones it settled by itself: printing only
+    # those left for a person said "0 replies" right after a case was closed as removed.
+    total = len(report.resolved) + len(report.acknowledged) + len(report.replies)
+    typer.echo(f"{total} {'reply' if total == 1 else 'replies'}, {len(report.bounces)} bounces.")
+    for name, meaning in report.resolved:
+        typer.secho(f"  {name}: {meaning}. Recorded.", fg=typer.colors.GREEN)
+    for name in report.acknowledged:
+        typer.echo(f"  {name}: acknowledged your request. The deadline still stands.")
     for name in report.replies:
         typer.echo(f"  Reply from {name}: read it, then run `stealth confirm`.")
     for name in report.bounces:
