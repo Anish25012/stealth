@@ -157,6 +157,13 @@ def test_the_client_can_come_from_the_environment(monkeypatch):
     assert google_oauth.client() == google_oauth.Client("mine", "s")
 
 
+def test_without_a_secret_google_sign_in_is_not_offered(monkeypatch):
+    monkeypatch.setenv("STEALTH_GOOGLE_CLIENT_ID", "mine")
+    assert google_oauth.client() is None
+    monkeypatch.setattr(google_oauth, "built_in_secret", lambda: "built-in")
+    assert google_oauth.client() == google_oauth.Client("mine", "built-in")
+
+
 # Mail over the API ----------------------------------------------------------------------------
 
 

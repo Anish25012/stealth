@@ -48,6 +48,22 @@ jobs:
             choco install innosetup --no-progress -y
           }
 
+      # The Google sign-in client secret stays out of Git (docs/google-sign-in.md). Builds without
+      # it work, just without "Sign in with Google"; a release must have it.
+      - name: Add the Google client secret
+        shell: bash
+        env:
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+        run: |
+          if [ -n "$GOOGLE_CLIENT_SECRET" ]; then
+            printf 'CLIENT_SECRET = "%s"\n' "$GOOGLE_CLIENT_SECRET" > src/stealth/mail/google_secret.py
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "::error::The GOOGLE_CLIENT_SECRET repository secret is missing; releases need it."
+            exit 1
+          else
+            echo "No GOOGLE_CLIENT_SECRET: this build won't offer Google sign-in."
+          fi
+
       - name: Build
         run: python packaging/build.py
 

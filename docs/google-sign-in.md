@@ -67,13 +67,20 @@ appears on the sign-in screen. Use a separate Google account if you'd rather not
 6. **Create the desktop client.** Go to **Clients** â€º **Create client**. Application type:
    **Desktop app**. Name: `Stealth desktop`. Choose **Create**, then copy the **Client ID** and
    **Client secret**.
-7. **Put them in Stealth.** Set `CLIENT_ID` and `CLIENT_SECRET` in
-   `src/stealth/mail/google_oauth.py`. Google treats a desktop app's client secret as not secret
-   (anyone can read it out of the installed app), so it's fine in the public repository. It lets
-   nobody into anyone's mail: only a person's own sign-in does that.
+7. **Put them in Stealth.** The client ID goes in `CLIENT_ID` in
+   `src/stealth/mail/google_oauth.py`. The secret stays out of Git:
+   - **For releases,** add it as a repository secret named `GOOGLE_CLIENT_SECRET` (GitHub ›
+     Settings › Secrets and variables › Actions). CI writes it into the build, and a tagged release
+     fails without it.
+   - **For development,** make `src/stealth/mail/google_secret.py` (git-ignored) containing
+     `CLIENT_SECRET = "GOCSPX-..."`.
 
-To try a client without changing the code, set `STEALTH_GOOGLE_CLIENT_ID` and
-`STEALTH_GOOGLE_CLIENT_SECRET` before starting Stealth.
+   Google treats a desktop app's secret as not truly secret, since anyone can read it out of the
+   installed app, and it lets nobody into anyone's mail. Keeping it out of the repository just
+   stops it being copied for other apps.
+
+Without a secret, Stealth doesn't offer Google sign-in. To try another client without changing
+anything, set `STEALTH_GOOGLE_CLIENT_ID` and `STEALTH_GOOGLE_CLIENT_SECRET` before starting Stealth.
 
 ### Limits to know about
 

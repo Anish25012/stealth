@@ -21,6 +21,7 @@ import base64
 import contextlib
 import hashlib
 import http.server
+import importlib
 import json
 import os
 import secrets
@@ -45,11 +46,23 @@ SCOPES = (SEND_SCOPE, READ_SCOPE)
 TIMEOUT = 30
 SIGN_IN_MINUTES = 5
 
-# The project's Desktop OAuth client, from Google Cloud > Google Auth Platform > Clients. Empty
-# until the maintainer creates one; until then "Sign in with Google" isn't offered. The
-# environment variables override these, for testing with your own client.
-CLIENT_ID = ""
-CLIENT_SECRET = ""
+# The project's Desktop OAuth client, from Google Cloud > Google Auth Platform > Clients. The ID is
+# public. The secret is kept out of Git, in the git-ignored module stealth/mail/google_secret.py,
+# which CI writes from a GitHub Actions secret when it builds a release, and which developers make
+# locally (docs/google-sign-in.md). Without a secret, "Sign in with Google" isn't offered. The
+# environment variables override both, to try another client.
+CLIENT_ID = "990600037543-87f9prpbcjvt8ich5spdi2lm2apd5hoa.apps.googleusercontent.com"
+SECRET_MODULE = "stealth.mail.google_secret"  # noqa: S105 - a module name
+
+
+def built_in_secret() -> str:
+    """The client secret this copy was built with, or "" if none."""
+    try:
+        module = importlib.import_module(SECRET_MODULE)
+    except ImportError:
+        return ""
+    return str(getattr(module, "CLIENT_SECRET", ""))
+
 
 Http = Callable[[str, str, dict[str, str], bytes | None], tuple[int, bytes]]
 
@@ -63,8 +76,8 @@ class Client:
 def client() -> Client | None:
     """The OAuth client to use, or None if Google sign-in isn't set up in this build."""
     client_id = os.environ.get("STEALTH_GOOGLE_CLIENT_ID", CLIENT_ID)
-    secret = os.environ.get("STEALTH_GOOGLE_CLIENT_SECRET", CLIENT_SECRET)
-    return Client(client_id, secret) if client_id else None
+    secret = os.environ.get("STEALTH_GOOGLE_CLIENT_SECRET") or built_in_secret()
+    return Client(client_id, secret) if client_id and secret else None
 
 
 def https_request(

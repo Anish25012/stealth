@@ -34,6 +34,7 @@ index.json
 /logs/
 
 # Secrets
+/src/stealth/mail/google_secret.py
 .env
 .env.*
 *.pem

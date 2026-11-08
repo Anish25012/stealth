@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).parent.parent
+SECRET_FILE = "src/stealth/mail/google_secret.py"  # the Google client secret; never in Git
 
 pytestmark = pytest.mark.skipif(
     shutil.which("git") is None or not (ROOT / ".git").exists(), reason="needs a git checkout"
@@ -36,7 +37,10 @@ def test_no_source_file_is_ignored():
         path.relative_to(ROOT).as_posix()
         for folder in ("src", "tools", "tests", "docs")
         for path in (ROOT / folder).rglob("*")
-        if path.is_file() and path.suffix in names and "__pycache__" not in path.parts
+        if path.is_file()
+        and path.suffix in names
+        and "__pycache__" not in path.parts
+        and path.relative_to(ROOT).as_posix() != SECRET_FILE
     ]
     assert files
     assert ignored(files) == set()
@@ -69,7 +73,19 @@ def test_future_packages_with_personal_sounding_names_are_not_ignored():
         "logs/stealth.log",
         "stealth.log",
         ".env",
+        SECRET_FILE,
     ],
 )
 def test_personal_data_stays_out_of_git(path):
     assert ignored([path]) == {path}
+
+
+def test_no_google_client_secret_is_committed():
+    tracked = subprocess.run(
+        ["git", "grep", "-lE", "GOCSPX-[A-Za-z0-9_-]{20}"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert tracked.stdout == ""

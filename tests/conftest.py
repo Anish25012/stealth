@@ -21,6 +21,17 @@ def _never_the_real_data_folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setenv("STEALTH_HOME", str(tmp_path / "default-home"))
 
 
+@pytest.fixture(autouse=True)
+def _no_google_client_unless_asked(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Google sign-in is off in tests, so nothing reaches Google; tests that want it fake it."""
+    from stealth.mail import google_oauth
+
+    monkeypatch.setattr(google_oauth, "CLIENT_ID", "")
+    monkeypatch.setattr(google_oauth, "built_in_secret", lambda: "")
+    monkeypatch.delenv("STEALTH_GOOGLE_CLIENT_ID", raising=False)
+    monkeypatch.delenv("STEALTH_GOOGLE_CLIENT_SECRET", raising=False)
+
+
 @pytest.fixture
 def store(tmp_path: Path) -> ProfileStore:
     return ProfileStore(MemoryStore(), home=tmp_path / "home")
