@@ -89,3 +89,18 @@ def test_no_google_client_secret_is_committed():
         check=False,
     )
     assert tracked.stdout == ""
+
+
+def test_text_files_are_utf8():
+    tracked = subprocess.run(
+        ["git", "ls-files", "-z"], cwd=ROOT, capture_output=True, text=True, check=True
+    ).stdout.split("\0")
+    text = (".py", ".md", ".html", ".css", ".j2", ".json", ".sql", ".yml", ".toml", ".txt", ".iss")
+    bad = []
+    for name in tracked:
+        if name.endswith(text) and (ROOT / name).is_file():
+            try:
+                (ROOT / name).read_bytes().decode("utf-8")
+            except UnicodeDecodeError:
+                bad.append(name)
+    assert bad == []

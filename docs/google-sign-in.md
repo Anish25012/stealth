@@ -69,8 +69,8 @@ appears on the sign-in screen. Use a separate Google account if you'd rather not
    **Client secret**.
 7. **Put them in Stealth.** The client ID goes in `CLIENT_ID` in
    `src/stealth/mail/google_oauth.py`. The secret stays out of Git:
-   - **For releases,** add it as a repository secret named `GOOGLE_CLIENT_SECRET` (GitHub ›
-     Settings › Secrets and variables › Actions). CI writes it into the build, and a tagged release
+   - **For releases,** add it as a repository secret named `GOOGLE_CLIENT_SECRET` (GitHub â€º
+     Settings â€º Secrets and variables â€º Actions). CI writes it into the build, and a tagged release
      fails without it.
    - **For development,** make `src/stealth/mail/google_secret.py` (git-ignored) containing
      `CLIENT_SECRET = "GOCSPX-..."`.
