@@ -200,6 +200,9 @@ def _advance_setup(
         if name == "setup-finish":
             page.goto(base + "/setup/companies")  # type: ignore[attr-defined]
             page.get_by_role("button", name="Continue").click()  # type: ignore[attr-defined]
+            # Let that page finish loading: moving on mid-load cancels its scripts and icons,
+            # which would be reported as failed requests on the next page.
+            page.wait_for_load_state("networkidle")  # type: ignore[attr-defined]
         else:
             url, form = steps[name]
             page.request.post(base + url, form={"csrf": csrf, **form})  # type: ignore[attr-defined]
