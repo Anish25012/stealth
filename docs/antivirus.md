@@ -43,7 +43,11 @@ Windows doesn't trust. That's Norton deliberately breaking the connection. It di
 Gmail, Yahoo, iCloud and Outlook, so it's Norton's email scanning, not the mail provider.
 
 Stealth won't connect through a certificate nobody vouches for, so setup stops with "Norton is
-blocking Stealth's connection to imap.gmail.com". To fix it:
+blocking Stealth's connection to imap.gmail.com".
+
+**For Gmail, the easy fix is Sign in with Google.** That uses Google's Gmail API over HTTPS
+instead of IMAP, and Norton lets it through, so email scanning can stay on. It was tested on this
+PC with Norton's email scanning on. For other providers, or to keep using an app password:
 
 1. Open Norton and go to **Settings** › **Antivirus**, then the **Email Protection** (or "Scans
    and Risks" › email scanning) settings. The exact menu varies between Norton versions.

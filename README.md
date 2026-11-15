@@ -7,8 +7,9 @@ account, no server and no telemetry.
 
 **Status: Phase 2 of 4, nearly done.** The engine, command line and Windows desktop app work
 today, and installers are built, virus-scanned and smoke-tested on every change. The app sets
-itself up in six steps, with Gmail, Yahoo, iCloud or any provider that allows app passwords.
-Outlook and Hotmail aren't supported, because Microsoft no longer allows app passwords.
+itself up in six steps. Gmail connects by signing in with Google in your browser, so there's
+no password to make; Yahoo, iCloud and other providers use an app password. Outlook and Hotmail
+aren't supported, because Microsoft no longer allows app passwords.
 
 ## Install it
 
@@ -183,9 +184,12 @@ fast-forwarding through three months.
 
 ## Using it for real
 
-**1. Create a Gmail app password.** Turn on 2-Step Verification on your Google account, then create
-an app password at <https://myaccount.google.com/apppasswords>. Your normal password won't work.
-Outlook and Hotmail no longer allow app passwords, so those accounts can't be used.
+**1. Choose how Stealth connects to your email.** For Gmail, sign in with Google during setup:
+your browser opens Google's page, and Stealth gets permission only to send and to read (see
+[Signing in with Google](docs/google-sign-in.md)). For other providers, or Gmail if you prefer,
+create an app password; for Gmail that's at <https://myaccount.google.com/apppasswords>, with
+2-Step Verification on. Your normal password won't work. Outlook and Hotmail no longer allow app
+passwords, so those accounts can't be used.
 
 **2. Set up your profile.** In the desktop app, choose **Get started** on the welcome screen.
 From the command line instead:
@@ -227,6 +231,7 @@ through the rest.
 | `stealth ico <company>` | Drafts an ICO complaint |
 | `stealth checklist` | Lists the UK steps only you can do |
 | `stealth password` | Replaces the app password, checking it works first. `--address` fixes the sending address |
+| `stealth google` | Signs in with Google (again), or switches a Gmail profile from an app password |
 
 Stealth reads each reply with fixed, testable rules (no AI service, nothing leaves the computer).
 It records the outcome itself only when the reply is clear **and** provably answers its letter:
@@ -352,7 +357,7 @@ python tools/screenshots.py
 1. **Core engine and command line** (done)
 2. **Desktop app:** installers, setup wizard, dashboard, reply classifier, custom removals,
    assisted people-search scan, reports, other jurisdictions, signed broker-list updates, update
-   checks, read-only phone view (done apart from the first tagged release)
+   checks, read-only phone view, Google sign-in (done apart from the first published release)
 3. **Protect equivalents:** breach monitoring, credit report reminders, Cifas tracking, recovery
    playbook
 4. **Planned only:** form pre-fill and a mobile app

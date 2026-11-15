@@ -58,7 +58,7 @@ public source code, never on someone's own PC, and GitHub records proof of that.
 [GitHub CLI](https://cli.github.com/) installed:
 
 ```powershell
-gh attestation verify "$env:USERPROFILE\Downloads\Stealth-0.1.0-windows-setup.exe" -R Anish25012/stealth
+gh attestation verify "$env:USERPROFILE\Downloads\Stealth-0.2.0-windows-setup.exe" -R Anish25012/stealth
 ```
 
 It should say the file was built by the `CI` workflow in `Anish25012/stealth`. If either check

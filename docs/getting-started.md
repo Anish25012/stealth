@@ -19,8 +19,9 @@ You need:
   the only email you have, make a free Gmail just for Stealth. That has an upside: companies'
   replies go there and stay out of your main inbox. Put your main address in the **Details** step
   anyway, so companies can find the records they hold under it.
-- **An app password for that email account.** This is a separate password just for Stealth, so
-  it never sees your real one. Step 3 below shows how to make one.
+- **For Gmail, nothing else.** You sign in with Google in your web browser, so Stealth never
+  sees your Google password. **For Yahoo or iCloud, an app password**: a separate password just
+  for Stealth, so it never sees your real one. Step 3 below shows how to make one.
 - **Somewhere safe to write down a recovery code**: paper, or a password manager.
 
 ## 1. Download and install
@@ -58,15 +59,26 @@ have (old ones too), home addresses (current and past, with postcodes) and phone
 where they live: leave this as United Kingdom. The more you add, the more records companies can
 find. These details stay on this computer and only go into letters you approve.
 
-**Email.** Choose the provider and enter the app password. To make one for Gmail:
+**Email.** For Gmail, choose **Sign in with Google**. Your web browser opens Google's own
+sign-in page:
 
-1. Turn on 2-Step Verification for the Google account, if it isn't on already.
-2. Go to <https://myaccount.google.com/apppasswords>.
-3. Type "Stealth" as the name and choose **Create**.
-4. Copy the 16-letter password Google shows, and paste it into Stealth.
+1. Choose the Google account the letters should come from.
+2. Google says **"Google hasn't verified this app"**. Stealth is a free project for family and
+   friends, so it hasn't paid for Google's review. Choose **Advanced**, then **Go to Stealth**.
+3. Tick **both** boxes (send email, and view your email), then choose **Continue**.
+4. Go back to Stealth. It moves on by itself.
 
-Stealth checks it can sign in and read the inbox before saving anything. The password is kept in
-Windows Credential Manager, not in Stealth's own files.
+Stealth can send the letters you approve and read your inbox to spot replies. It can't change or
+delete anything. To take its access away later, go to
+<https://myaccount.google.com/connections>. More in [Signing in with Google](google-sign-in.md).
+
+For Yahoo, iCloud or another provider (or Gmail, if you'd rather), choose it and enter an app
+password instead. To make one for Gmail: turn on 2-Step Verification, go to
+<https://myaccount.google.com/apppasswords>, type "Stealth" as the name, choose **Create**, and
+paste the 16-letter password Google shows. Stealth checks it can sign in and read the inbox before
+saving anything.
+
+Either way, the sign-in is kept in Windows Credential Manager, not in Stealth's own files.
 
 **Recovery code.** Write it down or save it in a password manager, somewhere other than this
 computer. If Windows is ever reinstalled, it's the only way to open Stealth's records again.
@@ -135,6 +147,9 @@ needs you.
 - Error screens have a **Copy details** button. The details have personal information removed,
   so you can paste them to whoever is helping you, or into a
   [GitHub issue](https://github.com/Anish25012/stealth/issues).
+- **"Stealth is no longer signed in to Google"?** That happens if the Google password changes,
+  Stealth's access is removed, or Stealth isn't used for six months. Go to **Settings** ›
+  **Email** › **Sign in with Google again**.
 - A company's address bounced? Its page has a link to report it, so the list gets fixed for
   everyone.
 - Stealth's records live in `%LOCALAPPDATA%\Stealth`, encrypted. Uninstalling the app (Windows
