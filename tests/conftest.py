@@ -32,6 +32,17 @@ def _no_google_client_unless_asked(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("STEALTH_GOOGLE_CLIENT_SECRET", raising=False)
 
 
+@pytest.fixture(autouse=True)
+def _never_have_i_been_pwned(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No test reaches Have I Been Pwned; tests that check HIBP give the provider a fake opener."""
+    from stealth.breaches import hibp
+
+    def refuse(_request: object) -> tuple[int, dict[str, str], bytes]:
+        raise AssertionError("a test tried to reach Have I Been Pwned")
+
+    monkeypatch.setattr(hibp, "_urlopen", refuse)
+
+
 @pytest.fixture
 def store(tmp_path: Path) -> ProfileStore:
     return ProfileStore(MemoryStore(), home=tmp_path / "home")

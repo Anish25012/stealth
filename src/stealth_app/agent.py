@@ -75,7 +75,10 @@ def run_agent(*, open_on_start: bool = True) -> int:
             except Exception:  # a notification is a nicety; never let it stop a check
                 log.exception("tray notification failed")
 
-    scheduler = Scheduler(server.dashboard.real, notify=notify, check_updates=updates.check)
+    real = server.dashboard.real
+    scheduler = Scheduler(
+        real, notify=notify, check_updates=updates.check, breach_provider=real.breach_provider
+    )
 
     def check_now() -> None:
         threading.Thread(

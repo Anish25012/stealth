@@ -23,6 +23,13 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "last_auto_run": None,  # ISO time of the last automatic cycle, or None
     "last_auto_result": "",  # one plain-English line about it
     "last_report_month": None,  # "2026-10": the last monthly report the tray announced
+    # Breach monitoring: off until the person turns it on. "hibp" checks Have I Been Pwned with
+    # their own API key (from the keychain) on a cycle; "manual" means they check and add results.
+    "breach_monitoring": False,
+    "breach_provider": "manual",
+    "breach_every_days": 30,
+    "last_breach_check": None,  # ISO time of the last automatic check, or None
+    "last_breach_result": "",  # one plain-English line about it
 }
 
 
@@ -41,6 +48,11 @@ class Settings:
     last_auto_run: str | None = None
     last_auto_result: str = ""
     last_report_month: str | None = None
+    breach_monitoring: bool = False
+    breach_provider: str = "manual"
+    breach_every_days: int = 30
+    last_breach_check: str | None = None
+    last_breach_result: str = ""
 
 
 @dataclass

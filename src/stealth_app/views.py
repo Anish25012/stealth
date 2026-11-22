@@ -587,12 +587,14 @@ def evidence_file(profile: Profile, relative: str) -> Path:
 
 
 def exposure(profile: Profile) -> score.Score:
+    from stealth.breaches import store as breaches
     from stealth.scan import results as scans
 
     return score.exposure(
         (c.status for c in all_cases(profile.conn)),
         open_listings=scans.open_listings(profile),
         listings_checked=scans.ever_scanned(profile),
+        breaches=breaches.open_count(profile),
     )
 
 

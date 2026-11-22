@@ -18,6 +18,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from stealth import alerts, cycle
+from stealth.breaches import store as breach_store
+from stealth.breaches.provider import BreachKeyError, BreachProvider
 from stealth.core import clock
 from stealth.core.errors import MailAuthError, MailConnectionError, StealthError
 from stealth.core.logging_scrub import add_known_values
@@ -71,6 +73,7 @@ class Scheduler:
         now: Callable[[], datetime] = local_now,
         check_updates: Callable[[], updates.CheckResult] | None = None,
         update_state: Callable[[], updates.UpdateState] = updates.load,
+        breach_provider: Callable[[str], BreachProvider] | None = None,
     ) -> None:
         self.workspace = workspace  # always the real one: the demo looks after itself
         self.notify = notify or (lambda _title, _message: None)
@@ -78,6 +81,9 @@ class Scheduler:
         # None in tests: only the running app goes online to check for updates.
         self.check_updates = check_updates
         self.update_state = update_state
+        # None in tests too: given an API key, makes the provider that checks Have I Been Pwned.
+        self.breach_provider = breach_provider
+        self._breach_retry_at: dict[str, datetime] = {}
         self.started = now()
         self._retry_at: dict[str, datetime] = {}
         self._stop = threading.Event()
@@ -118,8 +124,47 @@ class Scheduler:
                 self.notify(f"Stealth: {outcome.name}", outcome.result)
             outcomes.append(outcome)
             self._announce_report(profile_id)
+            self._check_breaches(profile_id, now)
             self._announce_alerts(profile_id)
         return outcomes
+
+    def _check_breaches(self, profile_id: str, now: datetime) -> None:
+        """Check Have I Been Pwned when it's due. New breaches become alerts for the tray."""
+        if self.breach_provider is None or now < self._breach_retry_at.get(profile_id, now):
+            return
+        if not self.workspace.lock.acquire(blocking=False):
+            return  # busy: the next tick will do it
+        try:
+            with self.workspace.store.open(profile_id) as profile:
+                if not breach_store.due(profile, now):
+                    return
+                key = breach_store.api_key(profile)
+                assert key is not None  # due() checked
+                provider = self.breach_provider(key)
+                try:
+                    breach_store.run_check(profile, provider, sleep=self.workspace.sleep)
+                except BreachKeyError as exc:
+                    # Retrying won't help until the key is fixed: say so once a cycle.
+                    profile.save_settings(
+                        last_breach_check=now.isoformat(), last_breach_result=exc.message
+                    )
+                    alerts.add_alert(
+                        profile,
+                        "breach-check:key",
+                        title="Breach checks have stopped",
+                        message=f"{exc.message} {exc.hint or ''}".strip(),
+                        link="/protect#breaches",
+                    )
+                except StealthError as exc:
+                    # Often just no internet: try again soon, without using up this cycle.
+                    self._breach_retry_at[profile_id] = now + RETRY_AFTER
+                    log.info("breach check didn't finish: %s", exc.message)
+                else:
+                    self._breach_retry_at.pop(profile_id, None)
+        except Exception:  # a breach check must never stop the daily checks
+            log.exception("breach check failed")
+        finally:
+            self.workspace.lock.release()
 
     def _announce_alerts(self, profile_id: str) -> None:
         """Raise reminders that are due, and show each new alert in the tray once."""
@@ -141,7 +186,7 @@ class Scheduler:
         elif new:
             self.notify(
                 f"Stealth: {name}",
-                f"{len(new)} reminders are due. Open Stealth to see them.",
+                f"{len(new)} new reminders and alerts. Open Stealth to see them.",
             )
 
     def _updates(self, now: datetime) -> None:

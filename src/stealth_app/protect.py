@@ -9,9 +9,13 @@ from fastapi.responses import HTMLResponse
 from starlette.responses import Response
 
 from stealth import alerts
+from stealth.breaches import store as breaches
+from stealth.breaches.provider import ManualProvider, manual_breach
 from stealth.core.errors import ProfileError
+from stealth.profiles.store import Profile
 from stealth.protect import checklist, cifas, credit
 from stealth.protect import store as protect
+from stealth.protect.checklist import Link
 from stealth.templates.render import format_date
 from stealth_app import views
 from stealth_app.dashboard import (
@@ -24,7 +28,25 @@ from stealth_app.dashboard import (
     read_form,
     redirect,
     render,
+    start_job,
 )
+from stealth_app.workspace import Job
+
+# Checked against haveibeenpwned.com on 22 November 2026. HIBP's breach data is licensed
+# CC BY 4.0, which asks for visible credit and a link wherever it's shown.
+BREACH_LINKS = {
+    "hibp": Link("Have I Been Pwned", "https://haveibeenpwned.com/", "The service's own site"),
+    "key": Link(
+        "Get an API key (Have I Been Pwned)",
+        "https://haveibeenpwned.com/API/Key",
+        "Linked from HIBP's API documentation",
+    ),
+    "licence": Link(
+        "CC BY 4.0",
+        "https://creativecommons.org/licenses/by/4.0/",
+        "Named in HIBP's API documentation",
+    ),
+}
 
 
 def _back(next_url: str) -> str:
@@ -70,7 +92,98 @@ def install(app: FastAPI, state: State) -> None:
                 cifas_about=cifas.ABOUT,
                 cifas_apply=cifas.APPLY,
                 today=views.today_for(profile),
+                breach_settings=profile.settings(),
+                breach_has_key=breaches.has_key(profile),
+                breach_list=breaches.all_found(profile),
+                breach_open=breaches.open_count(profile),
+                breach_every=breaches.EVERY_CHOICES,
+                breach_addresses=breaches.addresses(profile),
+                breach_links=BREACH_LINKS,
             )
+
+    # Data breaches.
+
+    @app.post("/protect/breaches/settings")
+    async def breach_settings(request: Request) -> Response:
+        form = await read_form(request)
+        with changing(state) as profile:
+            breaches.configure(
+                profile,
+                on=first(form, "on") == "yes",
+                provider=first(form, "provider"),
+                every_days=_days(first(form, "every")),
+            )
+        return redirect("/protect#breaches")
+
+    @app.post("/protect/breaches/key")
+    async def breach_key(request: Request) -> Response:
+        form = await read_form(request)
+        with changing(state) as profile:
+            breaches.save_key(profile, first(form, "api_key"))
+            alerts.dismiss_topic(profile, "breach-check:key")
+        return redirect("/protect#breaches")
+
+    @app.post("/protect/breaches/key/forget")
+    async def breach_key_forget(request: Request) -> Response:
+        await read_form(request)
+        with changing(state) as profile:
+            breaches.forget_key(profile)
+        return redirect("/protect#breaches")
+
+    @app.post("/protect/breaches/check")
+    async def breach_check(request: Request) -> Response:
+        await read_form(request)
+        with opened(state) as profile:
+            if profile is None:
+                raise ProfileError("There's no profile yet.")
+            if not breaches.has_key(profile):
+                raise ProfileError(
+                    "Add your Have I Been Pwned API key first.",
+                    hint="Or choose to check for yourself and add what you find.",
+                )
+
+        def work(profile: Profile, job: Job) -> None:
+            key = breaches.api_key(profile)
+            if key is None:
+                raise ProfileError("Add your Have I Been Pwned API key first.")
+            provider = state.workspace.breach_provider(key)
+            job.lines.append(f"Asking {provider.name} about your email addresses...")
+            summary = breaches.run_check(profile, provider, sleep=state.workspace.sleep)
+            alerts.dismiss_topic(profile, "breach-check:key")
+            job.lines.append(summary.line)
+            for found in summary.new:
+                job.lines.append(f"New: {found.breach.title}.")
+
+        job = start_job(state, "Checking for data breaches", work, "/protect#breaches")
+        return redirect(f"/jobs/{job.id}")
+
+    @app.post("/protect/breaches/add")
+    async def breach_add(request: Request) -> Response:
+        form = await read_form(request)
+        when = first(form, "date").strip()
+        try:
+            breach_date = date.fromisoformat(when) if when else None
+        except ValueError:
+            raise ProfileError("Enter the date as shown, or leave it empty.") from None
+        breach = manual_breach(
+            first(form, "title"), breach_date=breach_date, exposed=first(form, "exposed")
+        )
+        with changing(state) as profile:
+            email = first(form, "email").strip().lower()
+            if email not in breaches.addresses(profile):
+                raise ProfileError("Choose one of your email addresses.")
+            if breach_date is not None and breach_date > views.today_for(profile):
+                raise ProfileError("The breach date can't be in the future.")
+            provider = ManualProvider({email: [breach]})
+            breaches.record(profile, email, provider.check(email), provider.source)
+        return redirect("/protect#breaches")
+
+    @app.post("/protect/breaches/{found_id}/dealt")
+    async def breach_dealt(request: Request, found_id: int) -> Response:
+        form = await read_form(request)
+        with changing(state) as profile:
+            breaches.mark_dealt_with(profile, found_id, first(form, "dealt") == "yes")
+        return redirect(f"/protect#breach-{found_id}")
 
     # Cifas Protective Registration.
 
