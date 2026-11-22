@@ -80,6 +80,50 @@
   <p class="small muted">Links open in your web browser. Checked against each official source on {{ checked_on }}.</p>
 </section>
 
+<section class="card" id="cifas" aria-labelledby="cifas-h" data-cifas="{{ cifas.state }}">
+  <div class="card-head">
+    <h2 id="cifas-h">Cifas Protective Registration</h2>
+    {% if cifas.state == "active" %}{{ badge({"tone": "good", "label": "In place"}) }}
+    {% elif cifas.state == "ending_soon" %}{{ badge({"tone": "action", "label": "Ends soon"}) }}
+    {% elif cifas.state == "ended" %}{{ badge({"tone": "problem", "label": "Ended"}) }}{% endif %}
+  </div>
+  {% if cifas.recorded %}
+  <p>
+    {% if cifas.state == "ended" %}Your registration started on {{ cifas.started_on|day }} and ended on {{ cifas.ends_on|day }}.
+    {% else %}Your registration started on {{ cifas.started_on|day }} and ends on {{ cifas.ends_on|day }}.{% endif %}
+  </p>
+  <p class="muted">Cifas doesn't email you before it ends, so Stealth reminds you 30 days before
+  and on the day it ends. If you still need it then, apply again: it's a new registration.</p>
+  {% else %}
+  <p class="muted">Protective Registration puts a warning flag against your details in Cifas's
+  National Fraud Database. Organisations that check it then make extra checks that it's really you
+  applying, so applications in your name can take a little longer. It's for people whose identity
+  is at heightened risk, for example after personal details were lost or stolen. It costs £30 for
+  two years, and you apply on Cifas's website. Cifas says it doesn't affect your credit score.</p>
+  <p class="muted">Not every application is checked against it, so keep checking your credit
+  reports too.</p>
+  {% endif %}
+  <ul class="link-list">
+    <li><a href="{{ cifas_about.url }}" target="_blank" rel="noopener noreferrer">About Protective Registration (Cifas)</a></li>
+    <li><a href="{{ cifas_apply.url }}" target="_blank" rel="noopener noreferrer">{% if cifas.recorded %}Apply again{% else %}Apply{% endif %} on Cifas's website</a></li>
+  </ul>
+  <form class="remind-row" method="post" action="/protect/cifas/record">
+    {{ csrf_field(csrf) }}
+    <label for="cifas-started">{% if cifas.recorded %}I've renewed it. The new registration started on{% else %}I've registered. It started on{% endif %}</label>
+    <input id="cifas-started" name="started" type="date" value="{{ today.isoformat() }}" max="{{ today.isoformat() }}">
+    <button class="button small" type="submit">{{ icon("check") }} Save</button>
+  </form>
+  {% if cifas.recorded %}
+  <form class="remind-row" method="post" action="/protect/cifas/forget">
+    {{ csrf_field(csrf) }}
+    <button class="button secondary small" type="submit">Stop tracking it</button>
+    <span class="small muted">If you've asked Cifas to remove it, or let it end and don't need it.</span>
+  </form>
+  {% endif %}
+  <p class="small muted">Stealth doesn't apply, pay or contact Cifas for you. Links open in your web
+  browser and were checked against Cifas's own site on {{ checked_on }}.</p>
+</section>
+
 <section class="card faq" aria-labelledby="steps-h">
   <div class="card-head">
     <h2 id="steps-h">The checklist</h2>
@@ -152,6 +196,9 @@ tray icon when one is due. Dismiss a reminder when you've dealt with it.</p>
 <p><strong>Credit reports</strong>: press <strong>I've checked it today</strong> after you've looked
 at an agency's report, and Stealth reminds you when it's time to look again. Statutory reports are
 free from all three agencies; you don't need a paid subscription.</p>
+<p><strong>Cifas Protective Registration</strong>: once you've registered on Cifas's website, save
+the date it started. A registration lasts two years, and Cifas doesn't tell you when it ends, so
+Stealth does.</p>
 <p>Every link opens the official website in your web browser. Stealth doesn't fill anything in for
 you or tell these services anything.</p>
 {% endcall %}
