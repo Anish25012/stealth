@@ -60,6 +60,7 @@ PAGES = [
     ("settings", "/settings"),
     ("people", "/people"),
     ("scan", "/scan"),
+    ("protect", "/protect"),
     ("add-company", "/companies/add"),
     ("help", "/help"),
     ("error", "/cases/no-such-company"),

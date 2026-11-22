@@ -464,6 +464,9 @@
   input.switch:disabled { opacity: .45; cursor: not-allowed; }
   .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-3) 0; }
   .toggle-row label { font-weight: 500; cursor: pointer; }
+.remind-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); margin: var(--space-3) 0 var(--space-4); }
+.remind-row label { font-weight: 500; }
+.remind-row select { width: auto; }
 
   /* Segmented control: radios or links. The selected segment is a raised chip. */
   .segmented {

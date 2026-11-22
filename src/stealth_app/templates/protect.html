@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, help, csrf_field, icon, ring %}
+{% block main %}
+<div class="page-head">
+  <div>
+    <h1>Protect yourself</h1>
+    <p>Steps you can take yourself, beyond asking companies to delete your data.</p>
+  </div>
+</div>
+
+<section class="card hero" aria-labelledby="checklist-h">
+  {{ ring(score.percent, score.done ~ "/" ~ score.counted, "done",
+          label=score.done ~ " of " ~ score.counted ~ " steps done") }}
+  <div class="hero-text">
+    <p class="eyebrow">{{ icon("shield-check", "s") }} Checklist score</p>
+    <h2 id="checklist-h" class="hero-title">
+      {% if score.counted and score.done == score.counted %}Every step done
+      {% else %}{{ score.done }} of {{ score.counted }} step{{ "" if score.counted == 1 else "s" }} done{% endif %}
+    </h2>
+    <p>Separate from your privacy score: this is what you've done to protect yourself, not what
+    companies hold about you. Steps marked "not for me" don't count.</p>
+  </div>
+</section>
+
+{% include "_alerts.html" %}
+
+<section class="card faq" aria-labelledby="steps-h">
+  <div class="card-head">
+    <h2 id="steps-h">The checklist</h2>
+  </div>
+  {% for entry in entries %}
+  {% set item = entry.item %}
+  <details id="{{ item.id }}" data-item="{{ item.id }}"{% if not entry.state and loop.index == first_open %} open{% endif %}>
+    <summary>
+      <span>{{ item.title }}</span>
+      {% if entry.state == "done" %}{{ badge({"tone": "good", "label": "Done"}) }}
+      {% elif entry.state == "not_for_me" %}{{ badge({"tone": "neutral", "label": "Not for me"}) }}
+      {% else %}{{ badge({"tone": "action", "label": "To do"}) }}{% endif %}
+    </summary>
+    <p>{{ item.why }}</p>
+    <ol class="steps-list">
+      {% for step in item.steps %}<li>{{ step }}</li>{% endfor %}
+    </ol>
+    <ul class="link-list">
+      {% for link in item.links %}
+      <li><a href="{{ link.url }}" target="_blank" rel="noopener noreferrer">{{ link.label }}</a></li>
+      {% endfor %}
+    </ul>
+    <p class="small muted">Links open in your web browser.</p>
+
+    <div class="button-row">
+      {% if entry.state %}
+      <form method="post" action="/protect/{{ item.id }}/mark">
+        {{ csrf_field(csrf) }}<input type="hidden" name="state" value="todo">
+        <button class="button secondary small" type="submit">Mark as still to do</button>
+      </form>
+      {% else %}
+      <form method="post" action="/protect/{{ item.id }}/mark">
+        {{ csrf_field(csrf) }}<input type="hidden" name="state" value="done">
+        <button class="button small" type="submit">{{ icon("check") }} Mark done</button>
+      </form>
+      <form method="post" action="/protect/{{ item.id }}/mark">
+        {{ csrf_field(csrf) }}<input type="hidden" name="state" value="not_for_me">
+        <button class="button secondary small" type="submit">Not for me</button>
+      </form>
+      {% endif %}
+    </div>
+
+    {% if entry.state != "not_for_me" %}
+    {% if entry.reminder %}
+    <p class="small">{{ icon("bell", "s") }} Stealth will remind you on {{ entry.reminder.due_on|day }}{% if entry.reminder.every_days %}, then every {{ entry.reminder.every_days }} days{% endif %}.</p>
+    {% elif entry.done and item.recheck_text %}
+    <p class="small muted">{{ item.recheck_text }}</p>
+    {% endif %}
+    <form class="remind-row" method="post" action="/protect/{{ item.id }}/remind">
+      {{ csrf_field(csrf) }}
+      <label for="remind-{{ item.id }}">Remind me</label>
+      <select id="remind-{{ item.id }}" name="days" class="compact">
+        {% for days, label in remind_choices %}<option value="{{ days }}">{{ label }}</option>{% endfor %}
+        {% if entry.reminder %}<option value="off">Don't remind me</option>{% endif %}
+      </select>
+      <button class="button secondary small" type="submit">Save<span class="visually-hidden"> reminder for {{ item.title }}</span></button>
+    </form>
+    {% endif %}
+  </details>
+  {% endfor %}
+  <p class="small muted">Links checked against each official source on {{ checked_on }}.</p>
+</section>
+
+{% call help() %}
+<p><strong>Mark done</strong> when you've finished a step. For steps worth checking again, such as
+your Google results, Stealth sets a reminder for you. <strong>Not for me</strong> takes a step out
+of your score, for example if you don't use social media.</p>
+<p><strong>Reminders</strong> show here and on the Overview, and Stealth tells you once through the
+tray icon when one is due. Dismiss a reminder when you've dealt with it.</p>
+<p>Every link opens the official website in your web browser. Stealth doesn't fill anything in for
+you or tell these services anything.</p>
+{% endcall %}
+{% endblock %}

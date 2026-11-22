@@ -17,7 +17,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from stealth import cycle
+from stealth import alerts, cycle
 from stealth.core import clock
 from stealth.core.errors import MailAuthError, MailConnectionError, StealthError
 from stealth.core.logging_scrub import add_known_values
@@ -118,7 +118,31 @@ class Scheduler:
                 self.notify(f"Stealth: {outcome.name}", outcome.result)
             outcomes.append(outcome)
             self._announce_report(profile_id)
+            self._announce_alerts(profile_id)
         return outcomes
+
+    def _announce_alerts(self, profile_id: str) -> None:
+        """Raise reminders that are due, and show each new alert in the tray once."""
+        if not self.workspace.lock.acquire(blocking=False):
+            return  # busy: the next tick will do it
+        try:
+            with self.workspace.store.open(profile_id) as profile:
+                alerts.raise_due(profile, views.today_for(profile))
+                new = alerts.to_notify(profile)
+                alerts.mark_notified(profile, [a.id for a in new])
+                name = profile.person().display_name
+        except Exception:  # a reminder must never stop the daily checks
+            log.exception("couldn't check reminders")
+            return
+        finally:
+            self.workspace.lock.release()
+        if len(new) == 1:
+            self.notify(f"Stealth: {name}", f"{new[0].title}. {new[0].message}")
+        elif new:
+            self.notify(
+                f"Stealth: {name}",
+                f"{len(new)} reminders are due. Open Stealth to see them.",
+            )
 
     def _updates(self, now: datetime) -> None:
         """Once a day, look for a newer app and broker list. Never stops the daily checks."""

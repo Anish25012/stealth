@@ -20,7 +20,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from jinja2 import Environment, PackageLoader, select_autoescape
 from starlette.responses import Response
 
-from stealth import __version__, cycle
+from stealth import __version__, alerts, cycle
 from stealth.cases import engine
 from stealth.cases.state import Status, find_case
 from stealth.core.errors import ProfileError, StealthError
@@ -72,8 +72,13 @@ def render(
 ) -> HTMLResponse:
     """Render a page. Given the open profile, the sidebar shows how many things need the person."""
     state: State = request.app.state.dashboard
-    if profile is not None and "nav_counts" not in context:
-        context["nav_counts"] = views.nav_counts(views.grouped(views.rows(profile)))
+    if profile is not None:
+        if "nav_counts" not in context:
+            context["nav_counts"] = views.nav_counts(views.grouped(views.rows(profile)))
+        context["nav_counts"] = {
+            **context["nav_counts"],
+            "/protect": len(alerts.open_alerts(profile)),
+        }
     jurisdiction = views.jurisdiction_for(profile)
     page = TEMPLATES.get_template(name).render(
         csrf=state.csrf,
@@ -95,6 +100,11 @@ EMPTY_PAGES: dict[str, tuple[str, str, str]] = {
         "building-2",
     ),
     "/scan": ("Scan", "See what people-search sites show about you.", "search"),
+    "/protect": (
+        "Protect yourself",
+        "A UK checklist of steps you can take yourself, with reminders.",
+        "shield",
+    ),
     "/needs": ("Needs you", "Replies to read and letters to approve.", "inbox"),
     "/approve": ("Waiting for your OK", "Letters Stealth has written for you to read.", "mail"),
     "/reports": ("Reports", "Monthly reports, your exposure score and evidence.", "file-text"),
@@ -175,6 +185,16 @@ def changing(state: State) -> Iterator[Profile]:
         state.workspace.lock.release()
 
 
+def raise_due_alerts(state: State, profile: Profile) -> None:
+    """Turn reminders that have come due into alerts. Skipped if something else holds the lock."""
+    if not state.workspace.lock.acquire(blocking=False):
+        return
+    try:
+        alerts.raise_due(profile, views.today_for(profile))
+    finally:
+        state.workspace.lock.release()
+
+
 def start_job(state: State, title: str, work: Callable[[Profile, Job], None], next_url: str) -> Job:
     def run(job: Job) -> None:
         with opened(state) as profile:
@@ -200,11 +220,13 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
         with opened(state) as profile:
             if profile is None:
                 return render(request, "welcome.html", title="Stealth")
+            raise_due_alerts(state, profile)
             rows = views.rows(profile)
             groups = views.grouped(rows)
             return render(
                 request,
                 "overview.html",
+                profile=profile,
                 title="Stealth",
                 person=profile.person(),
                 groups=groups,
@@ -216,6 +238,7 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
                 settings=profile.settings(),
                 last_run=views.last_run(profile.settings()),
                 score=views.exposure(profile),
+                alerts=alerts.open_alerts(profile),
             )
 
     @app.get("/cases", response_class=HTMLResponse)
