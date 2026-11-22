@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% from "_macros.html" import help, csrf_field, icon %}
+{% block main %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow"><a href="/old-accounts">{{ icon("arrow-left", "s") }} Find my old accounts</a></p>
+    <h1>Delete your data at {{ account.name }}?</h1>
+    <p>{{ account.domain }}. First email {{ account.first_seen_on|day }}.</p>
+  </div>
+</div>
+
+<section class="card" aria-labelledby="warn-h" data-confirm="{{ account.domain }}">
+  <div class="notice action" role="alert">{{ icon("triangle-alert") }}<div>
+    <h2 id="warn-h">This will usually close your account with {{ account.name }}</h2>
+    <p>Stealth asks them, under data protection law, to delete everything they hold about you.
+    Most companies do that by closing your account, so you may lose your order history, saved
+    details, points, credit or anything you've uploaded, and any subscription may end.</p>
+    <p>If you still use {{ account.name }}, choose <strong>Keep</strong> instead.</p>
+  </div></div>
+
+  {% if handled_by %}
+  <p>Stealth already writes to {{ account.name }} for you. Confirming takes you to that case.</p>
+  {% else %}
+  <p>Next, Stealth reads {{ account.domain }}'s website for its privacy contact and drafts the
+  letter. Nothing is sent until you've read and approved it.</p>
+  {% endif %}
+  {% if account.deletion_url %}
+  <p>Or close it yourself:
+  <a href="{{ account.deletion_url }}" target="_blank" rel="noopener noreferrer">{{ account.name }}'s account-deletion page</a>.</p>
+  {% endif %}
+
+  <form method="post" action="/old-accounts/{{ account.domain }}/delete" class="stack">
+    {{ csrf_field(csrf) }}
+    <div class="remind-row">
+      <input type="checkbox" id="confirm" name="confirm" value="yes" required>
+      <label for="confirm">I understand this will probably close my {{ account.name }} account</label>
+    </div>
+    <div class="button-row">
+      <a class="button secondary" href="/old-accounts">Go back</a>
+      <button class="button destructive" type="submit">Delete my data</button>
+    </div>
+  </form>
+  <form method="post" action="/old-accounts/{{ account.domain }}/keep">
+    {{ csrf_field(csrf) }}
+    <button class="button plain small" type="submit">Keep it instead</button>
+  </form>
+</section>
+
+{% call help() %}
+<p>An erasure request is a formal letter under UK GDPR (and similar laws elsewhere). The company
+has a month to reply. Stealth tracks the reply and follows up, like every other request.</p>
+{% endcall %}
+{% endblock %}

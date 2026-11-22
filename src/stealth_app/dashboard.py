@@ -105,6 +105,11 @@ EMPTY_PAGES: dict[str, tuple[str, str, str]] = {
         "A UK checklist of steps you can take yourself, with reminders.",
         "shield",
     ),
+    "/old-accounts": (
+        "Find my old accounts",
+        "Companies you signed up with, found in your Gmail.",
+        "search",
+    ),
     "/recovery": (
         "Something's gone wrong",
         "Step-by-step help if you've been hacked, scammed or had your identity used.",

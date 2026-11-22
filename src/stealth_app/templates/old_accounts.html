@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, help, csrf_field, icon %}
+{% block main %}
+<div class="page-head">
+  <div>
+    <h1>Find my old accounts</h1>
+    <p>Companies you signed up with years ago still hold your details. Find them in your Gmail,
+    then keep each one or ask it to delete your data.</p>
+  </div>
+</div>
+
+{% if not uses_gmail %}
+<div class="notice" role="note">{{ icon("info") }}<p>This works with Gmail only for now, through
+Google sign-in. Your mailbox is connected with an app password, so Stealth can't scan it this way.
+<a href="/settings">Sign in with Google in Settings</a> to use it.</p></div>
+{% else %}
+<section class="card" aria-labelledby="scan-h" id="scan" data-scanned="{{ 'yes' if scan.scanned_at else 'no' }}">
+  <h2 id="scan-h">{{ "Scan your Gmail" if not scan.scanned_at else "Scan again" }}</h2>
+  <p>Stealth searches your Gmail for sign-up emails ("Welcome to...", "Verify your email",
+  "Confirm your account") and reads only the sender, subject and date of each, never the message
+  itself. It all happens on this computer: nothing from the scan is sent anywhere, and only the
+  company names and dates are kept.</p>
+  {% if scan.scanned_at %}
+  <p class="muted small">Read back to {{ scan.oldest_on|day if scan.oldest_on else "the start" }}{% if scan.more %}. There are older emails left to read{% endif %}.</p>
+  {% endif %}
+  <div class="button-row">
+    <form method="post" action="/old-accounts/scan">
+      {{ csrf_field(csrf) }}
+      <button class="button" type="submit">{{ icon("search") }} {{ "Scan my Gmail" if not scan.scanned_at else "Scan for new sign-ups" }}</button>
+    </form>
+    {% if scan.more %}
+    <form method="post" action="/old-accounts/scan">
+      {{ csrf_field(csrf) }}
+      <input type="hidden" name="further" value="yes">
+      <button class="button secondary" type="submit">{{ icon("clock") }} Scan further back</button>
+    </form>
+    {% endif %}
+  </div>
+  <p class="muted small">Each scan reads up to {{ "{:,}".format(batch) }} emails, newest first.
+  Choices you've made are remembered, so new scans only add companies you haven't decided on.</p>
+</section>
+
+<section class="card" aria-labelledby="found-h" id="found">
+  <div class="card-head">
+    <h2 id="found-h">Companies to decide on</h2>
+    {% if undecided %}{{ badge({"tone": "action", "label": undecided|length ~ " to decide"}) }}{% endif %}
+  </div>
+  {% if undecided %}
+  <ul class="credit-list">
+    {% for a in undecided %}
+    <li class="credit-agency" id="old-{{ a.domain }}" data-old-account="{{ a.domain }}">
+      <div class="row">
+        <span class="glyph">{{ icon("building-2") }}</span>
+        <span class="row-main">
+          <span class="row-title">{{ a.name }}</span>
+          <span class="row-text">{{ a.domain }}. First email {{ a.first_seen_on|day }}.</span>
+        </span>
+      </div>
+      <div class="button-row">
+        <form method="post" action="/old-accounts/{{ a.domain }}/keep">
+          {{ csrf_field(csrf) }}
+          <button class="button secondary small" type="submit">Keep<span class="visually-hidden">: {{ a.name }}</span></button>
+        </form>
+        <a class="button small" href="/old-accounts/{{ a.domain }}/delete">Delete my data<span class="visually-hidden">: {{ a.name }}</span></a>
+        {% if a.deletion_url %}
+        <a class="button plain small" href="{{ a.deletion_url }}" target="_blank" rel="noopener noreferrer">Delete the account on their site</a>
+        {% elif not a.deletion_checked %}
+        <form method="post" action="/old-accounts/{{ a.domain }}/find-page">
+          {{ csrf_field(csrf) }}
+          <button class="button plain small" type="submit">Find their account-deletion page</button>
+        </form>
+        {% else %}
+        <span class="muted small">No account-deletion page found on their site.</span>
+        {% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% elif scan.scanned_at %}
+  <p class="muted">Nothing new to decide on.{% if scan.more %} Try Scan further back.{% endif %}</p>
+  {% else %}
+  <p class="muted">Scan your Gmail to see which companies you've signed up with.</p>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if decided %}
+<section class="card" id="decided" aria-label="Already decided">
+<details>
+  <summary>Already decided ({{ decided|length }})</summary>
+  <ul class="rows">
+    {% for a in decided %}
+    <li><div class="row" data-decided="{{ a.domain }}">
+      <span class="row-main">
+        <span class="row-title">{{ a.name }}</span>
+        <span class="row-text">{{ a.domain }}. First email {{ a.first_seen_on|day }}.</span>
+      </span>
+      <span class="row-end">
+        {% if a.decision == "keep" %}{{ badge({"tone": "neutral", "label": "Keeping"}) }}
+        {% else %}{{ badge({"tone": "waiting", "label": "Deleting"}) }}
+        <a class="button plain small" href="/old-accounts/{{ a.domain }}/delete">Carry on</a>{% endif %}
+        <form method="post" action="/old-accounts/{{ a.domain }}/undecide">
+          {{ csrf_field(csrf) }}
+          <button class="button plain small" type="submit">Change<span class="visually-hidden">: {{ a.name }}</span></button>
+        </form>
+      </span>
+    </div></li>
+    {% endfor %}
+  </ul>
+</details>
+</section>
+{% endif %}
+
+{% call help() %}
+<p><strong>Keep</strong> means you still use it, or don't mind them holding your details. Stealth
+won't ask about it again.</p>
+<p><strong>Delete my data</strong> sends the company a formal erasure request, the same kind
+Stealth sends data brokers. It usually closes your account. You read and approve the letter
+before anything is sent.</p>
+<p><strong>Delete the account on their site</strong> opens the company's own page for closing your
+account, where Stealth found one. Stealth only looks for it when you ask, by reading a few pages of
+that company's website.</p>
+{% endcall %}
+{% endblock %}

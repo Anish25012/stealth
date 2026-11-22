@@ -21,14 +21,17 @@ from typing import Protocol
 from stealth.breaches.hibp import HibpProvider
 from stealth.breaches.provider import Breach, BreachProvider, FakeProvider
 from stealth.core import clock
-from stealth.core.errors import StealthError
+from stealth.core.errors import ProfileError, StealthError
 from stealth.core.secrets import KeyringStore, MemoryStore
 from stealth.custom.policy_fetch import Page, http_get
 from stealth.devmail.servers import LocalImap, LocalSmtp
 from stealth.devmail.sites import LocalPeopleSearch, demo_fetch
 from stealth.mail.base import Mailbox, Transport
 from stealth.mail.factory import open_mail
+from stealth.mail.gmail_api import GmailApiMailbox
 from stealth.mail.smtp_imap import ImapMailbox, SmtpTransport
+from stealth.oldaccounts.demo import demo_messages
+from stealth.oldaccounts.gmail import FixedSignups, GmailSignups, SignupSource
 from stealth.profiles.store import Profile, ProfileStore
 from stealth.registry.loader import Broker, load_registry
 from stealth.scan.assisted import SearchWindow
@@ -77,6 +80,8 @@ class Workspace(Protocol):
 
     def breach_provider(self, api_key: str) -> BreachProvider: ...
 
+    def signup_source(self, profile: Profile) -> SignupSource: ...
+
     def close(self) -> None: ...
 
 
@@ -116,6 +121,15 @@ class RealWorkspace:
 
     def breach_provider(self, api_key: str) -> BreachProvider:
         return HibpProvider(api_key, sleep=self.sleep)
+
+    def signup_source(self, profile: Profile) -> SignupSource:
+        _transport, mailbox = open_mail(profile)
+        if not isinstance(mailbox, GmailApiMailbox):
+            raise ProfileError(
+                "Find my old accounts works with Gmail only for now.",
+                hint="Sign in with Google in Settings to use it.",
+            )
+        return GmailSignups(mailbox.session)
 
     def close(self) -> None:
         if self._window is not None:
@@ -176,6 +190,10 @@ class DemoWorkspace:
     def breach_provider(self, api_key: str) -> BreachProvider:
         # Made up, like everything in the demo: it never contacts Have I Been Pwned.
         return _DemoBreaches()
+
+    def signup_source(self, profile: Profile) -> SignupSource:
+        # Made-up sign-up emails: the demo's mailbox isn't Gmail, and nothing leaves.
+        return FixedSignups(demo_messages(clock.local_date("Europe/London")))
 
     def close(self) -> None:
         if self._window is not None:

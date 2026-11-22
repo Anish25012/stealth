@@ -84,13 +84,16 @@ class LocalPeopleSearch:
 DEMO_SITES: dict[str, str] = {
     "https://shopwise.test/": """<html><head><title>ShopWise | Deals every day</title></head>
 <body><nav><a href="/about">About</a> <a href="/legal/privacy-notice">Privacy</a>
-<a href="/contact">Contact</a></nav><p>Sign up for our newsletter!</p>
+<a href="/contact">Contact</a> <a href="/help">Help</a></nav><p>Sign up for our newsletter!</p>
 <footer>Questions? hello@shopwise.test</footer></body></html>""",
     "https://shopwise.test/legal/privacy-notice": """<html><head><title>Privacy notice</title>
 </head><body><h1>Privacy notice</h1><p>For press enquiries contact press@shopwise.test.</p>
 <h2>Your rights</h2><p>You can ask us to delete your personal data. Contact our Data Protection
 Officer at dpo [at] shopwise [dot] test, or write to ShopWise Ltd, 1 High Street, Leeds.</p>
 <p>Our parent company's lawyers: legal@bigholding.test.</p></body></html>""",
+    "https://shopwise.test/help": """<html><head><title>Help centre</title></head><body>
+<h1>Help centre</h1><ul><li><a href="/help/orders">Where's my order?</a></li>
+<li><a href="/help/close-account">Close your ShopWise account</a></li></ul></body></html>""",
     "https://quietlist.test/": """<html><head><title>QuietList</title></head><body>
 <p>We build marketing lists. <a href="/privacy">Privacy policy</a></p></body></html>""",
     "https://quietlist.test/privacy": """<html><head><title>Privacy</title></head><body>
