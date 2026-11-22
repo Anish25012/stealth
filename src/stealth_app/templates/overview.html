@@ -8,6 +8,7 @@
     <h1>Overview</h1>
     <p>For {{ person.display_name }}. {{ total }} compan{{ "y" if total == 1 else "ies" }} so far.</p>
   </div>
+  <a class="button secondary" href="/recovery">{{ icon("triangle-alert") }} Something's gone wrong</a>
 </div>
 
 {% if running %}

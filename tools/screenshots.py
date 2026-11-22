@@ -61,6 +61,8 @@ PAGES = [
     ("people", "/people"),
     ("scan", "/scan"),
     ("protect", "/protect"),
+    ("recovery", "/recovery"),
+    ("incident", "/recovery/1"),
     ("add-company", "/companies/add"),
     ("help", "/help"),
     ("error", "/cases/no-such-company"),

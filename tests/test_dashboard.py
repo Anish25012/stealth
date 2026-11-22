@@ -134,6 +134,7 @@ def test_with_no_profile_the_welcome_page_offers_the_demo(client):
         ("/cases", "Companies"),
         ("/scan", "Scan"),
         ("/protect", "Protect yourself"),
+        ("/recovery", "Something&#39;s gone wrong"),
         ("/needs", "Needs you"),
         ("/approve", "Waiting for your OK"),
         ("/reports", "Reports"),
@@ -308,6 +309,7 @@ PAGES = (
     "/settings",
     "/scan",
     "/protect",
+    "/recovery",
     "/companies/add",
 )
 
@@ -431,6 +433,9 @@ def _post_routes(app):
         .replace("{item_id}", "tps")
         .replace("{alert_id}", "1")
         .replace("{found_id}", "1")
+        .replace("{incident_id}", "1")
+        .replace("{action_id}", "bank")
+        .replace("{entry_id}", "1")
         for route in app.routes
         # /show and /quit are for other copies of the app and check the launch token instead.
         if "POST" in getattr(route, "methods", set()) and route.path not in {"/show", "/quit"}

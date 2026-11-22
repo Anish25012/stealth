@@ -333,4 +333,25 @@ def seed_dashboard_demo(store: ProfileStore, smtp: LocalSmtp, imap: LocalImap, t
             engine.send_requests(
                 profile, DASHBOARD_BROKERS, transport, sleep=no_sleep, hold_for_approval=True
             )
+            _seed_incident(profile, today)
     return profile_id
+
+
+def _seed_incident(profile: Profile, today: date) -> None:
+    """A made-up incident part-way through, so the recovery playbook has something to show."""
+    from stealth.protect import incidents
+
+    started = today - timedelta(days=2)
+    incident_id = incidents.start(profile, "card-used", started, started)
+    incidents.save_action(
+        profile,
+        incident_id,
+        "bank",
+        done=True,
+        reference="DEMO-0001",
+        note="Card stopped; a new one is in the post.",
+        today=started,
+    )
+    incidents.add_entry(
+        profile, incident_id, today, "Bank said the two payments will be refunded.", "", today
+    )

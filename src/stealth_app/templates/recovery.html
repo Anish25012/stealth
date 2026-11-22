@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, help, csrf_field, icon %}
+{% block main %}
+<div class="page-head">
+  <div>
+    <h1>Something's gone wrong</h1>
+    <p>Pick what's happened to get the steps to take, in order, and keep a log as you go.</p>
+  </div>
+</div>
+
+<div class="notice" role="note">{{ icon("info") }}<p>If you're in danger or a crime is happening now,
+call 999. If money is leaving your account, call your bank first, using the number on the back of
+your card.</p></div>
+
+{% if incidents %}
+<section class="card" aria-labelledby="incidents-h">
+  <h2 id="incidents-h">Your incident logs</h2>
+  <ul class="rows">
+    {% for inc in incidents %}
+    <li><a class="row" href="/recovery/{{ inc.id }}" data-incident="{{ inc.id }}">
+      <span class="glyph{{ ' tone-good' if inc.closed_on else ' tone-action' }}">{{ icon("circle-check" if inc.closed_on else "triangle-alert") }}</span>
+      <span class="row-main">
+        <span class="row-title">{{ inc.situation.title }}</span>
+        <span class="row-text">Started {{ inc.started_on|day }}.
+          {% if inc.closed_on %}Sorted {{ inc.closed_on|day }}.{% else %}{{ inc.done }} of {{ inc.total }} steps done.{% endif %}</span>
+      </span>
+      <span class="row-end">{% if inc.closed_on %}{{ badge({"tone": "good", "label": "Sorted"}) }}{% else %}{{ badge({"tone": "action", "label": "In progress"}) }}{% endif %}</span>
+    </a></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="card" aria-labelledby="situations-h">
+  <h2 id="situations-h">What's happened?</h2>
+  <form method="post" action="/recovery/start" class="stack">
+    {{ csrf_field(csrf) }}
+    <fieldset class="situations">
+      <legend class="visually-hidden">Choose what's happened</legend>
+      {% for s in situations %}
+      <label class="situation">
+        <input type="radio" name="situation" value="{{ s.id }}" required{% if loop.first %} checked{% endif %}>
+        <span><strong>{{ s.title }}</strong><span class="muted small">{{ s.summary }}</span></span>
+      </label>
+      {% endfor %}
+    </fieldset>
+    <div class="remind-row">
+      <label for="started">When it happened or you noticed</label>
+      <input id="started" name="started" type="date" value="{{ today.isoformat() }}" max="{{ today.isoformat() }}" required>
+      <button class="button" type="submit">{{ icon("arrow-right") }} Show me what to do</button>
+    </div>
+  </form>
+</section>
+
+{% call help() %}
+<p>Each situation lists the steps in the order that matters most. Tick each one off as you do it,
+and write down reference numbers: banks, lenders and the police use them to link your reports.</p>
+<p>Your log stays in Stealth's encrypted files on this computer. You can download it as a PDF to
+give to your bank or keep with your papers.</p>
+{% endcall %}
+{% endblock %}

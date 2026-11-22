@@ -105,6 +105,11 @@ EMPTY_PAGES: dict[str, tuple[str, str, str]] = {
         "A UK checklist of steps you can take yourself, with reminders.",
         "shield",
     ),
+    "/recovery": (
+        "Something's gone wrong",
+        "Step-by-step help if you've been hacked, scammed or had your identity used.",
+        "triangle-alert",
+    ),
     "/needs": ("Needs you", "Replies to read and letters to approve.", "inbox"),
     "/approve": ("Waiting for your OK", "Letters Stealth has written for you to read.", "mail"),
     "/reports": ("Reports", "Monthly reports, your exposure score and evidence.", "file-text"),
@@ -315,7 +320,7 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
             return Response(
                 views.evidence_pack(profile, case),
                 media_type="application/zip",
-                headers={"Content-Disposition": _attachment(f"stealth-{case.broker_id}.zip")},
+                headers={"Content-Disposition": attachment(f"stealth-{case.broker_id}.zip")},
             )
 
     @app.get("/approve", response_class=HTMLResponse)
@@ -392,7 +397,7 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
         return Response(
             pdf.render(report),
             media_type="application/pdf",
-            headers={"Content-Disposition": _attachment(f"stealth-report-{report.month.key}.pdf")},
+            headers={"Content-Disposition": attachment(f"stealth-report-{report.month.key}.pdf")},
         )
 
     @app.get("/reports/monthly/{key}", response_class=HTMLResponse)
@@ -601,7 +606,7 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
         return Response(
             text,
             media_type="text/plain; charset=utf-8",
-            headers={"Content-Disposition": _attachment(f"ico-complaint-{case.broker_id}.txt")},
+            headers={"Content-Disposition": attachment(f"ico-complaint-{case.broker_id}.txt")},
         )
 
     @app.post("/demo/start")
@@ -630,7 +635,7 @@ def _case(profile: Profile, broker_id: str) -> Any:
     return find_case(profile.conn, broker_id)
 
 
-def _attachment(filename: str) -> str:
+def attachment(filename: str) -> str:
     return f'attachment; filename="{filename}"'
 
 
