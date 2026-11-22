@@ -9,6 +9,7 @@ from __future__ import annotations
 import io
 from datetime import date
 from html import escape
+from typing import Any
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
@@ -23,6 +24,7 @@ from stealth_app.monthly_pdf import (
     CELL_BOLD,
     H2,
     ICON,
+    INK,
     LINE,
     MUTED,
     PANEL,
@@ -53,15 +55,40 @@ def _grid(rows: list[list[object]], widths: list[float]) -> Table:
     return table
 
 
-def _footer(canvas: Canvas, doc: SimpleDocTemplate) -> None:
-    canvas.saveState()
-    canvas.setFont("Helvetica", 8)
-    canvas.setFillColor(MUTED)
-    canvas.drawString(
-        doc.leftMargin, 12 * mm, "Made by Stealth on your own computer. It wasn't sent anywhere."
-    )
-    canvas.drawRightString(A4[0] - doc.rightMargin, 12 * mm, f"Page {doc.page}")
-    canvas.restoreState()
+MARGIN = 18 * mm
+WARNING = "Contains personal information. Store it safely."
+MADE_BY = "Made by Stealth on your own computer. It wasn't sent anywhere."
+
+
+class _NumberedCanvas(Canvas):  # type: ignore[misc]  # ReportLab has no type hints
+    """Holds each page back until the end, so every footer can say "Page X of Y"."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._pages: list[dict[str, Any]] = []
+
+    def showPage(self) -> None:
+        self._pages.append(dict(self.__dict__))
+        self._startPage()
+
+    def save(self) -> None:
+        total = len(self._pages)
+        for number, page in enumerate(self._pages, 1):
+            self.__dict__.update(page)
+            self._footer(number, total)
+            super().showPage()
+        super().save()
+
+    def _footer(self, number: int, total: int) -> None:
+        self.saveState()
+        self.setFont("Helvetica-Bold", 8)
+        self.setFillColor(INK)
+        self.drawString(MARGIN, 15.5 * mm, WARNING)
+        self.setFont("Helvetica", 8)
+        self.setFillColor(MUTED)
+        self.drawString(MARGIN, 11.5 * mm, MADE_BY)
+        self.drawRightString(A4[0] - MARGIN, 11.5 * mm, f"Page {number} of {total}")
+        self.restoreState()
 
 
 def render(incident: Incident, person: str, made_on: date) -> bytes:
@@ -69,10 +96,10 @@ def render(incident: Incident, person: str, made_on: date) -> bytes:
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        leftMargin=18 * mm,
-        rightMargin=18 * mm,
+        leftMargin=MARGIN,
+        rightMargin=MARGIN,
         topMargin=16 * mm,
-        bottomMargin=20 * mm,
+        bottomMargin=24 * mm,
         title=f"Stealth incident log: {incident.situation.title}",
         author="Stealth",
         subject=f"Incident log for {person}",
@@ -145,5 +172,5 @@ def render(incident: Incident, person: str, made_on: date) -> bytes:
             SMALL,
         ),
     ]
-    doc.build(story, onFirstPage=_footer, onLaterPages=_footer)
+    doc.build(story, canvasmaker=_NumberedCanvas)
     return buffer.getvalue()
