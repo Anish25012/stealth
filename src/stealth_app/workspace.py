@@ -8,7 +8,6 @@ the pages knowing the difference.
 from __future__ import annotations
 
 import logging
-import shutil
 import tempfile
 import threading
 import time
@@ -22,6 +21,7 @@ from stealth.breaches.hibp import HibpProvider
 from stealth.breaches.provider import Breach, BreachProvider, FakeProvider
 from stealth.core import clock
 from stealth.core.errors import ProfileError, StealthError
+from stealth.core.paths import remove_folder
 from stealth.core.secrets import KeyringStore, MemoryStore
 from stealth.custom.policy_fetch import Page, http_get
 from stealth.devmail.servers import LocalImap, LocalSmtp
@@ -202,7 +202,7 @@ class DemoWorkspace:
         self.people_search.__exit__(None, None, None)
         self.smtp.__exit__(None, None, None)
         self.imap.__exit__(None, None, None)
-        shutil.rmtree(self._folder, ignore_errors=True)
+        remove_folder(self._folder)
 
 
 # Background jobs ----------------------------------------------------------------------------

@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import contextlib
 import functools
 import os
 import stat
 import subprocess
 import sys
+import tempfile
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import platformdirs
@@ -93,3 +96,40 @@ def _restrict_windows_acl(path: Path) -> None:
         check=False,
         capture_output=True,
     )
+
+
+def remove_folder(path: Path) -> bool:
+    """Delete a folder and everything in it. True if it's gone.
+
+    Read-only files (Windows won't delete them) are made writable and tried again. Anything
+    still left is logged rather than silently ignored, so a folder that can't be removed is
+    noticed instead of piling up in the temp folder.
+    """
+    import logging
+    import shutil
+
+    def retry(func: Callable[[str], object], name: str, _error: object) -> None:
+        try:
+            os.chmod(name, stat.S_IWRITE)
+            func(name)
+        except OSError:
+            pass  # reported below, once, for the whole folder
+
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(path, onexc=retry)
+    else:  # pragma: no cover - Python 3.11
+        shutil.rmtree(path, onerror=retry)
+    if path.exists():
+        logging.getLogger("stealth.paths").warning("Couldn't delete the folder %s", path)
+        return False
+    return True
+
+
+@contextlib.contextmanager
+def temp_folder(prefix: str) -> Iterator[Path]:
+    """A new temporary folder, deleted with `remove_folder` afterwards, even after an error."""
+    path = Path(tempfile.mkdtemp(prefix=prefix))
+    try:
+        yield path
+    finally:
+        remove_folder(path)

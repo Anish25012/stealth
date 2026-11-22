@@ -1,12 +1,90 @@
+import logging
+import os
+import sys
+import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 
 from stealth.core import clock
+from stealth.core.paths import remove_folder
 from stealth.core.secrets import MemoryStore
 from stealth.profiles.models import MailAccount, Person
 from stealth.profiles.store import Profile, ProfileStore
+
+# Temporary folders --------------------------------------------------------------------------
+#
+# Every temporary folder made during the tests, by this process or a subprocess, goes in one
+# private folder for the session. After each test, a Stealth folder left in there fails that
+# test, so a demo, scan or smoke check that doesn't clean up is caught where it happens. Copies
+# of Stealth running elsewhere on the computer can't confuse the check.
+
+LEFTOVER_PATTERN = "stealth-*"
+_session_temp: Path | None = None
+_original_temp: tuple[str | None, dict[str, str | None]] = (None, {})
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    global _session_temp, _original_temp
+    _session_temp = Path(tempfile.mkdtemp(prefix="stealth-tests-"))
+    names = ("TMP", "TEMP", "TMPDIR")
+    _original_temp = (tempfile.tempdir, {n: os.environ.get(n) for n in names})
+    for name in names:
+        os.environ[name] = str(_session_temp)
+    tempfile.tempdir = str(_session_temp)
+
+
+def pytest_unconfigure(config: pytest.Config) -> None:
+    tempdir, env = _original_temp
+    tempfile.tempdir = tempdir
+    for name, value in env.items():
+        if value is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = value
+    if _session_temp is not None and not remove_folder(_session_temp):
+        message = f"Warning: couldn't delete the tests' temporary folder {_session_temp}"
+        print(message, file=sys.stderr)
+
+
+def session_temp() -> Path:
+    assert _session_temp is not None
+    return _session_temp
+
+
+def leftover_folders() -> set[Path]:
+    return {p for p in session_temp().glob(LEFTOVER_PATTERN) if p.is_dir()}
+
+
+@pytest.fixture(autouse=True)
+def _no_temporary_folders_left_behind() -> Iterator[None]:
+    before = leftover_folders()
+    yield
+    left = leftover_folders() - before
+    for folder in left:
+        remove_folder(folder)  # so one leak doesn't fail every test after it
+    if left:
+        names = ", ".join(sorted(p.name for p in left))
+        pytest.fail(f"This test left temporary folders behind: {names}", pytrace=False)
+
+
+@pytest.fixture(autouse=True)
+def _logging_put_back() -> Iterator[None]:
+    """Close any log file a test opened (the CLI and app do), and restore the logger.
+
+    An open log file can't be deleted on Windows, and a handler left behind would also catch
+    the next test's logging.
+    """
+    logger = logging.getLogger("stealth")
+    handlers, level, propagate = list(logger.handlers), logger.level, logger.propagate
+    yield
+    for handler in logger.handlers:
+        if handler not in handlers:
+            handler.close()
+    logger.handlers[:] = handlers
+    logger.setLevel(level)
+    logger.propagate = propagate
 
 
 @pytest.fixture(autouse=True)

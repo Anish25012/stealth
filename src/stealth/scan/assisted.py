@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import contextlib
 import logging
-import shutil
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -22,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from stealth.core.errors import StealthError
+from stealth.core.paths import remove_folder
 
 log = logging.getLogger("stealth.scan")
 
@@ -189,7 +189,7 @@ class SearchWindow:
                 self._context.close()
             self._context = None
         if self._folder is not None:
-            shutil.rmtree(self._folder, ignore_errors=True)
+            remove_folder(self._folder)
             self._folder = None
 
     def _close(self) -> None:

@@ -113,10 +113,11 @@ def check_letters() -> str:
 
 def check_database() -> str:
     from stealth.core.errors import DatabaseKeyError
+    from stealth.core.paths import temp_folder
     from stealth.db.connection import migrate, open_db
 
-    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
-        path = Path(tmp) / "smoke.db"
+    with temp_folder("stealth-smoke-db-") as tmp:
+        path = tmp / "smoke.db"
         conn = open_db(path, b"k" * 32)
         version = migrate(conn)
         conn.close()
@@ -272,9 +273,11 @@ def run_checks(*, with_window: bool) -> list[Check]:
 
 
 def main(*, with_window: bool, report: Path | None) -> int:
-    with tempfile.TemporaryDirectory(prefix="stealth-smoke-", ignore_cleanup_errors=True) as tmp:
+    from stealth.core.paths import temp_folder
+
+    with temp_folder("stealth-smoke-") as tmp:
         # Anything that reaches for the data folder gets a throwaway one, never the real one.
-        os.environ["STEALTH_HOME"] = tmp
+        os.environ["STEALTH_HOME"] = str(tmp)
         checks = run_checks(with_window=with_window)
     passed = all(c.ok for c in checks if c.required)
     document = {
