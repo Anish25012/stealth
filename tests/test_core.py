@@ -1,4 +1,7 @@
+import getpass
 import logging
+import os
+import subprocess
 import sys
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -51,6 +54,87 @@ def test_ensure_private_dir_creates_nested_folder(tmp_path):
     target = tmp_path / "a" / "b"
     assert paths.ensure_private_dir(target).is_dir()
     assert paths.ensure_private_dir(target).is_dir()  # idempotent
+
+
+def _nested_private_dirs_are_writable(root: Path) -> None:
+    # The same chain a new profile makes: home, then profiles, then the profile's own folder.
+    deepest = root / "home" / "profiles" / "0123456789ab"
+    for folder in (root / "home", root / "home" / "profiles", deepest):
+        paths.ensure_private_dir(folder)
+    (deepest / "evidence").mkdir()
+    (deepest / "evidence" / "note.txt").write_text("still mine", encoding="utf-8")
+    assert (deepest / "evidence" / "note.txt").read_text(encoding="utf-8") == "still mine"
+
+
+@pytest.fixture
+def fresh_sid_lookup():
+    paths._current_user_sid.cache_clear()
+    yield
+    paths._current_user_sid.cache_clear()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows permissions")
+def test_nested_private_folders_stay_writable_on_windows(tmp_path, fresh_sid_lookup):
+    _nested_private_dirs_are_writable(tmp_path)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows permissions")
+def test_a_computer_named_like_its_user_doesnt_lock_them_out(
+    tmp_path, monkeypatch, fresh_sid_lookup
+):
+    # On a PC called "anish" with a user called "anish", the bare name means the computer's own
+    # account to icacls. Make the user name look like the computer name and check that it
+    # doesn't matter.
+    computer = os.environ["COMPUTERNAME"]
+    monkeypatch.setenv("USERNAME", computer)
+    monkeypatch.setattr(getpass, "getuser", lambda: computer)
+    _nested_private_dirs_are_writable(tmp_path)
+
+
+def test_the_folder_is_granted_to_the_users_sid_not_their_name(
+    tmp_path, monkeypatch, fresh_sid_lookup
+):
+    sid = "S-1-5-21-1111111111-2222222222-3333333333-1001"
+    calls: list[list[str]] = []
+
+    def fake_run(args, **_kwargs):
+        calls.append(list(args))
+        out = f'"anish\\anish","{sid}"\r\n' if args[0] == "whoami" else ""
+        return subprocess.CompletedProcess(args, 0, stdout=out, stderr="")
+
+    monkeypatch.setattr(paths.sys, "platform", "win32")
+    monkeypatch.setattr(paths.subprocess, "run", fake_run)
+    monkeypatch.setattr(getpass, "getuser", lambda: "anish")
+    paths.ensure_private_dir(tmp_path / "one")
+    paths.ensure_private_dir(tmp_path / "two")
+
+    icacls = [call for call in calls if call[0] == "icacls"]
+    assert [call[-1] for call in icacls] == [f"*{sid}:(OI)(CI)F"] * 2
+    assert not any("anish:" in arg for call in icacls for arg in call)
+    assert sum(call[0] == "whoami" for call in calls) == 1  # looked up once, then remembered
+
+
+@pytest.mark.parametrize(
+    "whoami",
+    [
+        subprocess.CompletedProcess(["whoami"], 1, stdout="", stderr="no"),
+        subprocess.CompletedProcess(["whoami"], 0, stdout="garbage\r\n", stderr=""),
+        OSError("whoami isn't there"),
+    ],
+)
+def test_without_a_sid_inheritance_is_left_alone(tmp_path, monkeypatch, fresh_sid_lookup, whoami):
+    calls: list[list[str]] = []
+
+    def fake_run(args, **_kwargs):
+        calls.append(list(args))
+        if isinstance(whoami, Exception):
+            raise whoami
+        return whoami
+
+    monkeypatch.setattr(paths.sys, "platform", "win32")
+    monkeypatch.setattr(paths.subprocess, "run", fake_run)
+    assert paths.ensure_private_dir(tmp_path / "kept").is_dir()
+    assert [call[0] for call in calls] == ["whoami"]  # no icacls /inheritance:r
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX permissions")
