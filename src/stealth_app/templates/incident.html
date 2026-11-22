@@ -31,10 +31,10 @@
 <section class="card" aria-labelledby="steps-h">
   <h2 id="steps-h">Steps, in order</h2>
   <ol class="playbook">
-    {% for p in incident.progress %}
+    {% for p in incident.on_screen %}
     {% set a = p.action %}
     <li class="play-step{{ ' is-done' if p.done }}" id="action-{{ a.id }}" data-action="{{ a.id }}" data-done="{{ 'yes' if p.done else 'no' }}">
-      <h3>{{ a.title }}{% if p.done %} {{ badge({"tone": "good", "label": "Done " ~ (p.done_on|day)}) }}{% endif %}</h3>
+      <h3>{{ a.title }}{% if a.urgent and not p.done %} {{ badge({"tone": "problem", "label": "Do this now"}) }}{% endif %}{% if p.done %} {{ badge({"tone": "good", "label": "Done " ~ (p.done_on|day)}) }}{% endif %}</h3>
       <p>{{ a.what }}</p>
       <p class="muted small"><strong>Why:</strong> {{ a.why }}</p>
       {% if a.phones %}

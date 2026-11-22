@@ -59,8 +59,17 @@ class Incident:
         return len(self.progress)
 
     @property
+    def on_screen(self) -> tuple[Progress, ...]:
+        """Urgent steps not yet done first, then the rest in the playbook's order.
+
+        `progress` itself always stays in the recommended order, as the PDF shows it.
+        """
+        first = [p for p in self.progress if p.action.urgent and not p.done]
+        return (*first, *(p for p in self.progress if p not in first))
+
+    @property
     def next_action(self) -> Progress | None:
-        return next((p for p in self.progress if not p.done), None)
+        return next((p for p in self.on_screen if not p.done), None)
 
 
 def _situation(situation_id: str) -> recovery.Situation:

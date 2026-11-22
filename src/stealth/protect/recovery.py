@@ -48,6 +48,7 @@ class Action:
     links: tuple[Link, ...] = ()
     phones: tuple[Phone, ...] = ()
     in_app: tuple[tuple[str, str], ...] = ()  # (label, Stealth page) for things Stealth helps with
+    urgent: bool = False  # do it now: kept at the top on screen until it's done
 
 
 @dataclass(frozen=True)
@@ -109,6 +110,7 @@ BANK = Action(
     "you need to claim later.",
     links=(STOP_SCAMS,),
     phones=(BANK_PHONE,),
+    urgent=True,
 )
 STATEMENTS = Action(
     "statements",
@@ -120,7 +122,7 @@ STATEMENTS = Action(
 )
 REPORT = Action(
     "report-fraud",
-    "Report it to Report Fraud",
+    "Report it to the police (Report Fraud)",
     "Report online or by phone if you've lost money or someone used your identity. In Scotland, "
     "call Police Scotland on 101 instead. Keep the crime reference number.",
     "It's the UK's national service for fraud and cyber crime, run by the City of London Police. "
@@ -152,6 +154,7 @@ LENDER = Action(
     "Call the fraud team of each lender or company where something was opened, using the number on "
     "its own website. Ask them to close it, record it as fraud and confirm in writing.",
     "Until they do, the debt can be chased and can harm your credit file.",
+    urgent=True,
 )
 RECOVER = Action(
     "recover-account",
@@ -160,6 +163,7 @@ RECOVER = Action(
     "you were sent). If you can't get back in, set up a new account and tell people.",
     "The provider can confirm it's you and lock the hacker out.",
     links=(NCSC_HACKED,),
+    urgent=True,
 )
 PASSWORDS = Action(
     "passwords",
@@ -241,7 +245,7 @@ SITUATIONS: tuple[Situation, ...] = (
         "credit-opened",
         "Someone opened credit in my name",
         "A loan, card, phone contract or account you didn't apply for.",
-        (LENDER, CREDIT, REPORT, CIFAS, BANK, FOLLOW_UP),
+        (LENDER, BANK, CREDIT, REPORT, CIFAS, FOLLOW_UP),
     ),
     Situation(
         "scammer",

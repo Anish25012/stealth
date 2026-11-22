@@ -95,6 +95,16 @@ def test_in_app_links_stay_in_stealth():
                 assert url.startswith("/") and not url.startswith("//"), url
 
 
+def test_urgent_steps_come_first_in_the_recommended_order():
+    for situation in recovery.SITUATIONS:
+        urgent = [a.urgent for a in situation.actions]
+        assert urgent == sorted(urgent, reverse=True), situation.id  # all urgent ones lead
+    assert recovery.BANK.urgent and recovery.LENDER.urgent and recovery.RECOVER.urgent
+    assert recovery.REPORT.title == "Report it to the police (Report Fraud)"
+    credit = [a.id for a in recovery.BY_ID["credit-opened"].actions]
+    assert credit[:2] == ["lender", "bank"]
+
+
 # The incident log -----------------------------------------------------------------------------
 
 
@@ -154,8 +164,47 @@ def test_ticking_steps_records_references_and_logs(profile):
         profile, incident_id, "report-fraud", done=False, reference="NFRC123", note="", today=later
     )
     assert incidents.get(profile, incident_id).entries[-1].text == (
-        "Reference noted: Report it to Report Fraud."
+        "Reference noted: Report it to the police (Report Fraud)."
     )
+
+
+def test_undone_urgent_steps_show_first_but_the_order_itself_never_changes(profile):
+    incident_id = incidents.start(profile, "credit-opened", TODAY, TODAY)
+    order = ["lender", "bank", "credit-reports", "report-fraud", "cifas", "follow-up-scams"]
+
+    def ids(steps):
+        return [p.action.id for p in steps]
+
+    for action in ("credit-reports", "report-fraud"):
+        incidents.save_action(
+            profile, incident_id, action, done=True, reference="", note="", today=TODAY
+        )
+    incident = incidents.get(profile, incident_id)
+    assert ids(incident.progress) == order  # the recommended order, as in the PDF
+    assert ids(incident.on_screen) == order  # urgent and undone are already on top
+    assert incident.next_action.action.id == "lender"
+
+    incidents.save_action(
+        profile, incident_id, "lender", done=True, reference="", note="", today=TODAY
+    )
+    incident = incidents.get(profile, incident_id)
+    assert ids(incident.progress) == order
+    assert ids(incident.on_screen) == [
+        "bank",
+        "lender",
+        "credit-reports",
+        "report-fraud",
+        "cifas",
+        "follow-up-scams",
+    ]
+    assert incident.next_action.action.id == "bank"
+
+    incidents.save_action(
+        profile, incident_id, "bank", done=True, reference="", note="", today=TODAY
+    )
+    incident = incidents.get(profile, incident_id)
+    assert ids(incident.on_screen) == order  # nothing urgent left: back to the playbook's order
+    assert incident.next_action.action.id == "cifas"
 
 
 def test_steps_from_another_situation_and_long_text_are_refused(profile):
@@ -233,6 +282,54 @@ def test_the_pdf_is_a_real_pdf_and_escapes_what_was_typed(profile):
     assert b"Stealth incident log: I gave details to a scammer" in data
 
 
+def test_every_pdf_page_says_page_x_of_y_and_how_to_store_it(profile, monkeypatch):
+    from stealth_app import recovery_pdf
+
+    drawn = []
+    for name in ("drawString", "drawRightString"):
+        original = getattr(recovery_pdf.Canvas, name)
+
+        def record(self, x, y, text, *args, _original=original, **kwargs):
+            drawn.append(text)
+            return _original(self, x, y, text, *args, **kwargs)
+
+        monkeypatch.setattr(recovery_pdf.Canvas, name, record)
+
+    incident_id = incidents.start(profile, "card-used", TODAY, TODAY)
+    for n in range(80):  # enough log entries for several pages
+        incidents.add_entry(
+            profile, incident_id, TODAY, f"Call number {n} with the bank.", "", TODAY
+        )
+    data = recovery_pdf.render(incidents.get(profile, incident_id), "Sam Sample", TODAY)
+    pages = [t for t in drawn if t.startswith("Page ")]
+    total = len(pages)
+    assert total >= 2
+    assert pages == [f"Page {n} of {total}" for n in range(1, total + 1)]
+    assert drawn.count("Contains personal information. Store it safely.") == total
+    assert data.startswith(b"%PDF-")
+
+
+def test_the_pdf_lists_steps_in_the_recommended_order(profile, monkeypatch):
+    from stealth_app import recovery_pdf
+
+    titles = []
+    original = recovery_pdf._p
+
+    def spy(text, style):
+        titles.append(text)
+        return original(text, style)
+
+    monkeypatch.setattr(recovery_pdf, "_p", spy)
+    incident_id = incidents.start(profile, "credit-opened", TODAY, TODAY)
+    incidents.save_action(
+        profile, incident_id, "cifas", done=True, reference="", note="", today=TODAY
+    )
+    recovery_pdf.render(incidents.get(profile, incident_id), "Sam Sample", TODAY)
+    steps = [a.title for a in recovery.BY_ID["credit-opened"].actions]
+    shown = [t for t in titles if t in steps]
+    assert shown == steps
+
+
 # The pages ------------------------------------------------------------------------------------
 
 pytest.importorskip("fastapi")
@@ -284,12 +381,15 @@ def test_working_through_an_incident(client):
         in html
     )
     assert "Next: Call your bank" in html
+    assert html.count("Do this now") == 1  # only the bank step is urgent here
+    assert "Report it to the police (Report Fraud)" in html
 
     saved = post(client, f"{url}/action/bank", done="yes", reference="FR-1", note="Stopped.")
     assert saved.headers["location"] == f"{url}#action-bank"
     html = client.get(url).text
     assert 'data-action="bank" data-done="yes"' in html
     assert 'value="FR-1"' in html and "Next: Go through your statements" in html
+    assert "Do this now" not in html
 
     post(client, f"{url}/log", date="2026-11-23", text="Rang the lender <b>", reference="L-1")
     html = client.get(url).text
