@@ -19,7 +19,7 @@ from stealth import __version__, checklist, cycle
 from stealth.cases import engine
 from stealth.cases.state import Status, all_cases
 from stealth.core import paths
-from stealth.core.errors import StealthError
+from stealth.core.errors import ProfileError, StealthError
 from stealth.core.jurisdictions import for_country
 from stealth.core.logging_scrub import setup_logging
 from stealth.core.secrets import KeyringStore, SecretStore
@@ -262,6 +262,144 @@ def init() -> None:
     typer.echo("Write this down and keep it safe. It's the only way back in if this computer's")
     typer.echo("keychain is lost, and Stealth can't show it again.")
     typer.echo("\nNext: `stealth send` to preview your letters.")
+
+
+CLEARABLE = {"other-names": "names", "addresses": "addresses", "phones": "phones"}
+
+
+def _show_person(person: Person) -> None:
+    rows = [
+        ("Full name", [person.display_name]),
+        (
+            "Other names",
+            person.names[1:] if person.names[:1] == [person.display_name] else person.names,
+        ),
+        ("Emails", person.emails),
+        ("Addresses", person.addresses),
+        ("Phones", person.phones),
+    ]
+    for label, values in rows:
+        typer.echo(f"  {label + ':':<13} {', '.join(values) if values else '(none)'}")
+
+
+def _cleaned(values: list[str]) -> list[str]:
+    """Trimmed, blanks dropped, repeats (ignoring case) dropped, order kept."""
+    seen: set[str] = set()
+    kept = []
+    for value in (" ".join(v.split()) for v in values):
+        if value and value.lower() not in seen:
+            seen.add(value.lower())
+            kept.append(value)
+    return kept
+
+
+def changed_person(
+    person: Person,
+    *,
+    name: str | None,
+    other_names: list[str] | None,
+    emails: list[str] | None,
+    addresses: list[str] | None,
+    phones: list[str] | None,
+    clear: list[str],
+) -> Person:
+    """The person's details with the given lists replaced. Anything not given stays as it was."""
+    unknown = set(clear) - set(CLEARABLE)
+    if unknown:
+        raise ProfileError(
+            f"Stealth can't clear {', '.join(sorted(unknown))}.",
+            hint="Use --clear other-names, --clear addresses or --clear phones.",
+        )
+    full_name = " ".join((name or person.display_name).split())
+    if not full_name:
+        raise ProfileError("Your full name can't be empty.")
+    current_others = [n for n in person.names if n != person.display_name]
+    others = (
+        []
+        if "other-names" in clear
+        else (other_names if other_names is not None else current_others)
+    )
+    new_emails = _cleaned(emails) if emails is not None else person.emails
+    for address in new_emails:
+        if not EMAIL_RE.fullmatch(address):
+            raise ProfileError(f"{address!r} isn't an email address.")
+    if not new_emails:
+        raise ProfileError("Keep at least one email address: companies find you by it.")
+    return dataclasses.replace(
+        person,
+        display_name=full_name,
+        names=_cleaned([full_name, *others]),
+        emails=new_emails,
+        addresses=[]
+        if "addresses" in clear
+        else (_cleaned(addresses) if addresses is not None else person.addresses),
+        phones=[]
+        if "phones" in clear
+        else (_cleaned(phones) if phones is not None else person.phones),
+    )
+
+
+@app.command()
+@guarded
+def details(
+    name: Annotated[
+        str | None, typer.Option(help="Your full name, as companies would have it.")
+    ] = None,
+    other_name: Annotated[
+        list[str] | None, typer.Option(help="Another name you've used. Repeat for more.")
+    ] = None,
+    email: Annotated[
+        list[str] | None, typer.Option(help="An email address. Repeat for more; replaces the list.")
+    ] = None,
+    address: Annotated[
+        list[str] | None,
+        typer.Option(help="A home address, now or in the last six years. Repeat for more."),
+    ] = None,
+    phone: Annotated[
+        list[str] | None, typer.Option(help="A phone number. Repeat for more.")
+    ] = None,
+    clear: Annotated[
+        list[str] | None,
+        typer.Option(help="Empty a list: other-names, addresses or phones. Repeat for more."),
+    ] = None,
+    yes: Annotated[bool, typer.Option("--yes", help="Skip the confirmation.")] = False,
+    profile_id: ProfileOption = None,
+) -> None:
+    """See or change the details your letters use. Each option you give replaces that list."""
+    with _profile(profile_id) as profile:
+        person = profile.person()
+        asked = any(v is not None for v in (name, other_name, email, address, phone, clear))
+        if not asked:
+            typer.echo("Your letters use these details:")
+            _show_person(person)
+            typer.echo(
+                '\nChange them with options, for example: stealth details --name "Sam Smith"'
+            )
+            return
+        updated = changed_person(
+            person,
+            name=name,
+            other_names=other_name,
+            emails=email,
+            addresses=address,
+            phones=phone,
+            clear=clear or [],
+        )
+        if updated == person:
+            typer.echo("Nothing to change.")
+            return
+        typer.echo("Now:")
+        _show_person(person)
+        typer.echo("\nAfter the change:")
+        _show_person(updated)
+        if not yes and not typer.confirm("\nSave these details?", default=True):
+            typer.echo("Nothing was changed.")
+            return
+        profile.save_person(updated)
+    typer.echo(
+        "Saved. Letters not yet sent will use the new details; letters already sent don't change."
+    )
+    typer.echo("Check one with `stealth send` (a preview: nothing is sent).")
 
 
 @app.command()
