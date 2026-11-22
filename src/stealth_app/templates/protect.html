@@ -24,6 +24,133 @@
 
 {% include "_alerts.html" %}
 
+{% set bs = breach_settings %}
+<section class="card" id="breaches" aria-labelledby="breaches-h" data-breach-monitoring="{{ 'on' if bs.breach_monitoring else 'off' }}">
+  <div class="card-head">
+    <h2 id="breaches-h">Data breaches</h2>
+    {% if breach_open %}{{ badge({"tone": "problem", "label": breach_open ~ " to deal with"}) }}
+    {% elif bs.breach_monitoring %}{{ badge({"tone": "good", "label": "Monitoring on"}) }}{% endif %}
+  </div>
+  <p class="muted">Find out when one of your email addresses turns up in a data breach, so you can
+  change that password before anyone uses it. Each breach you haven't dealt with counts against
+  your privacy score.</p>
+
+  {% if breach_list %}
+  <ul class="credit-list breach-list">
+    {% for found in breach_list %}
+    {% set b = found.breach %}
+    <li class="credit-agency" id="breach-{{ found.id }}" data-breach="{{ found.id }}">
+      <div class="row">
+        <span class="glyph{{ ' tone-good' if found.dealt_with else ' tone-problem' }}">{{ icon("circle-check" if found.dealt_with else "triangle-alert") }}</span>
+        <span class="row-main">
+          <span class="row-title">{{ b.title }}{% if not b.verified %} <span class="muted small">(not verified)</span>{% endif %}</span>
+          <span class="row-text">{{ found.email }}{% if b.breach_date %}, breached {{ b.breach_date|day }}{% endif %}{% if found.source == "manual" %}, added by you{% endif %}.</span>
+          {% if b.data_classes %}<span class="row-text">Exposed: {{ b.data_classes|join(", ") }}.</span>{% endif %}
+        </span>
+        <form class="row-end" method="post" action="/protect/breaches/{{ found.id }}/dealt">
+          {{ csrf_field(csrf) }}
+          {% if found.dealt_with %}
+          <input type="hidden" name="dealt" value="no">
+          <button class="button secondary small" type="submit">Not dealt with<span class="visually-hidden">: {{ b.title }}</span></button>
+          {% else %}
+          <input type="hidden" name="dealt" value="yes">
+          <button class="button small" type="submit">{{ icon("check") }} I've dealt with it<span class="visually-hidden">: {{ b.title }}</span></button>
+          {% endif %}
+        </form>
+      </div>
+      {% if b.description and not found.dealt_with %}<p class="small muted">{{ b.description }}</p>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="small muted">"Dealt with" means you've changed that password, and anywhere you used the
+  same one, and turned on 2-step verification where you can.</p>
+  {% endif %}
+
+  <form method="post" action="/protect/breaches/settings" class="stack breach-settings">
+    {{ csrf_field(csrf) }}
+    <div class="toggle-row">
+      <label for="breach-on">Check my email addresses for breaches</label>
+      <input id="breach-on" name="on" type="checkbox" value="yes"{% if bs.breach_monitoring %} checked{% endif %}>
+    </div>
+    <fieldset class="breach-how">
+      <legend>How</legend>
+      <label><input type="radio" name="provider" value="hibp"{% if bs.breach_provider == "hibp" %} checked{% endif %}>
+        Automatically, with my own Have I Been Pwned API key</label>
+      <label><input type="radio" name="provider" value="manual"{% if bs.breach_provider != "hibp" %} checked{% endif %}>
+        I'll check myself and add what I find</label>
+    </fieldset>
+    <div class="remind-row">
+      <label for="breach-every">How often</label>
+      <select id="breach-every" name="every" class="compact">
+        {% for days, label in breach_every %}<option value="{{ days }}"{% if days == bs.breach_every_days %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      <button class="button secondary small" type="submit">Save</button>
+    </div>
+  </form>
+
+  {% if bs.breach_provider == "hibp" %}
+  <div class="notice" role="note">{{ icon("info") }}<p>Each check sends your email addresses to Have
+  I Been Pwned, and nothing else. Checking an address needs a paid API key from them; Stealth keeps
+  it in your computer's password store and uses it only to ask about your own addresses.</p></div>
+  {% if breach_has_key %}
+  <div class="remind-row">
+    <span>{{ icon("lock", "s") }} Your API key is saved.</span>
+    <form method="post" action="/protect/breaches/key/forget">
+      {{ csrf_field(csrf) }}
+      <button class="button secondary small" type="submit">Remove key</button>
+    </form>
+    <form method="post" action="/protect/breaches/check">
+      {{ csrf_field(csrf) }}
+      <button class="button small" type="submit">{{ icon("refresh-cw") }} Check now</button>
+    </form>
+  </div>
+  {% else %}
+  <form class="remind-row" method="post" action="/protect/breaches/key">
+    {{ csrf_field(csrf) }}
+    <label for="breach-key">API key</label>
+    <input id="breach-key" name="api_key" type="password" autocomplete="off" spellcheck="false">
+    <button class="button small" type="submit">Save key</button>
+    <a href="{{ breach_links.key.url }}" target="_blank" rel="noopener noreferrer">Get a key</a>
+  </form>
+  {% endif %}
+  {% if bs.last_breach_check %}<p class="small muted">Last check: {{ bs.last_breach_result }}</p>{% endif %}
+  {% else %}
+  <p class="small">Search for each of your addresses on <a href="{{ breach_links.hibp.url }}" target="_blank" rel="noopener noreferrer">Have I Been Pwned</a>, then add any breach you find here.</p>
+  {% endif %}
+
+  <details class="credit-note"{% if bs.breach_provider != "hibp" and not breach_list %} open{% endif %}>
+    <summary>Add a breach you found</summary>
+    {% if breach_addresses %}
+    <form method="post" action="/protect/breaches/add" class="stack">
+      {{ csrf_field(csrf) }}
+      <div class="field">
+        <label for="breach-email">Which address</label>
+        <select id="breach-email" name="email">{% for a in breach_addresses %}<option>{{ a }}</option>{% endfor %}</select>
+      </div>
+      <div class="field">
+        <label for="breach-title">Site or company</label>
+        <input id="breach-title" name="title" type="text" maxlength="120" required>
+      </div>
+      <div class="field">
+        <label for="breach-date">When it happened <span class="muted">(optional)</span></label>
+        <input id="breach-date" name="date" type="date" max="{{ today.isoformat() }}">
+      </div>
+      <div class="field">
+        <label for="breach-exposed">What was exposed <span class="muted">(optional, separated by commas)</span></label>
+        <input id="breach-exposed" name="exposed" type="text" maxlength="300" placeholder="Passwords, phone numbers">
+      </div>
+      <button class="button secondary small" type="submit">Add breach</button>
+    </form>
+    {% else %}
+    <p>Add your email addresses in Settings first.</p>
+    {% endif %}
+  </details>
+
+  <p class="small muted">Breach data from <a href="{{ breach_links.hibp.url }}" target="_blank" rel="noopener noreferrer">Have I Been Pwned</a>,
+  licensed under <a href="{{ breach_links.licence.url }}" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.
+  Not appearing there doesn't prove an address was never in a breach.</p>
+</section>
+
 <section class="card" aria-labelledby="credit-h">
   <div class="card-head">
     <h2 id="credit-h">Your credit reports</h2>

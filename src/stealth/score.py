@@ -6,10 +6,11 @@ swamp the rest. The formula is shown on screen exactly as written here, so nothi
     Listings you found that are still up      -10 each, at most -40
     Companies that refused to remove you       -5 each, at most -25
     Companies that haven't confirmed yet       -1 each, at most -20
-    Data breaches (from Phase 3)               -5 each, at most -15
+    Data breaches not yet dealt with           -5 each, at most -15
 
-A company counts as "confirmed" once it says it removed you or holds nothing. The score never
-claims more than it knows: until you've run a scan, it says listings weren't checked.
+A company counts as "confirmed" once it says it removed you or holds nothing. A breach stops
+counting once the person says they've dealt with it (changed that password, for example). The
+score never claims more than it knows: until you've run a scan, it says listings weren't checked.
 """
 
 from __future__ import annotations

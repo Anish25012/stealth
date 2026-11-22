@@ -430,6 +430,7 @@ def _post_routes(app):
         .replace("{company_id}", "custom-x")
         .replace("{item_id}", "tps")
         .replace("{alert_id}", "1")
+        .replace("{found_id}", "1")
         for route in app.routes
         # /show and /quit are for other copies of the app and check the launch token instead.
         if "POST" in getattr(route, "methods", set()) and route.path not in {"/show", "/quit"}

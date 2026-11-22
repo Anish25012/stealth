@@ -18,6 +18,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
+from stealth.breaches.hibp import HibpProvider
+from stealth.breaches.provider import Breach, BreachProvider, FakeProvider
 from stealth.core import clock
 from stealth.core.errors import StealthError
 from stealth.core.secrets import KeyringStore, MemoryStore
@@ -33,6 +35,23 @@ from stealth.scan.assisted import SearchWindow
 from stealth.scan.results import ScanSite, suggested_sites
 
 log = logging.getLogger("stealth.app.workspace")
+
+
+class _DemoBreaches(FakeProvider):
+    """Every demo address is in one made-up breach, so the demo shows what a result looks like."""
+
+    def check(self, email: str) -> list[Breach]:
+        self.checked.append(email)
+        return [
+            Breach(
+                name="DemoShop",
+                title="Demo Shop (made up)",
+                domain="demo-shop.test",
+                breach_date=clock.local_date("Europe/London").replace(month=1, day=15),
+                data_classes=("Email addresses", "Passwords", "Names"),
+                description="A made-up breach for the demo. No real company or data.",
+            )
+        ]
 
 
 class Workspace(Protocol):
@@ -55,6 +74,8 @@ class Workspace(Protocol):
     def search_window(self) -> SearchWindow: ...
 
     def scan_sites(self) -> list[ScanSite]: ...
+
+    def breach_provider(self, api_key: str) -> BreachProvider: ...
 
     def close(self) -> None: ...
 
@@ -92,6 +113,9 @@ class RealWorkspace:
 
     def scan_sites(self) -> list[ScanSite]:
         return suggested_sites(self.brokers())
+
+    def breach_provider(self, api_key: str) -> BreachProvider:
+        return HibpProvider(api_key, sleep=self.sleep)
 
     def close(self) -> None:
         if self._window is not None:
@@ -148,6 +172,10 @@ class DemoWorkspace:
     def scan_sites(self) -> list[ScanSite]:
         site = self.people_search
         return [ScanSite("find-a-neighbour", "Find-a-Neighbour (demo)", site.url, (site.host,))]
+
+    def breach_provider(self, api_key: str) -> BreachProvider:
+        # Made up, like everything in the demo: it never contacts Have I Been Pwned.
+        return _DemoBreaches()
 
     def close(self) -> None:
         if self._window is not None:

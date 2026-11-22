@@ -312,4 +312,4 @@ def test_several_due_reminders_make_one_tray_message(workspace):
     scheduler = Scheduler(workspace, notify=lambda t, m: notes.append((t, m)), now=clock.now)
     clock.set_time(NOON + timedelta(days=7))
     scheduler.tick(force=True)
-    assert notes == [("Stealth: Sam Sample", "2 reminders are due. Open Stealth to see them.")]
+    assert notes == [("Stealth: Sam Sample", "2 new reminders and alerts. Open Stealth to see them.")]

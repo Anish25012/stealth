@@ -242,6 +242,7 @@ class ProfileStore:
         shutil.rmtree(self.root / profile_id)
         self.secrets.delete(keys.key_name(profile_id))
         self.secrets.delete(f"mail-password:{profile_id}")
+        self.secrets.delete(f"hibp-api-key:{profile_id}")
         index = self._read_index()
         index["profiles"].remove(profile_id)
         if index["active"] == profile_id:
