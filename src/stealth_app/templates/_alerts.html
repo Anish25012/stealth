@@ -1,0 +1,25 @@
+{# Open alerts, with a way to dismiss each. Needs `alerts`, `csrf` and `path`. #}
+{% from "_macros.html" import csrf_field, icon %}
+{% if alerts %}
+<section class="card" aria-labelledby="alerts-h">
+  <div class="card-head">
+    <h2 id="alerts-h">{{ icon("bell", "s") }} Reminders</h2>
+  </div>
+  <ul class="rows">
+    {% for alert in alerts %}
+    <li class="row alert-row">
+      <span class="glyph tone-action">{{ icon("bell") }}</span>
+      <span class="row-main">
+        <span class="row-title">{% if alert.link %}<a href="{{ alert.link }}">{{ alert.title }}</a>{% else %}{{ alert.title }}{% endif %}</span>
+        <span class="row-text">{{ alert.message }}</span>
+      </span>
+      <form class="row-end" method="post" action="/alerts/{{ alert.id }}/dismiss">
+        {{ csrf_field(csrf) }}
+        <input type="hidden" name="next" value="{{ path }}">
+        <button class="button secondary small" type="submit">Dismiss<span class="visually-hidden">: {{ alert.title }}</span></button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
