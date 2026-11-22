@@ -10,7 +10,7 @@ from starlette.responses import Response
 
 from stealth import alerts
 from stealth.core.errors import ProfileError
-from stealth.protect import checklist, credit
+from stealth.protect import checklist, cifas, credit
 from stealth.protect import store as protect
 from stealth.templates.render import format_date
 from stealth_app import views
@@ -66,7 +66,31 @@ def install(app: FastAPI, state: State) -> None:
                 credit_default=credit.DEFAULT_EVERY,
                 credit_advice=credit.ICO_ADVICE,
                 note_limit=credit.NOTE_LIMIT,
+                cifas=cifas.status(profile, views.today_for(profile)),
+                cifas_about=cifas.ABOUT,
+                cifas_apply=cifas.APPLY,
+                today=views.today_for(profile),
             )
+
+    # Cifas Protective Registration.
+
+    @app.post("/protect/cifas/record")
+    async def cifas_record(request: Request) -> Response:
+        form = await read_form(request)
+        try:
+            started = date.fromisoformat(first(form, "started").strip())
+        except ValueError:
+            raise ProfileError("Enter the date your registration started.") from None
+        with changing(state) as profile:
+            cifas.record(profile, started, views.today_for(profile))
+        return redirect("/protect#cifas")
+
+    @app.post("/protect/cifas/forget")
+    async def cifas_forget(request: Request) -> Response:
+        await read_form(request)
+        with changing(state) as profile:
+            cifas.forget(profile)
+        return redirect("/protect#cifas")
 
     # Credit reports. These paths have one more part than /protect/{item_id}/..., so they can't
     # be mistaken for a checklist item.

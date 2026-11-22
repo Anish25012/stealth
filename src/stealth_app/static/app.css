@@ -402,7 +402,7 @@
   .error::before { content: "!"; display: inline-grid; place-items: center; flex: none; width: 1.125rem; height: 1.125rem; margin-top: .1rem; border-radius: 50%; background: var(--problem-dot); color: #fff; font-size: .75rem; }
 
   input[type="text"], input[type="email"], input[type="password"], input[type="search"], input[type="url"],
-  input[type="tel"], input[type="number"], input:not([type]), select, textarea {
+  input[type="tel"], input[type="number"], input[type="date"], input:not([type]), select, textarea {
     display: block; width: 100%; max-width: 32rem; min-height: 2.75rem;
     padding: var(--space-2) var(--space-3);
     font: inherit; color: var(--text); background: var(--surface);
@@ -466,7 +466,7 @@
   .toggle-row label { font-weight: 500; cursor: pointer; }
 .remind-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); margin: var(--space-3) 0 var(--space-4); }
 .remind-row label { font-weight: 500; }
-.remind-row select { width: auto; }
+.remind-row select, .remind-row input[type="date"] { width: auto; }
 .credit-list { list-style: none; margin: 0; padding: 0; }
 .credit-list > li + li { border-top: 1px solid var(--separator); }
 .credit-agency { padding-bottom: var(--space-3); }
