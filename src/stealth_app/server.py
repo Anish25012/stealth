@@ -34,7 +34,16 @@ from starlette.responses import Response
 from stealth import __version__
 from stealth.core.errors import StealthError
 from stealth.core.logging_scrub import scrub
-from stealth_app import dashboard, discover, phone, protect, recovery, setup_wizard, styleguide
+from stealth_app import (
+    dashboard,
+    discover,
+    old_accounts,
+    phone,
+    protect,
+    recovery,
+    setup_wizard,
+    styleguide,
+)
 from stealth_app.workspace import Workspace
 
 log = logging.getLogger("stealth.app.server")
@@ -184,6 +193,7 @@ def create_app(
     discover.install(app, state)
     protect.install(app, state)
     recovery.install(app, state)
+    old_accounts.install(app, state)
     phone.install(app, state)
     if styleguide.enabled():
         styleguide.install(app)

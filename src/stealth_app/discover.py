@@ -38,13 +38,35 @@ from stealth_app.workspace import Job
 T = TypeVar("T")
 
 
-def _known_company(state: State, domain: str) -> str | None:
+def known_broker(state: State, domain: str) -> Broker | None:
     """A company already on Stealth's list with this website, so nobody writes to it twice."""
     own = registrable(domain)
     for broker in state.workspace.brokers().values():
         if registrable(broker.domain) == own:
-            return broker.name
+            return broker
     return None
+
+
+def start_lookup(state: State, domain: str, *, listing: str | None, category: str) -> Job:
+    """Read a company's website for its privacy contact, as a job. Its page then offers the
+    addresses found, and choosing one drafts a letter that waits for approval."""
+
+    def work(profile: Profile, job: Job) -> None:
+        job.lines.append(f"Reading {domain}'s website for its privacy policy...")
+        found = look_up(domain, fetch=state.workspace.fetch)
+        company = custom.save_lookup(profile, found, listing_url=listing, category=category)
+        job.next_url = f"/companies/add/{quote(company.id)}"
+        job.lines.append(f"Checked {len(found.pages_checked)} page(s) on {domain}.")
+        if found.blocked:
+            job.lines.append(
+                f"{len(found.blocked)} page(s) skipped: the site asks programs not to read them."
+            )
+        if found.best:
+            job.lines.append(f"The likeliest privacy address is {found.best.address}.")
+        else:
+            job.lines.append("No email address was found. You can type one in.")
+
+    return start_job(state, f"Looking up {domain}", work, "/companies/add")
 
 
 def _search_anywhere(profile: Profile) -> str:
@@ -79,30 +101,13 @@ def install(app: FastAPI, state: State) -> None:
         domain = normalise_domain(first(form, "site"))
         listing = first(form, "listing").strip() or None
         category = first(form, "category", "other")
-        known = _known_company(state, domain)
+        known = known_broker(state, domain)
         if known:
             raise ProfileError(
-                f"{known} is already on Stealth's list.",
+                f"{known.name} is already on Stealth's list.",
                 hint="Find it under Companies. Stealth writes to it already.",
             )
-
-        def work(profile: Profile, job: Job) -> None:
-            job.lines.append(f"Reading {domain}'s website for its privacy policy...")
-            found = look_up(domain, fetch=state.workspace.fetch)
-            company = custom.save_lookup(profile, found, listing_url=listing, category=category)
-            job.next_url = f"/companies/add/{quote(company.id)}"
-            job.lines.append(f"Checked {len(found.pages_checked)} page(s) on {domain}.")
-            if found.blocked:
-                job.lines.append(
-                    f"{len(found.blocked)} page(s) skipped: the site asks programs not to "
-                    "read them."
-                )
-            if found.best:
-                job.lines.append(f"The likeliest privacy address is {found.best.address}.")
-            else:
-                job.lines.append("No email address was found. You can type one in.")
-
-        job = start_job(state, f"Looking up {domain}", work, "/companies/add")
+        job = start_lookup(state, domain, listing=listing, category=category)
         return redirect(f"/jobs/{job.id}")
 
     @app.get("/companies/add/{company_id}", response_class=HTMLResponse)
