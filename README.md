@@ -230,6 +230,7 @@ through the rest.
 | `stealth complain <company>` | Sends a formal complaint now, after a refusal |
 | `stealth ico <company>` | Drafts an ICO complaint |
 | `stealth checklist` | Lists the UK steps only you can do |
+| `stealth details` | Shows the details your letters use. `--name`, `--email`, `--address` and `--phone` replace that list (repeat for more); `--clear phones` empties one |
 | `stealth password` | Replaces the app password, checking it works first. `--address` fixes the sending address |
 | `stealth google` | Signs in with Google (again), or switches a Gmail profile from an app password |
 
