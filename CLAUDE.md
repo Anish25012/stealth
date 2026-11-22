@@ -78,13 +78,14 @@ A `v*` tag also makes a **draft** GitHub release; the maintainer publishes it by
 
 ## Where things stand
 
-- Phases 1 and 2 are done. v0.1.0 and v0.2.0 are draft releases (not published).
-- Google sign-in works (tested end to end: send, reply detected, case settled). To finish:
-  verify `https://anish25012.github.io/` in Google Search Console (HTML tag goes in the
-  `Anish25012/anish25012.github.io` repo's `index.html`, at the `google-site-verification`
-  comment), save the Branding page, publish the app (no verification), sign in again, then
-  publish v0.2.0.
-- Next: Phase 3 (breach monitoring, credit report reminders, Cifas tracking, recovery playbook).
+- Phases 1, 2 and 3 are done (Phase 3: breach monitoring, credit report reminders, Cifas
+  tracking, recovery playbook, find my old accounts). v0.1.0 and v0.2.0 are draft releases
+  (not published).
+- Google sign-in works (tested end to end: send, reply detected, case settled).
+  `https://anish25012.github.io/` is verified in Google Search Console. To finish: save the
+  Branding page, publish the app (no verification), sign in again, then publish v0.2.0.
+- Not yet tried against the real services: HIBP breach checks, the Gmail sign-up scan.
+- Next: Phase 4 is plan-only (ask before building).
 
 ## Quirks seen on the maintainer's Windows PC
 
@@ -93,3 +94,6 @@ A `v*` tag also makes a **draft** GitHub release; the maintainer publishes it by
   store). Norton's email scanning blocks IMAP port 993; Google sign-in avoids it.
 - Installers built locally there can fail with a hash mismatch; install CI-built ones instead.
 - pytest warnings can hide the summary line; check the exit code.
+- Tests run with a private temp folder; a test that leaves a `stealth-*` folder in it fails
+  (`tests/conftest.py`). Delete temp folders with `paths.remove_folder`, never
+  `ignore_errors=True`, so a folder that can't be removed is logged.

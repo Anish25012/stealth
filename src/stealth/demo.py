@@ -8,17 +8,16 @@ from __future__ import annotations
 
 import email
 import email.policy
-import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
-from pathlib import Path
 
 from stealth import cycle
 from stealth.cases import engine
 from stealth.cases.state import Status, all_cases
 from stealth.core import clock
 from stealth.core.errors import StealthError
+from stealth.core.paths import temp_folder
 from stealth.core.secrets import MemoryStore
 from stealth.db import events
 from stealth.devmail.servers import Delivered, LocalImap, LocalSmtp, bounce_of, reply_to
@@ -113,11 +112,11 @@ def _statuses(profile: Profile) -> dict[str, str]:
 def run_demo(say: Callable[[str], None], start: date = date(2026, 11, 2)) -> DemoResult:
     """Run the whole story, narrating through `say`. Raises DemoFailure if anything is wrong."""
     with (
-        tempfile.TemporaryDirectory(prefix="stealth-demo-", ignore_cleanup_errors=True) as tmp,
+        temp_folder("stealth-demo-") as tmp,
         LocalSmtp() as smtp,
         LocalImap(PASSWORD) as imap,
     ):
-        store = ProfileStore(MemoryStore(), home=Path(tmp))
+        store = ProfileStore(MemoryStore(), home=tmp)
         profile_id, _ = store.create()
         account = demo_account(smtp, imap)
         try:
