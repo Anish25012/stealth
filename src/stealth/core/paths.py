@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import getpass
+import functools
 import os
 import stat
 import subprocess
@@ -51,15 +51,44 @@ def ensure_private_dir(path: Path) -> Path:
     return path
 
 
+@functools.cache
+def _current_user_sid() -> str | None:
+    """The signed-in user's SID, such as S-1-5-21-..., or None if Windows won't say.
+
+    A bare user name is ambiguous: when the computer has the same name as the user (a common
+    default), icacls resolves "anish" to the computer's own account, and a folder whose
+    inheritance has been removed then locks its owner out. A SID names exactly one account.
+    """
+    try:
+        result = subprocess.run(
+            ["whoami", "/user", "/fo", "csv", "/nh"],  # noqa: S607
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return None
+    # One line: "computer\user","S-1-5-21-..."
+    fields = [field.strip().strip('"') for field in result.stdout.strip().split(",")]
+    if result.returncode != 0 or not fields or not fields[-1].startswith("S-1-"):
+        return None
+    return fields[-1]
+
+
 def _restrict_windows_acl(path: Path) -> None:
     # Best effort: failure must not stop the app, and the parent folder is normally private anyway.
+    sid = _current_user_sid()
+    if sid is None:
+        # Removing inheritance without a grant we're sure of could lock the person out. Keep the
+        # inherited (per-user) permissions instead.
+        return
     subprocess.run(  # noqa: S603
         [  # noqa: S607
             "icacls",
             str(path),
             "/inheritance:r",
             "/grant:r",
-            f"{getpass.getuser()}:(OI)(CI)F",
+            f"*{sid}:(OI)(CI)F",
         ],
         check=False,
         capture_output=True,
