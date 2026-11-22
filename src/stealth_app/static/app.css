@@ -467,6 +467,12 @@
 .remind-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); margin: var(--space-3) 0 var(--space-4); }
 .remind-row label { font-weight: 500; }
 .remind-row select { width: auto; }
+.credit-list { list-style: none; margin: 0; padding: 0; }
+.credit-list > li + li { border-top: 1px solid var(--separator); }
+.credit-agency { padding-bottom: var(--space-3); }
+.credit-agency .row { padding-left: 0; padding-right: 0; }
+.credit-note textarea { width: 100%; max-width: none; }
+.credit-note p { color: var(--text-2); }
 
   /* Segmented control: radios or links. The selected segment is a raised chip. */
   .segmented {

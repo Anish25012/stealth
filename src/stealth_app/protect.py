@@ -10,7 +10,7 @@ from starlette.responses import Response
 
 from stealth import alerts
 from stealth.core.errors import ProfileError
-from stealth.protect import checklist
+from stealth.protect import checklist, credit
 from stealth.protect import store as protect
 from stealth.templates.render import format_date
 from stealth_app import views
@@ -34,6 +34,13 @@ def _back(next_url: str) -> str:
     return "/"
 
 
+def _days(chosen: str) -> int:
+    try:
+        return int(chosen)
+    except ValueError:
+        raise ProfileError("Choose when to be reminded from the list.") from None
+
+
 def install(app: FastAPI, state: State) -> None:
     @app.get("/protect", response_class=HTMLResponse)
     def protect_page(request: Request) -> Response:
@@ -54,7 +61,41 @@ def install(app: FastAPI, state: State) -> None:
                 alerts=alerts.open_alerts(profile),
                 remind_choices=protect.REMIND_CHOICES,
                 checked_on=format_date(date.fromisoformat(checklist.CHECKED_ON)),
+                credit=credit.statuses(profile),
+                credit_every=credit.EVERY_CHOICES,
+                credit_default=credit.DEFAULT_EVERY,
+                credit_advice=credit.ICO_ADVICE,
+                note_limit=credit.NOTE_LIMIT,
             )
+
+    # Credit reports. These paths have one more part than /protect/{item_id}/..., so they can't
+    # be mistaken for a checklist item.
+
+    @app.post("/protect/credit/{agency_id}/checked")
+    async def credit_checked(request: Request, agency_id: str) -> Response:
+        form = await read_form(request)
+        days = _days(first(form, "every"))
+        with changing(state) as profile:
+            credit.mark_checked(profile, agency_id, views.today_for(profile), days)
+        return redirect(f"/protect#credit-{agency_id}")
+
+    @app.post("/protect/credit/{agency_id}/remind")
+    async def credit_remind(request: Request, agency_id: str) -> Response:
+        form = await read_form(request)
+        chosen = first(form, "every")
+        with changing(state) as profile:
+            if chosen == "off":
+                credit.stop_reminders(profile, agency_id)
+            else:
+                credit.set_every(profile, agency_id, _days(chosen), views.today_for(profile))
+        return redirect(f"/protect#credit-{agency_id}")
+
+    @app.post("/protect/credit/{agency_id}/note")
+    async def credit_note(request: Request, agency_id: str) -> Response:
+        form = await read_form(request)
+        with changing(state) as profile:
+            credit.save_note(profile, agency_id, first(form, "note"))
+        return redirect(f"/protect#credit-{agency_id}")
 
     @app.post("/protect/{item_id}/mark")
     async def protect_mark(request: Request, item_id: str) -> Response:
@@ -75,11 +116,7 @@ def install(app: FastAPI, state: State) -> None:
             if chosen == "off":
                 protect.clear_reminder(profile, item_id)
             else:
-                try:
-                    days = int(chosen)
-                except ValueError:
-                    raise ProfileError("Choose when to be reminded from the list.") from None
-                protect.set_reminder(profile, item_id, days, views.today_for(profile))
+                protect.set_reminder(profile, item_id, _days(chosen), views.today_for(profile))
         return redirect(f"/protect#{item_id}")
 
     @app.post("/alerts/{alert_id}/dismiss")

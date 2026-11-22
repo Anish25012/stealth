@@ -24,6 +24,62 @@
 
 {% include "_alerts.html" %}
 
+<section class="card" aria-labelledby="credit-h">
+  <div class="card-head">
+    <h2 id="credit-h">Your credit reports</h2>
+  </div>
+  <p class="muted">Each of the three UK credit reference agencies must give you a free statutory
+  credit report. Look for accounts, searches or addresses you don't recognise: they can be the
+  first sign that someone is using your identity. Stealth reminds you to look; it never fetches
+  your reports or sees them.</p>
+  <ul class="credit-list">
+    {% for s in credit %}
+    <li class="credit-agency" id="{{ s.anchor }}" data-agency="{{ s.agency.id }}">
+      <div class="row">
+        <span class="glyph{{ ' tone-good' if s.last_checked_on else ' tone-action' }}">{{ icon("file-check" if s.last_checked_on else "file-text") }}</span>
+        <span class="row-main">
+          <span class="row-title">{{ s.agency.name }}</span>
+          <span class="row-text">
+            {% if s.last_checked_on %}Last checked {{ s.last_checked_on|day }}.{% else %}Not checked yet.{% endif %}
+            {% if s.reminder %} Next reminder {{ s.reminder.due_on|day }}.{% endif %}
+          </span>
+        </span>
+        <span class="row-end"><a href="{{ s.agency.report.url }}" target="_blank" rel="noopener noreferrer">Get your free report<span class="visually-hidden"> from {{ s.agency.name }}</span></a></span>
+      </div>
+      <form class="remind-row" method="post" action="/protect/credit/{{ s.agency.id }}/checked">
+        {{ csrf_field(csrf) }}
+        <label for="every-{{ s.agency.id }}">Remind me again</label>
+        <select id="every-{{ s.agency.id }}" name="every" class="compact">
+          {% for days, label in credit_every %}<option value="{{ days }}"{% if days == ((s.reminder.every_days if s.reminder else none) or credit_default) %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <button class="button small" type="submit">{{ icon("check") }} I've checked it today<span class="visually-hidden">: {{ s.agency.name }}</span></button>
+      </form>
+      {% if s.reminder %}
+      <form class="remind-row" method="post" action="/protect/credit/{{ s.agency.id }}/remind">
+        {{ csrf_field(csrf) }}<input type="hidden" name="every" value="off">
+        <button class="button secondary small" type="submit">Stop reminders<span class="visually-hidden"> for {{ s.agency.name }}</span></button>
+      </form>
+      {% endif %}
+      <details class="credit-note"{% if s.note %} open{% endif %}>
+        <summary>Something looked wrong?</summary>
+        <p>Write down what you found, so you have it when you contact them. It stays in your
+        encrypted profile on this computer.</p>
+        <form method="post" action="/protect/credit/{{ s.agency.id }}/note">
+          {{ csrf_field(csrf) }}
+          <label for="note-{{ s.agency.id }}" class="visually-hidden">Notes about your {{ s.agency.name }} report</label>
+          <textarea id="note-{{ s.agency.id }}" name="note" rows="3" maxlength="{{ note_limit }}">{{ s.note }}</textarea>
+          <div class="button-row"><button class="button secondary small" type="submit">Save note</button></div>
+        </form>
+        <p>Ask {{ s.agency.name }} to correct it. If the mistake came from a lender, they may send
+        you to that lender. If neither fixes an obvious mistake, you can complain to the ICO.
+        <a href="{{ credit_advice.url }}" target="_blank" rel="noopener noreferrer">How to fix credit report mistakes (ICO)</a></p>
+      </details>
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="small muted">Links open in your web browser. Checked against each official source on {{ checked_on }}.</p>
+</section>
+
 <section class="card faq" aria-labelledby="steps-h">
   <div class="card-head">
     <h2 id="steps-h">The checklist</h2>
@@ -93,6 +149,9 @@ your Google results, Stealth sets a reminder for you. <strong>Not for me</strong
 of your score, for example if you don't use social media.</p>
 <p><strong>Reminders</strong> show here and on the Overview, and Stealth tells you once through the
 tray icon when one is due. Dismiss a reminder when you've dealt with it.</p>
+<p><strong>Credit reports</strong>: press <strong>I've checked it today</strong> after you've looked
+at an agency's report, and Stealth reminds you when it's time to look again. Statutory reports are
+free from all three agencies; you don't need a paid subscription.</p>
 <p>Every link opens the official website in your web browser. Stealth doesn't fill anything in for
 you or tell these services anything.</p>
 {% endcall %}
