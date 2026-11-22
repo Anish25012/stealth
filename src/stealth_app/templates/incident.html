@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, help, csrf_field, icon, ring %}
+{% block main %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow"><a href="/recovery">{{ icon("arrow-left", "s") }} Something's gone wrong</a></p>
+    <h1>{{ incident.situation.title }}</h1>
+    <p>Started {{ incident.started_on|day }}.{% if incident.closed_on %} Marked as sorted {{ incident.closed_on|day }}.{% endif %}</p>
+  </div>
+  <a class="button secondary" href="/recovery/{{ incident.id }}.pdf" download>{{ icon("download") }} Download PDF</a>
+</div>
+
+<section class="card hero" aria-labelledby="progress-h" data-incident="{{ incident.id }}">
+  {{ ring((100 * incident.done // incident.total) if incident.total else 0, incident.done ~ "/" ~ incident.total, "done",
+          label=incident.done ~ " of " ~ incident.total ~ " steps done") }}
+  <div class="hero-text">
+    <h2 id="progress-h" class="hero-title">
+      {% if incident.closed_on %}Sorted
+      {% elif incident.next_action %}Next: {{ incident.next_action.action.title }}
+      {% else %}Every step done{% endif %}
+    </h2>
+    <p>Work down the list in order. Tick each step when it's done and note any reference number.</p>
+    <form method="post" action="/recovery/{{ incident.id }}/close">
+      {{ csrf_field(csrf) }}
+      <input type="hidden" name="closed" value="{{ 'no' if incident.closed_on else 'yes' }}">
+      <button class="button secondary small" type="submit">{{ "Reopen" if incident.closed_on else "Mark it all as sorted" }}</button>
+    </form>
+  </div>
+</section>
+
+<section class="card" aria-labelledby="steps-h">
+  <h2 id="steps-h">Steps, in order</h2>
+  <ol class="playbook">
+    {% for p in incident.progress %}
+    {% set a = p.action %}
+    <li class="play-step{{ ' is-done' if p.done }}" id="action-{{ a.id }}" data-action="{{ a.id }}" data-done="{{ 'yes' if p.done else 'no' }}">
+      <h3>{{ a.title }}{% if p.done %} {{ badge({"tone": "good", "label": "Done " ~ (p.done_on|day)}) }}{% endif %}</h3>
+      <p>{{ a.what }}</p>
+      <p class="muted small"><strong>Why:</strong> {{ a.why }}</p>
+      {% if a.phones %}
+      <ul class="phones">
+        {% for phone in a.phones %}<li>{{ phone.label }}: <strong><a href="tel:{{ phone.number|replace(' ', '') }}">{{ phone.number }}</a></strong></li>{% endfor %}
+      </ul>
+      {% endif %}
+      {% if a.links or a.in_app %}
+      <ul class="link-list">
+        {% for link in a.links %}<li><a href="{{ link.url }}" target="_blank" rel="noopener noreferrer">{{ link.label }}</a></li>{% endfor %}
+        {% for label, url in a.in_app %}<li><a href="{{ url }}">{{ label }}</a></li>{% endfor %}
+      </ul>
+      {% endif %}
+      <form method="post" action="/recovery/{{ incident.id }}/action/{{ a.id }}" class="play-form">
+        {{ csrf_field(csrf) }}
+        <div class="play-row">
+          <label class="play-done" for="done-{{ a.id }}">
+            <input type="checkbox" class="switch" role="switch" id="done-{{ a.id }}" name="done" value="yes"{% if p.done %} checked{% endif %}>
+            Done
+          </label>
+          <label for="ref-{{ a.id }}">Reference</label>
+          <input id="ref-{{ a.id }}" name="reference" type="text" maxlength="{{ reference_limit }}" value="{{ p.reference }}" autocomplete="off" placeholder="Optional">
+          <button class="button secondary small" type="submit">Save<span class="visually-hidden">: {{ a.title }}</span></button>
+        </div>
+        <label class="visually-hidden" for="note-{{ a.id }}">Notes for this step</label>
+        <textarea id="note-{{ a.id }}" name="note" rows="1" maxlength="{{ note_limit }}" placeholder="Notes (optional)">{{ p.note }}</textarea>
+      </form>
+    </li>
+    {% endfor %}
+  </ol>
+  <p class="small muted">Links open in your web browser. Links and numbers checked against each
+  official source on {{ checked_on }}.</p>
+</section>
+
+<section class="card" id="log" aria-labelledby="log-h">
+  <h2 id="log-h">Incident log</h2>
+  <p class="muted">Everything you've done, with dates. Add calls, letters and anything else worth
+  remembering.</p>
+  <table class="log-table">
+    <thead><tr><th scope="col">Date</th><th scope="col">What happened</th><th scope="col">Reference</th><th scope="col"><span class="visually-hidden">Remove</span></th></tr></thead>
+    <tbody>
+      {% for e in incident.entries %}
+      <tr data-entry="{{ e.id }}">
+        <td>{{ e.happened_on|day }}</td>
+        <td class="log-text">{{ e.text }}</td>
+        <td>{{ e.reference }}</td>
+        <td>
+          <form method="post" action="/recovery/{{ incident.id }}/log/{{ e.id }}/delete">
+            {{ csrf_field(csrf) }}
+            <button class="button plain small" type="submit">Remove<span class="visually-hidden"> the entry from {{ e.happened_on|day }}</span></button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <form method="post" action="/recovery/{{ incident.id }}/log" class="stack log-add">
+    {{ csrf_field(csrf) }}
+    <h3>Add to the log</h3>
+    <div class="field">
+      <label for="log-date">Date</label>
+      <input id="log-date" name="date" type="date" value="{{ today.isoformat() }}" max="{{ today.isoformat() }}" required>
+    </div>
+    <div class="field">
+      <label for="log-text">What happened</label>
+      <textarea id="log-text" name="text" rows="2" maxlength="{{ note_limit }}" required placeholder="Called the bank's fraud team; card stopped."></textarea>
+    </div>
+    <div class="field">
+      <label for="log-ref">Reference number <span class="muted">(optional)</span></label>
+      <input id="log-ref" name="reference" type="text" maxlength="{{ reference_limit }}" autocomplete="off">
+    </div>
+    <button class="button secondary small" type="submit">Add to the log</button>
+  </form>
+</section>
+
+<section class="card" aria-labelledby="delete-h">
+  <h2 id="delete-h">Delete this log</h2>
+  <form method="post" action="/recovery/{{ incident.id }}/delete" class="remind-row">
+    {{ csrf_field(csrf) }}
+    <input type="checkbox" id="confirm-delete" name="confirm" value="yes" required>
+    <label for="confirm-delete">Yes, delete this log and its notes for good</label>
+    <button class="button destructive small" type="submit">Delete</button>
+  </form>
+</section>
+
+{% call help() %}
+<p>Tick <strong>Done</strong> and press Save as you finish each step. Stealth adds it to the log
+with today's date. Use the log for anything else: calls, letters, and what people told you.</p>
+<p><strong>Download PDF</strong> makes a copy of the steps and the log to give to your bank, a
+lender or the police. Stealth never sends it anywhere itself.</p>
+{% endcall %}
+{% endblock %}

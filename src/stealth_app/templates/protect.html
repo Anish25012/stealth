@@ -6,6 +6,7 @@
     <h1>Protect yourself</h1>
     <p>Steps you can take yourself, beyond asking companies to delete your data.</p>
   </div>
+  <a class="button secondary" href="/recovery">{{ icon("triangle-alert") }} Something's gone wrong</a>
 </div>
 
 <section class="card hero" aria-labelledby="checklist-h">
@@ -70,7 +71,7 @@
     {{ csrf_field(csrf) }}
     <div class="toggle-row">
       <label for="breach-on">Check my email addresses for breaches</label>
-      <input id="breach-on" name="on" type="checkbox" value="yes"{% if bs.breach_monitoring %} checked{% endif %}>
+      <input id="breach-on" name="on" type="checkbox" class="switch" role="switch" value="yes"{% if bs.breach_monitoring %} checked{% endif %}>
     </div>
     <fieldset class="breach-how">
       <legend>How</legend>
