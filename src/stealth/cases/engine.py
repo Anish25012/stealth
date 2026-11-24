@@ -33,7 +33,8 @@ from stealth.db import events
 from stealth.mail.base import Transport, compose
 from stealth.profiles.models import MailAccount, Person
 from stealth.profiles.store import Profile
-from stealth.registry.loader import Broker, Selection, select_brokers
+from stealth.registry import details as allowed
+from stealth.registry.loader import Broker, Selection, load_registry, select_brokers
 from stealth.templates.render import format_date, identity_context, render
 
 log = logging.getLogger(__name__)
@@ -77,6 +78,7 @@ def request_message(
     tier: str,
     ref: str,
     today: date,
+    details: allowed.Details,
     listing: str | None = None,
 ) -> EmailMessage:
     deadline = deadlines.response_deadline(today, jurisdiction)
@@ -86,7 +88,7 @@ def request_message(
         ref=ref,
         deadline=format_date(deadline),
         listing=listing,
-        **identity_context(person, account, extended=tier == "extended"),
+        **identity_context(person, account, extended=tier == "extended", details=details),
     )
     return compose(letter, account.address, contact)
 
@@ -98,9 +100,10 @@ def complaint_message(
     case: Case,
     *,
     grievance: str,
+    details: allowed.Details,
 ) -> EmailMessage:
     assert case.contact and case.last_request_on
-    context = identity_context(person, account, extended=False)
+    context = identity_context(person, account, extended=False, details=details)
     letter = render(
         jurisdiction,
         "complaint",
@@ -224,6 +227,7 @@ def preview_requests(profile: Profile, brokers: dict[str, Broker]) -> SendReport
             tier=selection.tier,
             ref=new_ref(),
             today=today,
+            details=allowed.for_broker(broker, selection.tier),
         )
         report.written.append(write_dry_run(profile, broker.id, message, "request"))
     return report
@@ -335,6 +339,7 @@ def send_requests(
             tier=case.tier,
             ref=case.ref,
             today=today,
+            details=allowed.for_broker(brokers.get(case.broker_id), case.tier),
             listing=case.custom_url,
         )
         try:
@@ -375,6 +380,14 @@ def approve(
     return approved
 
 
+def details_for(
+    profile: Profile, case: Case, brokers: dict[str, Broker] | None = None
+) -> allowed.Details:
+    """The details letters to this case's company may carry: its category's minimum."""
+    known = custom.with_custom(profile, load_registry() if brokers is None else brokers)
+    return allowed.for_broker(known.get(case.broker_id), case.tier)
+
+
 def draft_letter(profile: Profile, case: Case) -> EmailMessage:
     """The letter a case would send today, for the person to read before approving it."""
     person, account, jurisdiction = profile.person(), _account(profile), jurisdiction_of(profile)
@@ -388,6 +401,7 @@ def draft_letter(profile: Profile, case: Case) -> EmailMessage:
         tier=case.tier,
         ref=case.ref,
         today=clock.local_date(jurisdiction.tz),
+        details=details_for(profile, case),
         listing=case.custom_url,
     )
 
@@ -512,7 +526,9 @@ def send_complaint(
             f"Stealth has no email address for {case.broker_name}.",
             hint="Use the contact details on the company's own privacy page.",
         )
-    message = complaint_message(person, account, jurisdiction, case, grievance=grievance)
+    message = complaint_message(
+        person, account, jurisdiction, case, grievance=grievance, details=details_for(profile, case)
+    )
     _deliver(profile, case, message, "complaint", transport, account)
     today = clock.local_date(jurisdiction.tz)
     return transition(

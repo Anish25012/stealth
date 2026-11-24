@@ -50,18 +50,27 @@ def render(jurisdiction: Jurisdiction, template: str, **context: Any) -> Letter:
     return Letter(subject=first.removeprefix("Subject: ").strip(), body=rest.lstrip("\n"))
 
 
-def identity_context(person: Person, account: MailAccount, *, extended: bool) -> dict[str, Any]:
+def identity_context(
+    person: Person,
+    account: MailAccount,
+    *,
+    extended: bool,
+    details: frozenset[str] = frozenset({"name", "email", "phone", "address", "date_of_birth"}),
+) -> dict[str, Any]:
     """The personal details a letter may contain.
 
-    This is the single choke point for what leaves the computer. Extended-tier companies may owe
-    this person nothing, so they get name and email only, the least they need to find a record.
-    Date of birth appears only after an explicit opt-in.
+    This is the single choke point for what leaves the computer. `details` is what this company
+    may be sent (see `stealth.registry.details`). Extended-tier companies may owe this person
+    nothing, so they get name and email only, the least they need to find a record. Date of
+    birth appears only after an explicit opt-in.
     """
     if not person.names or not person.emails:
         raise TemplateRenderError(
             "Add at least one name and one email address to your profile first."
         )
-    include_dob = person.dob_opt_in and person.date_of_birth and not extended
+    if extended:
+        details = details & {"name", "email"}
+    include_dob = person.dob_opt_in and person.date_of_birth and "date_of_birth" in details
     return {
         "person_name": person.display_name,
         "sign_off": person.display_name
@@ -71,7 +80,7 @@ def identity_context(person: Person, account: MailAccount, *, extended: bool) ->
         "extended": extended,
         "names": person.names,
         "emails": person.emails,
-        "addresses": [] if extended else person.addresses,
-        "phones": [] if extended else person.phones,
+        "addresses": person.addresses if "address" in details else [],
+        "phones": person.phones if "phone" in details else [],
         "date_of_birth": person.date_of_birth if include_dob else None,
     }

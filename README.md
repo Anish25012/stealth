@@ -108,6 +108,16 @@ optional companies are US firms from an auto-imported California register. UK la
 if they target or monitor people in the UK, and their entries are less reliable. Opting in sends
 your name and email to them, and nothing more.
 
+Even on the default list, each letter carries only what that kind of company needs to find you:
+
+| Company | Details in the letter |
+|---|---|
+| UK companies, marketing lists, public records | Name, email, home address, phone (and date of birth, only if you opt in) |
+| Contact scrapers and people-search sites outside the UK | Name, email and phone |
+| Ad tech, location tracking and other data companies outside the UK | Name and email |
+
+Every letter also asks the company not to add any detail it doesn't already hold.
+
 ## Stealth compared with Incogni
 
 Based on Incogni's public plans. Stealth is an independent project and isn't connected to Incogni.
