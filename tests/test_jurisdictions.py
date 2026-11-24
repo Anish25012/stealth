@@ -211,7 +211,7 @@ def _world(profile, smtp, imap, country):
         username="test.person@example.org",
     )
     profile.save_mail_account(account, password="pw")
-    profile.save_settings(send_delay_seconds=0, include_extended=True)
+    profile.save_settings(send_delay_seconds=0, include_extended=True, auto_complaints=True)
     return SmtpTransport(account, "pw"), ImapMailbox(account, "pw")
 
 

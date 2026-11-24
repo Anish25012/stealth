@@ -52,7 +52,8 @@ class World:
             username="test.person@example.org",
         )
         profile.save_mail_account(account, password="pw")
-        profile.save_settings(send_delay_seconds=0)
+        # These tests follow the automatic path; complaints that wait are tested at the end.
+        profile.save_settings(send_delay_seconds=0, auto_complaints=True)
         self.transport = SmtpTransport(account, "pw")
         self.mailbox = ImapMailbox(account, "pw")
 
@@ -730,3 +731,45 @@ def test_a_form_link_on_the_companys_own_site_is_offered(world):
 def test_a_form_link_anywhere_else_is_not(world):
     suggestion = _form_reply(world, "https://acme-example.phish.test/erase")
     assert suggestion.kind == "form_required" and suggestion.link is None
+
+
+# Complaints that wait for the person's OK (the default) ---------------------------------------
+
+
+def test_by_default_a_missed_deadline_waits_for_your_ok(world):
+    world.profile.save_settings(auto_complaints=False)
+    world.cycle()
+    go_to(date(2026, 2, 16))
+    report = world.cycle()
+    assert report.complaints == [] and report.complaints_waiting == ["acme Ltd"]
+    assert world.case().status is Status.SENT  # nothing changed, nothing sent
+    assert len(world.bodies_to("privacy@acme.example")) == 1  # only the original letter
+    assert [c.broker_id for c in cycle.complaints_awaiting_approval(world.profile)] == ["acme"]
+    assert world.cycle().complaints_waiting == ["acme Ltd"]  # it keeps asking, and still waits
+    row = next(r for r in views.rows(world.profile) if r.case.broker_id == "acme")
+    assert row.info.group == "you" and row.info.label == "Deadline passed"
+    assert "Stealth sends it when you say" in row.explanation
+    assert views.can_complain(world.case(), date(2026, 2, 16))
+    # The person's OK: the same complaint the automatic path would have sent.
+    engine.send_complaint(world.profile, world.case(), world.transport, grievance=engine.NO_REPLY)
+    assert world.case().status is Status.COMPLAINT_SENT
+    assert "section 164A" in " ".join(world.bodies_to("privacy@acme.example")[-1].split())
+    assert world.cycle().complaints_waiting == []
+
+
+def test_by_default_a_dry_cycle_lists_waiting_complaints_and_writes_none(world):
+    world.profile.save_settings(auto_complaints=False)
+    world.cycle()
+    go_to(date(2026, 2, 16))
+    preview = cycle.preview_cycle(world.profile, world.brokers)
+    assert preview.complaints == [] and preview.complaints_waiting == ["acme Ltd"]
+
+
+def test_before_the_deadline_there_is_nothing_to_complain_about(world):
+    world.profile.save_settings(auto_complaints=False)
+    world.cycle()
+    go_to(date(2026, 2, 15))
+    assert world.cycle().complaints_waiting == []
+    assert not views.can_complain(world.case(), date(2026, 2, 15))
+    row = next(r for r in views.rows(world.profile) if r.case.broker_id == "acme")
+    assert row.info.group == "progress"

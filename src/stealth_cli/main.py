@@ -17,7 +17,7 @@ import typer
 
 from stealth import __version__, checklist, cycle
 from stealth.cases import engine
-from stealth.cases.state import Status, all_cases
+from stealth.cases.state import Case, Status, all_cases
 from stealth.core import paths
 from stealth.core.errors import ProfileError, StealthError
 from stealth.core.jurisdictions import for_country
@@ -549,7 +549,7 @@ def confirm(
 @app.command()
 @guarded
 def complain(broker: str, profile_id: ProfileOption = None) -> None:
-    """Send a formal complaint now, for a company that has refused."""
+    """Send a formal complaint now, after a refusal or a missed deadline. This is your OK."""
     from stealth.cases.state import find_case
 
     with _profile(profile_id) as profile:
@@ -580,10 +580,16 @@ def cycle_command(live: LiveOption = False, profile_id: ProfileOption = None) ->
             preview = cycle.preview_cycle(profile, brokers)
             _print_preview(preview.send, profile)
             typer.echo(f"{len(preview.complaints)} formal complaints are due.")
+            _print_complaints_waiting(
+                cycle.complaints_awaiting_approval(profile) if preview.complaints_waiting else []
+            )
             typer.echo("Nothing was sent. Add --live to send for real.")
             return
         transport, mailbox = open_mail(profile)
         report = cycle.run_cycle(profile, brokers, transport, mailbox)
+        to_approve = (
+            cycle.complaints_awaiting_approval(profile) if report.complaints_waiting else []
+        )
     typer.echo(f"Replies: {len(report.inbox.replies)}  Bounces: {len(report.inbox.bounces)}")
     typer.echo(f"Complaints sent: {len(report.complaints)}  ICO-ready: {len(report.ico_ready)}")
     typer.echo(f"Requests sent: {len(report.send.sent)}  Repeats due: {len(report.resends)}")
@@ -592,6 +598,18 @@ def cycle_command(live: LiveOption = False, profile_id: ProfileOption = None) ->
         typer.echo(f"{waiting} held back by your daily limit, for later runs.")
     if report.needs_you:
         typer.secho(f"Needs you: {', '.join(report.needs_you)}", fg=typer.colors.YELLOW)
+    _print_complaints_waiting(to_approve)
+
+
+def _print_complaints_waiting(cases: list[Case]) -> None:
+    """Complaints for missed deadlines that wait for the person's OK, and how to give it."""
+    if not cases:
+        return
+    names = ", ".join(c.broker_name for c in cases)
+    typer.secho(f"Deadline passed, complaint waiting for your OK: {names}", fg="yellow")
+    typer.echo("Send each one when you're happy to:")
+    for case in cases:
+        typer.echo(f"  stealth complain {case.broker_id}")
 
 
 @app.command()

@@ -227,7 +227,7 @@ through the rest.
 | `stealth confirm <company> removed` | Records what a reply meant |
 | `stealth forms` | Lists companies that need a web form |
 | `stealth forms --done <company>` | Starts the clock once you've sent a form |
-| `stealth complain <company>` | Sends a formal complaint now, after a refusal |
+| `stealth complain <company>` | Sends a formal complaint now, after a refusal or a missed deadline. `stealth cycle` lists the ones waiting |
 | `stealth ico <company>` | Drafts an ICO complaint |
 | `stealth checklist` | Lists the UK steps only you can do |
 | `stealth details` | Shows the details your letters use. `--name`, `--email`, `--address` and `--phone` replace that list (repeat for more); `--clear phones` empties one |
@@ -253,7 +253,7 @@ send to it alone with `stealth send --live --only me-test`. See
 | Stage | When |
 |---|---|
 | Reply due | One calendar month after sending, clamped to the end of the month |
-| Formal complaint | The day after that, if there's been no reply |
+| Formal complaint | Ready the day after that, if there's been no reply. It waits for your OK unless **Send complaints automatically** is on |
 | ICO-ready | 30 days after the complaint, because section 164A gives companies 30 days just to acknowledge it, or immediately if they refuse |
 | Repeat request | 60 days for people-search sites, 90 for others |
 
@@ -262,8 +262,8 @@ You can change the repeat intervals and the ICO wait.
 ## Scheduling
 
 **The desktop app does this for you.** Once a day (09:00 unless you change it in Settings) it reads
-new replies, sends formal complaints to companies that missed their deadline, and sends letters
-you've approved. It never sends a new letter without your OK. If the computer was off, it catches up
+new replies, tells you about companies that missed their deadline (a formal complaint waits for
+your OK, unless you turn on **Send complaints automatically**), and sends letters you've approved. It never sends a new letter without your OK. If the computer was off, it catches up
 shortly after it's next on, and the tray tells you when something needs you. Turn on **Start with
 Windows** in Settings and it runs even if you never open it.
 

@@ -155,9 +155,10 @@ def test_overview_counts_every_group(client, demo):
     page = client.get("/").text
     stat = r'data-stat="(\w+)".*?<span class="stat-number">(\d+)</span>'
     counts = dict(re.findall(stat, page, re.S))
-    # Needs you is the letters to approve (2) plus the things only the person can do (2).
+    # Needs you is the letters to approve (2) plus the things only the person can do (3): a reply
+    # to read, a web form, and a late company whose complaint waits for an OK.
     assert counts.pop("score").isdigit()  # the exposure score, as its own tile
-    assert counts == {"removed": "2", "progress": "2", "needs": "4", "problems": "1"}
+    assert counts == {"removed": "2", "progress": "1", "needs": "5", "problems": "1"}
 
 
 def test_filtering_the_list_by_group(client, demo):
@@ -220,16 +221,45 @@ def test_approving_with_nothing_ticked_explains(client, demo):
     assert "No letters were ticked" in response.text
 
 
-def test_run_cycle_complains_to_late_companies_but_holds_new_letters(client, demo):
+def test_run_cycle_holds_complaints_and_new_letters_for_your_ok(client, demo):
+    before = len(demo.smtp.delivered)
+    job, page = wait_for_job(client, post(client, "/cycle"))
+    assert job.state == "done", job.error
+    assert "Deadline passed, complaint waiting for your OK: Silent Lists Ltd." in page.text
+    assert "Formal complaints sent to" not in page.text
+    assert "Need you: Form Only Ltd." in page.text
+    assert "2 letter(s) are waiting for your OK" in page.text
+    assert demo.smtp.delivered[before:] == []  # nothing went without approval
+    assert statuses(demo)["silent-lists"] is Status.SENT
+    assert statuses(demo)["new-lists"] is Status.DRAFT
+    needs = client.get("/needs").text
+    assert 'href="/cases/silent-lists"' in needs and "Deadline passed" in needs
+    case_page = client.get("/cases/silent-lists").text
+    assert "didn't answer by the deadline" in case_page and "Send formal complaint" in case_page
+    # Pressing the button is the OK, and the letter says they didn't reply (not that they refused).
+    job, _page = wait_for_job(client, post(client, "/cases/silent-lists/complain"))
+    assert job.state == "done", job.error
+    assert statuses(demo)["silent-lists"] is Status.COMPLAINT_SENT
+    sent = demo.smtp.delivered[-1]
+    assert "privacy@silent-lists.test" in sent.recipients
+    assert "refus" not in sent.message.get_body().get_content().lower()
+
+
+def test_run_cycle_complains_by_itself_once_you_turn_that_on(client, demo):
+    page = client.get("/settings").text
+    assert 'id="f-auto_complaints" name="auto_complaints" value="yes">' in page  # off
+    assert post(client, "/settings/complaints", auto_complaints="yes").status_code == 303
+    assert 'name="auto_complaints" value="yes" checked' in client.get("/settings").text
     before = len(demo.smtp.delivered)
     job, page = wait_for_job(client, post(client, "/cycle"))
     assert job.state == "done", job.error
     assert "Formal complaints sent to: Silent Lists Ltd." in page.text
-    assert "Need you: Form Only Ltd." in page.text
-    assert "2 letter(s) are waiting for your OK" in page.text
     recipients = [d.recipients[0] for d in demo.smtp.delivered[before:]]
     assert recipients == ["privacy@silent-lists.test"]  # the drafts stayed unsent
     assert statuses(demo)["new-lists"] is Status.DRAFT
+    post(client, "/settings/complaints")
+    with demo.store.open() as profile:
+        assert profile.settings().auto_complaints is False
 
 
 def test_sending_a_complaint_after_a_refusal(client, demo):

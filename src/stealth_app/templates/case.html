@@ -144,8 +144,14 @@
   <section class="card" aria-labelledby="escalate-h">
     <h2 id="escalate-h">Take it further</h2>
     {% if can_complain %}
+    {% if late %}
+    <p class="muted">{{ case.broker_name }} didn't answer by the deadline. Send them a formal
+    complaint: the law requires them to have a complaints process, and to answer you. If they still
+    don't put it right, you can go to the ICO. Nothing is sent until you press the button.</p>
+    {% else %}
     <p class="muted">Send {{ case.broker_name }} a formal complaint. The law requires them to have a
     complaints process, and to answer you. If they don't put it right, you can go to the ICO.</p>
+    {% endif %}
     <form method="post" action="/cases/{{ case.broker_id|urlencode }}/complain">
       {{ csrf_field(csrf) }}
       <button class="button" type="submit">{{ icon("flag") }} Send formal complaint</button>

@@ -104,8 +104,9 @@
 <p><strong>The ring</strong> shows how many companies have removed your data, or said they held
 none, out of every company Stealth is dealing with.</p>
 <p><strong>Run cycle now</strong> does everything that's due: it reads your mailbox for replies,
-sends a formal complaint to any company that missed its legal deadline, and sends letters you've
-approved. It sends at most {{ settings.daily_send_limit }} emails a day, so your email provider
+lists any company that missed its legal deadline under Needs you, with a formal complaint ready to
+send, and sends letters you've approved.{% if settings.auto_complaints %} You've chosen to send
+those complaints automatically, so it sends them too.{% endif %} It sends at most {{ settings.daily_send_limit }} emails a day, so your email provider
 doesn't mistake you for a spammer. Anything over that goes the next day.</p>
 <p><strong>Needs you</strong> lists things only you can do. Stealth never decides on its own that
 a company has removed you: you read their reply and say what it meant.</p>

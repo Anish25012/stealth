@@ -278,14 +278,16 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
             broker = state.workspace.brokers().get(case.broker_id)
             asked = views.can_respond(profile, case)
             draft = responses.response_message(profile, case, asked) if asked else None
+            today = views.today_for(profile)
+            auto = profile.settings().auto_complaints
             return render(
                 request,
                 "case.html",
                 profile=profile,
                 title=case.broker_name,
                 case=case,
-                info=views.STATUS[case.status],
-                explanation=views.explain(case, views.today_for(profile)),
+                info=views.status_info(case, today, auto_complaints=auto),
+                explanation=views.explain(case, today, auto_complaints=auto),
                 timeline=views.timeline(profile, case),
                 outcomes=views.outcomes_for(case),
                 reply=views.latest_reply(profile, case),
@@ -295,7 +297,8 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
                 asked=asked,
                 draft=draft,
                 can_skip=views.can_skip(case),
-                can_complain=views.can_complain(case),
+                can_complain=views.can_complain(case, today),
+                late=views.overdue(case, today),
                 can_ico=case.status in (Status.ICO_READY, Status.ESCALATED),
                 form_url=broker.form_url if broker else None,
                 dead_contact=views.dead_contact_link(profile, case),
@@ -483,6 +486,13 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
         autostart.set_enabled(first(form, "autostart") == "yes")
         return redirect("/settings")
 
+    @app.post("/settings/complaints")
+    async def complaint_setting(request: Request) -> Response:
+        form = await read_form(request)
+        with changing(state) as profile:
+            profile.save_settings(auto_complaints=first(form, "auto_complaints") == "yes")
+        return redirect("/settings#complaints-h")
+
     @app.get("/help", response_class=HTMLResponse)
     def help_page(request: Request) -> Response:
         with opened(state) as profile:
@@ -578,7 +588,9 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
         def work(profile: Profile, job: Job) -> None:
             case = _case(profile, broker_id)
             transport, _mailbox = state.workspace.mail(profile)
-            engine.send_complaint(profile, case, transport, grievance=engine.REFUSED)
+            refused = case.status is Status.REFUSED
+            grievance = engine.REFUSED if refused else engine.NO_REPLY
+            engine.send_complaint(profile, case, transport, grievance=grievance)
             job.lines.append(f"Formal complaint sent to {case.broker_name}.")
 
         return redirect(f"/jobs/{start_job(state, 'Sending a complaint', work, target).id}")
@@ -663,6 +675,10 @@ def _cycle_summary(report: cycle.CycleReport) -> list[str]:
         lines.append(f"Formal complaints sent to: {_names(report.complaints)}.")
     if report.complaints_held:
         lines.append(f"{report.complaints_held} complaint(s) held back by your daily limit.")
+    if report.complaints_waiting:
+        lines.append(
+            f"Deadline passed, complaint waiting for your OK: {_names(report.complaints_waiting)}."
+        )
     if report.ico_ready:
         lines.append(f"Ready for the ICO: {_names(report.ico_ready)}.")
     if report.needs_you:

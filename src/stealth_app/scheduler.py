@@ -289,6 +289,8 @@ def summary_line(report: cycle.CycleReport, needs_you: int) -> str:
         parts.append(f"{len(report.send.sent)} approved letter(s) sent")
     if report.complaints:
         parts.append(f"{len(report.complaints)} formal complaint(s) sent")
+    if report.complaints_waiting:
+        parts.append(f"{len(report.complaints_waiting)} complaint(s) waiting for your OK")
     if report.ico_ready:
         parts.append(f"{len(report.ico_ready)} ready for the ICO")
     if not parts:

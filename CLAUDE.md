@@ -67,7 +67,9 @@ A `v*` tag also makes a **draft** GitHub release; the maintainer publishes it by
 - ICO complaint is ready 30 days after a formal complaint, or straight away after a refusal.
 - People-search scan is assisted: the person runs the search, Stealth captures it.
 - Approve-before-send applies in the desktop app; the CLI's `send --live --yes` counts as approval.
-  Formal complaints after a missed deadline go automatically on a cycle.
+  Formal complaints after a missed deadline wait for approval too (Needs you, or
+  `stealth complain <id>`), unless the person turns on "Send complaints automatically"
+  (`auto_complaints`, off by default).
 - macOS is untested and its window smoke check may fail (issue #1). Don't fix unless asked.
 - Other countries (EU/EEA, Switzerland, California, Canada, Australia) get lighter, clearly
   labelled letters. Quebec isn't covered.
