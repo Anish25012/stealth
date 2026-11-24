@@ -479,3 +479,33 @@ def test_stealth_google_switches_an_app_password_profile_over(ready, google):
     refused = run("password", input="x\n")
     assert refused.exit_code == 1
     assert "signs in with Google" in refused.output
+
+
+def test_a_missed_deadline_waits_until_you_run_complain(ready):
+    from datetime import UTC, datetime
+
+    from stealth.core import clock
+
+    clock.set_time(datetime(2026, 1, 15, 10, tzinfo=UTC))
+    with LocalSmtp() as smtp, LocalImap("app-password") as imap:
+        _point_at(ready, smtp, imap)
+        assert run("send", "--live", "--yes", "--only", "experian-uk").exit_code == 0
+        clock.set_time(datetime(2026, 2, 16, 10, tzinfo=UTC))  # the day after its deadline
+
+        def to_experian():
+            return [d for d in smtp.delivered if "uk.dpo@experian.com" in d.recipients]
+
+        assert len(to_experian()) == 1  # the request
+        preview = run("cycle").output
+        assert "complaint waiting for your OK: Experian" in preview
+        result = run("cycle", "--live")
+        assert result.exit_code == 0, result.output
+        assert "Complaints sent: 0" in result.output
+        assert "complaint waiting for your OK: Experian" in result.output
+        assert "stealth complain experian-uk" in result.output
+        assert len(to_experian()) == 1  # no complaint went without your OK
+        result = run("complain", "experian-uk")
+        assert result.exit_code == 0, result.output
+        complaint = to_experian()[-1].message.get_body().get_content()
+        assert len(to_experian()) == 2 and "164A" in complaint
+        assert "complaint waiting" not in run("cycle", "--live").output

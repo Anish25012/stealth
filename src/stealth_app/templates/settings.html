@@ -39,8 +39,9 @@
     <span class="glyph tone-accent">{{ icon("clock") }}</span>
     <div>
       <h2 id="auto-h">Running by itself</h2>
-      <p class="muted">Once a day Stealth reads new replies, chases companies that are late, and
-      sends letters you've already approved. It never sends a new letter without your OK.</p>
+      <p class="muted">Once a day Stealth reads new replies, tells you about companies that are
+      late, and sends letters you've already approved. It never sends a new letter without your
+      OK.</p>
     </div>
   </div>
   <form method="post" action="/settings/automation">
@@ -69,6 +70,29 @@
     {{ icon("refresh-cw") }}
     <p>{% if last_run.when %}<strong>Last check: {{ last_run.when }}.</strong> {{ last_run.result }}{% else %}Stealth hasn't checked by itself yet.{% endif %}</p>
   </div>
+</section>
+
+<section class="card" aria-labelledby="complaints-h">
+  <div class="card-head">
+    <span class="glyph tone-accent">{{ icon("flag") }}</span>
+    <div>
+      <h2 id="complaints-h">Complaints when a company is late</h2>
+      <p class="muted">If a company doesn't answer by its deadline, Stealth writes a formal
+      complaint to it. Normally the complaint waits under Needs you until you send it.</p>
+    </div>
+  </div>
+  <form method="post" action="/settings/complaints">
+    {{ csrf_field(csrf) }}
+    <div class="toggle-row">
+      <div>
+        <label for="f-auto_complaints">Send complaints automatically</label>
+        <p class="muted small">When this is on, the daily check sends the complaint as soon as a
+        deadline passes, without asking you first. Complaints after a refusal always wait for you.</p>
+      </div>
+      <input type="checkbox" class="switch" role="switch" id="f-auto_complaints" name="auto_complaints" value="yes"{% if settings.auto_complaints %} checked{% endif %}>
+    </div>
+    <div class="button-row"><button class="button secondary" type="submit">Save</button></div>
+  </form>
 </section>
 
 <div class="two-col">

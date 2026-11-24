@@ -30,6 +30,8 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "breach_every_days": 30,
     "last_breach_check": None,  # ISO time of the last automatic check, or None
     "last_breach_result": "",  # one plain-English line about it
+    # Formal complaints after a missed deadline wait for the person's OK unless this is on.
+    "auto_complaints": False,
 }
 
 
@@ -53,6 +55,7 @@ class Settings:
     breach_every_days: int = 30
     last_breach_check: str | None = None
     last_breach_result: str = ""
+    auto_complaints: bool = False
 
 
 @dataclass

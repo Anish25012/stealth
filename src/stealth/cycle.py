@@ -29,6 +29,7 @@ class CycleReport:
     inbox: InboxReport = field(default_factory=InboxReport)
     complaints: list[str] = field(default_factory=list)
     complaints_held: int = 0
+    complaints_waiting: list[str] = field(default_factory=list)  # due, waiting for your OK
     ico_ready: list[str] = field(default_factory=list)
     needs_you: list[str] = field(default_factory=list)
     resends: list[str] = field(default_factory=list)
@@ -41,6 +42,13 @@ def _overdue(case: Case, today: date) -> bool:
 
 def _complaint_due(case: Case, today: date) -> bool:
     return case.status in (Status.SENT, Status.EXTENDED) and _overdue(case, today)
+
+
+def complaints_awaiting_approval(profile: Profile) -> list[Case]:
+    """Companies past their deadline that a complaint can go to, oldest deadline first."""
+    today = clock.local_date(jurisdiction_of(profile).tz)
+    due = [c for c in all_cases(profile.conn) if _complaint_due(c, today) and c.contact]
+    return sorted(due, key=lambda c: (c.deadline_on or today, c.broker_name))
 
 
 def _due(case: Case, today: date) -> bool:
@@ -95,10 +103,16 @@ def _retry_if_contact_fixed(
 def _send_complaints(
     profile: Profile, transport: Transport, sleep: Sleep, report: CycleReport
 ) -> None:
+    """Complaints for missed deadlines: sent only if the person turned that on.
+
+    Otherwise they wait for the person's OK (`stealth complain`, or the button in the app).
+    """
     jurisdiction = jurisdiction_of(profile)
-    today = clock.local_date(jurisdiction.tz)
     settings = profile.settings()
-    due = [c for c in all_cases(profile.conn) if _complaint_due(c, today) and c.contact]
+    due = complaints_awaiting_approval(profile)
+    if not settings.auto_complaints:
+        report.complaints_waiting = [c.broker_name for c in due]
+        return
     remaining = max(0, settings.daily_send_limit - engine.sent_today(profile, jurisdiction))
     report.complaints_held = max(0, len(due) - remaining)
     for index, case in enumerate(due[:remaining]):
@@ -136,22 +150,25 @@ def run_cycle(
 @dataclass
 class CyclePreview:
     complaints: list[Path] = field(default_factory=list)
+    complaints_waiting: list[str] = field(default_factory=list)
     send: engine.SendReport = field(default_factory=engine.SendReport)
 
 
 def preview_cycle(profile: Profile, brokers: dict[str, Broker]) -> CyclePreview:
     """What a cycle would send, as `.eml` files. Touches no mailbox and no case."""
     jurisdiction = jurisdiction_of(profile)
-    today = clock.local_date(jurisdiction.tz)
     person, account = profile.person(), profile.mail_account()
     preview = CyclePreview(send=engine.preview_requests(profile, brokers))
     assert account
-    for case in all_cases(profile.conn):
-        if _complaint_due(case, today) and case.contact:
-            message: EmailMessage = engine.complaint_message(
-                person, account, jurisdiction, case, grievance=NO_REPLY
-            )
-            preview.complaints.append(
-                engine.write_dry_run(profile, case.broker_id, message, "complaint")
-            )
+    due = complaints_awaiting_approval(profile)
+    if not profile.settings().auto_complaints:
+        preview.complaints_waiting = [c.broker_name for c in due]
+        return preview
+    for case in due:
+        message: EmailMessage = engine.complaint_message(
+            person, account, jurisdiction, case, grievance=NO_REPLY
+        )
+        preview.complaints.append(
+            engine.write_dry_run(profile, case.broker_id, message, "complaint")
+        )
     return preview

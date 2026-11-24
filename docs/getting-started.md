@@ -108,7 +108,9 @@ Once a day (9am, unless you change it in **Settings**), Stealth:
 
 - reads new replies in the inbox (it only reads, and never deletes or moves your email);
 - records clear answers, like "we've deleted your data", by itself;
-- sends a formal complaint to any company that missed its one-month deadline;
+- lists any company that missed its one-month deadline under **Needs you**, with a formal
+  complaint ready for you to send (or sends it straight away, if you turn on **Send complaints
+  automatically** in Settings);
 - asks companies again every two or three months, because brokers re-list people.
 
 It never sends a new letter without your OK. If the computer was off at 9am, it catches up soon

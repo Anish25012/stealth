@@ -206,9 +206,13 @@ def _story(
     _set_day(deadline_passed)
     say(f"[{deadline_passed}] One month is up. Silent Lists Ltd never replied.")
     report = run()
-    _expect(report.complaints, ["Silent Lists Ltd"], "overdue company gets a formal complaint")
+    _expect(report.complaints, [], "no complaint goes without your OK")
+    _expect(report.complaints_waiting, ["Silent Lists Ltd"], "overdue company's complaint waits")
     _expect(report.needs_you, ["Form Only Ltd"], "form company with no email goes to you")
-    say("  Silent Lists gets a formal complaint. Form Only Ltd goes to your 'needs you' list.")
+    say("  A formal complaint to Silent Lists waits for your OK. Form Only Ltd needs you too.")
+    for case in cycle.complaints_awaiting_approval(profile):
+        engine.send_complaint(profile, case, transport, grievance=engine.NO_REPLY)
+    say("  You approved it, so Silent Lists got its formal complaint.")
 
     reconsider = deadline_passed + timedelta(days=1)
     _set_day(reconsider)

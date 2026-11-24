@@ -112,18 +112,35 @@ EXPLAIN: dict[Status, str] = {
     Status.SKIPPED: "You chose to skip this company.",
 }
 LATE = "Their reply was due by {deadline}. The next cycle sends them a formal complaint."
+LATE_ASK = (
+    "Their reply was due by {deadline}. A formal complaint is ready: Stealth sends it when you say."
+)
+# A missed deadline, when complaints wait for the person's OK (the default).
+COMPLAINT_WAITING = StatusInfo("Deadline passed", "you", "action")
 FORM_LATE = "Their time limit has passed, and they can only be chased through their website."
 
 
-def explain(case: Case, today: date) -> str:
+def overdue(case: Case, today: date) -> bool:
+    return (
+        case.status in (Status.SENT, Status.EXTENDED)
+        and case.deadline_on is not None
+        and case.deadline_on < today
+    )
+
+
+def status_info(case: Case, today: date, *, auto_complaints: bool) -> StatusInfo:
+    """The badge and list for a case. A missed deadline needs the person, unless complaints
+    go automatically."""
+    if overdue(case, today) and case.contact and not auto_complaints:
+        return COMPLAINT_WAITING
+    return STATUS[case.status]
+
+
+def explain(case: Case, today: date, *, auto_complaints: bool = False) -> str:
     """One sentence on where a case stands and what happens next."""
     text = EXPLAIN[case.status]
-    if (
-        case.status in (Status.SENT, Status.EXTENDED)
-        and case.deadline_on
-        and case.deadline_on < today
-    ):
-        text = LATE
+    if overdue(case, today):
+        text = LATE if auto_complaints or not case.contact else LATE_ASK
     elif case.status is Status.NEEDS_YOU and (case.method == "form" or not case.contact):
         text = FORM_LATE
     return text.format(deadline=_on(case.deadline_on), next=_on(case.next_action_on))
@@ -145,19 +162,17 @@ READS_REPLIES = (Status.REPLIED, Status.NEEDS_YOU)
 
 def rows(profile: Profile) -> list[Row]:
     today = today_for(profile)
+    auto = profile.settings().auto_complaints
     result = []
     for case in all_cases(profile.conn):
-        overdue = (
-            case.status in (Status.SENT, Status.EXTENDED)
-            and case.deadline_on is not None
-            and case.deadline_on < today
-        )
-        explanation = explain(case, today)
+        late = overdue(case, today)
+        explanation = explain(case, today, auto_complaints=auto)
         if case.status in READS_REPLIES:
             reading = latest_reading(profile, case)
             if reading and reading.kind != classifier.UNKNOWN:
                 explanation = f"Stealth's reading: {reading.label.lower()}. Check it and confirm."
-        result.append(Row(case, STATUS[case.status], explanation, overdue))
+        info = status_info(case, today, auto_complaints=auto)
+        result.append(Row(case, info, explanation, late))
     return result
 
 
@@ -366,8 +381,9 @@ def can_skip(case: Case) -> bool:
     return Status.SKIPPED in TRANSITIONS[case.status]
 
 
-def can_complain(case: Case) -> bool:
-    return case.status is Status.REFUSED and bool(case.contact)
+def can_complain(case: Case, today: date) -> bool:
+    """A formal complaint can go after a refusal, or once the deadline has passed."""
+    return bool(case.contact) and (case.status is Status.REFUSED or overdue(case, today))
 
 
 # Timeline and evidence -----------------------------------------------------------------------
