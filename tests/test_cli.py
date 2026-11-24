@@ -509,3 +509,37 @@ def test_a_missed_deadline_waits_until_you_run_complain(ready):
         complaint = to_experian()[-1].message.get_body().get_content()
         assert len(to_experian()) == 2 and "164A" in complaint
         assert "complaint waiting" not in run("cycle", "--live").output
+
+
+def test_a_form_done_before_any_send_opens_its_case_and_keeps_a_note(ready):
+    from datetime import UTC, date, datetime
+
+    from stealth.cases.state import Status, all_cases
+    from stealth.core import clock
+    from stealth_app import views
+
+    clock.set_time(datetime(2026, 11, 24, 10, tzinfo=UTC))
+    result = run("forms", "--done", "192-com", "--note", "Removal form submitted")
+    assert result.exit_code == 0, result.output
+    assert "192.com: clock started, reply due 2026-12-24" in result.output
+    result = run("confirm", "192-com", "no_data", "--note", "not listed as of 24 Nov 2026")
+    assert result.exit_code == 0, result.output
+    assert "now no_data" in result.output
+    assert "ask them again on 2027-01-23" in result.output  # 60 days, for people search
+    store = main._store()
+    with store.open() as profile:
+        cases = all_cases(profile.conn)
+        assert [c.broker_id for c in cases] == ["192-com"]  # no other company was touched
+        case = cases[0]
+        assert case.status is Status.NO_DATA and case.next_action_on == date(2027, 1, 23)
+        notes = [e.detail for e in views.timeline(profile, case) if e.text == "Your note"]
+    assert notes == ["Removal form submitted", "not listed as of 24 Nov 2026"]
+
+
+def test_forms_done_refuses_what_isnt_a_waiting_form(ready):
+    result = run("forms", "--done", "experian-uk")
+    assert result.exit_code == 1 and "written to by email, not a form" in result.output
+    assert run("forms", "--done", "nobody").exit_code == 1
+    assert run("forms", "--done", "192-com").exit_code == 0
+    result = run("forms", "--done", "192-com")  # already done
+    assert result.exit_code == 1 and "isn't waiting for a web form" in result.output

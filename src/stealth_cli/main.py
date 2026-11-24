@@ -49,6 +49,7 @@ P = ParamSpec("P")
 R = TypeVar("R")
 ProfileOption = Annotated[str | None, typer.Option(help="Profile id, if you have more than one.")]
 LiveOption = Annotated[bool, typer.Option("--live", help="Really send. Without it, only preview.")]
+NoteOption = Annotated[str, typer.Option(help="A note to keep in the company's history.")]
 
 
 def _secrets() -> SecretStore:
@@ -538,12 +539,18 @@ def confirm(
             help="removed, no_data, refused, id_requested, extended, info_supplied or escalated"
         ),
     ],
+    note: NoteOption = "",
     profile_id: ProfileOption = None,
 ) -> None:
-    """Record what a company's reply meant."""
+    """Record what a company's reply meant (or what you found), with an optional note."""
     with _profile(profile_id) as profile:
         case = engine.confirm(profile, broker, outcome)
+        engine.add_note(profile, case, note)
     typer.echo(f"{case.broker_name}: now {case.status.value}.")
+    if case.status in (Status.REMOVED, Status.NO_DATA) and case.next_action_on:
+        typer.echo(
+            f"Stealth will ask them again on {case.next_action_on}, in case they re-list you."
+        )
 
 
 @app.command()
@@ -616,13 +623,21 @@ def _print_complaints_waiting(cases: list[Case]) -> None:
 @guarded
 def forms(
     done: Annotated[str | None, typer.Option(help="Broker id whose form you've sent.")] = None,
+    note: NoteOption = "",
     profile_id: ProfileOption = None,
 ) -> None:
     """List companies that need a web form, and record when you've done one."""
     brokers = _brokers()
     with _profile(profile_id) as profile:
         if done:
+            if not any(c.broker_id == done for c in all_cases(profile.conn)):
+                # Stealth opens cases as it sends, so a form done first has none yet.
+                narrowed = _only(brokers, done, profile)
+                if narrowed[done].method != "form":
+                    raise StealthError(f"{narrowed[done].name} is written to by email, not a form.")
+                engine.open_cases(profile, narrowed)  # this company only; sends nothing
             case = engine.form_done(profile, done)
+            engine.add_note(profile, case, note)
             typer.echo(f"{case.broker_name}: clock started, reply due {case.deadline_on}.")
             return
         jurisdiction = engine.jurisdiction_of(profile)

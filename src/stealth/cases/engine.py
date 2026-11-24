@@ -505,6 +505,13 @@ def form_done(profile: Profile, broker: str) -> Case:
     return mark_sent(profile, case, jurisdiction_of(profile), actor="you")
 
 
+def add_note(profile: Profile, case: Case, note: str) -> None:
+    """Something the person wants kept in the case's history, such as what they found."""
+    text = " ".join(note.split())
+    if text:
+        events.append(profile.conn, "note", case_id=case.id, actor="you", reason=text)
+
+
 def skip(profile: Profile, broker: str) -> Case:
     case = find_case(profile.conn, broker)
     return transition(profile.conn, case, Status.SKIPPED, actor="you", reason="skipped by you")

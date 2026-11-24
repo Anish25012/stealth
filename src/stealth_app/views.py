@@ -394,6 +394,7 @@ EVENT_TEXT = {
     "reply_received": "Stealth found their reply",
     "send_failed": "Sending failed",
     "ico_complaint_drafted": "ICO complaint drafted",
+    "note": "Your note",
 }
 MESSAGE_TEXT = {
     ("out", "request"): "Removal request sent",
