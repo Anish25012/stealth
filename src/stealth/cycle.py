@@ -166,7 +166,12 @@ def preview_cycle(profile: Profile, brokers: dict[str, Broker]) -> CyclePreview:
         return preview
     for case in due:
         message: EmailMessage = engine.complaint_message(
-            person, account, jurisdiction, case, grievance=NO_REPLY
+            person,
+            account,
+            jurisdiction,
+            case,
+            grievance=NO_REPLY,
+            details=engine.details_for(profile, case, brokers),
         )
         preview.complaints.append(
             engine.write_dry_run(profile, case.broker_id, message, "complaint")

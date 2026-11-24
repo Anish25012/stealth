@@ -18,6 +18,7 @@ from stealth.cases.engine import (
     _clock_restarted,
     _deliver,
     apply_outcome,
+    details_for,
     jurisdiction_of,
 )
 from stealth.cases.state import TRANSITIONS, Case, Status
@@ -90,7 +91,9 @@ def response_message(profile: Profile, case: Case, asked: str) -> EmailMessage:
         asked=asked,
         request_date=format_date(case.last_request_on),
         deadline=format_date(deadlines.response_deadline(today, jurisdiction)),
-        **identity_context(person, account, extended=case.tier == "extended"),
+        **identity_context(
+            person, account, extended=case.tier == "extended", details=details_for(profile, case)
+        ),
     )
     message = compose(letter, account.address, case.contact)
     reading = latest_reading(profile, case)

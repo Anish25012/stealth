@@ -64,6 +64,10 @@ A `v*` tag also makes a **draft** GitHub release; the maintainer publishes it by
 
 - Broker tiers: a core list on by default; an extended list (mainly US) is opt-in and shares only
   name and email.
+- Minimum details by company (`registry/details.py`): UK companies, marketing lists and public
+  records get everything; non-UK contact scrapers and people search get name, email and phone;
+  non-UK ad tech, location tracking and "other" get name and email. Letters keep the "don't add
+  details you don't already hold" line.
 - ICO complaint is ready 30 days after a formal complaint, or straight away after a refusal.
 - People-search scan is assisted: the person runs the search, Stealth captures it.
 - Approve-before-send applies in the desktop app; the CLI's `send --live --yes` counts as approval.

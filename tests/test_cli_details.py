@@ -43,7 +43,10 @@ def test_a_full_update_replaces_each_list_and_the_letter_uses_it(ready):  # noqa
     assert saved.phones == ["07700 900123"]
     with main._store().open() as profile:
         report = engine.preview_requests(profile, main._brokers())
-    letter = report.written[0].read_text(encoding="utf-8")
+    # A UK company gets every detail, so its letter shows the whole update.
+    letter = next(p for p in report.written if p.name == "experian-uk-request.eml").read_text(
+        encoding="utf-8"
+    )
     assert "Name: Test Q Person" in letter and "Email: second@example.org" in letter
     assert "2 New Road, Leeds, LS1 1AA" in letter and "1 Example Road" not in letter
 

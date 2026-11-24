@@ -6,6 +6,7 @@ from stealth.cases import engine
 from stealth.core.errors import TemplateRenderError
 from stealth.core.jurisdictions import UK
 from stealth.profiles.models import MailAccount, Person
+from stealth.registry.details import FULL
 from stealth.templates.render import format_date, identity_context, render
 
 ACCOUNT = MailAccount("smtp", "test.person@example.org")
@@ -20,6 +21,7 @@ def letter(person, account=ACCOUNT, tier="core"):
         tier=tier,
         ref="STL-ABCD1234",
         today=date(2026, 1, 31),
+        details=FULL,
     )
 
 
