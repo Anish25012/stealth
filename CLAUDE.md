@@ -53,6 +53,8 @@ A `v*` tag also makes a **draft** GitHub release; the maintainer publishes it by
   and also fails on non-UTF-8 text files. On Windows, write files with `encoding="utf-8"`.
 - Never ask for, print or handle the user's passwords. Read secrets from the keychain only inside
   scripts, never echo them.
+- For commands on the real profile, use the clean worktree at
+  `C:\Users\anish\projects\stealth-main-dryrun`; never the OneDrive copy.
 - Real sends (`stealth send --live`) need the user's say-so and the right test address; use a
   separate `STEALTH_HOME` (for example `~/stealth-test`) for testing, never the real data folder.
 - Tests must never reach real services: Google sign-in is off in tests unless a test fakes it
@@ -85,12 +87,13 @@ A `v*` tag also makes a **draft** GitHub release; the maintainer publishes it by
 ## Where things stand
 
 - Phases 1, 2 and 3 are done (Phase 3: breach monitoring, credit report reminders, Cifas
-  tracking, recovery playbook, find my old accounts). v0.1.0 and v0.2.0 are draft releases
-  (not published).
+  tracking, recovery playbook, find my old accounts). v0.3.0 is a draft release (not
+  published); the old v0.1.0 and v0.2.0 drafts were deleted, but their git tags are kept.
 - Google sign-in works (tested end to end: send, reply detected, case settled).
   `https://anish25012.github.io/` is verified in Google Search Console. To finish: save the
-  Branding page, publish the app (no verification), sign in again, then publish v0.2.0.
-- Not yet tried against the real services: HIBP breach checks, the Gmail sign-up scan.
+  Branding page, publish the app (no verification), sign in again, then publish v0.3.0.
+- Not yet tried against the real services: HIBP breach checks. The Gmail sign-up scan has run
+  on the maintainer's real inbox (183 companies found).
 - Next: Phase 4 is plan-only (ask before building).
 
 ## Quirks seen on the maintainer's Windows PC

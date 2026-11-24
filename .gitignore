@@ -46,3 +46,6 @@ Thumbs.db
 .vscode/
 .idea/
 .claude/
+
+# Sample PDFs (reports, playbooks) saved in the repo root while testing
+/*.pdf
