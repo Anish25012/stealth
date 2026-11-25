@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from stealth.cases.state import Case, Status, find_case
@@ -37,7 +37,8 @@ WHAT = {
     "request": "First letter",
     "repeat": "Repeat request",
     "complaint": "Formal complaint",
-    "response": "Follow-up letter",
+    "response": "Reply to their request",
+    "chase": "Chased a vague answer",
     "verify": "Confirmation link opened",
     "custom": "Letter to a company you added",
 }
@@ -45,6 +46,22 @@ WHAT = {
 
 def is_on(settings: Settings) -> bool:
     return settings.autopilot
+
+
+def starts_on(settings: Settings) -> date | None:
+    """The day Autopilot may start sending first letters and repeats, if the person chose one."""
+    if not settings.autopilot_from:
+        return None
+    try:
+        return date.fromisoformat(settings.autopilot_from)
+    except ValueError:
+        return None
+
+
+def sends_letters(settings: Settings, today: date) -> bool:
+    """Autopilot is on, and its start date (if any) has come."""
+    start = starts_on(settings)
+    return settings.autopilot and (start is None or today >= start)
 
 
 def complaints_automatic(settings: Settings) -> bool:
@@ -57,10 +74,12 @@ def handles_draft(settings: Settings, case: Case) -> bool:
     return settings.autopilot and case.status is Status.DRAFT and case.tier == "core"
 
 
-def record(profile: Profile, case: Case, what: str, detail: str = "") -> None:
+def record(profile: Profile, case: Case, what: str, detail: str = "", **extra: Any) -> None:
     """Note in the audit trail that Autopilot did this, for the "Sent automatically" list."""
     assert what in WHAT, what
-    events.append(profile.conn, EVENT, case_id=case.id, actor=ACTOR, what=what, reason=detail)
+    events.append(
+        profile.conn, EVENT, case_id=case.id, actor=ACTOR, what=what, reason=detail, **extra
+    )
 
 
 @dataclass(frozen=True)

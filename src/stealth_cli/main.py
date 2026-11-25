@@ -11,6 +11,7 @@ import sys
 import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from datetime import date
 from typing import Annotated, Any, ParamSpec, TypeVar
 
 import typer
@@ -58,6 +59,13 @@ def _secrets() -> SecretStore:
 
 def _store() -> ProfileStore:
     return ProfileStore(_secrets())
+
+
+def _iso_date(text: str) -> str:
+    try:
+        return date.fromisoformat(text.strip()).isoformat()
+    except ValueError as exc:
+        raise StealthError(f"{text} isn't a date. Use YYYY-MM-DD, for example 2026-12-01.") from exc
 
 
 @contextmanager
@@ -582,6 +590,13 @@ def ico(broker: str, profile_id: ProfileOption = None) -> None:
 @guarded
 def autopilot_command(
     turn: Annotated[str | None, typer.Argument(help="on or off. Leave out to see it.")] = None,
+    start: Annotated[
+        str | None,
+        typer.Option(
+            "--from",
+            help="No first letters or repeats before this date (YYYY-MM-DD), or 'now'.",
+        ),
+    ] = None,
     profile_id: ProfileOption = None,
 ) -> None:
     """See or change Autopilot, and what it has sent. It runs in the desktop app's daily check."""
@@ -590,9 +605,15 @@ def autopilot_command(
             if turn not in ("on", "off"):
                 raise StealthError("Say `stealth autopilot on` or `stealth autopilot off`.")
             profile.save_settings(autopilot=turn == "on", autopilot_explained=True)
-        on = profile.settings().autopilot
+        if start is not None:
+            profile.save_settings(autopilot_from=None if start == "now" else _iso_date(start))
+        settings = profile.settings()
+        on = settings.autopilot
+        begins = autopilot.starts_on(settings)
         done = autopilot.sent_automatically(profile, limit=10)
     typer.echo(f"Autopilot is {'on' if on else 'off'}.")
+    if begins:
+        typer.echo(f"First letters and repeats start on {begins.isoformat()}.")
     if on:
         typer.echo("The desktop app's daily check sends first letters, repeats and complaints.")
     if done:

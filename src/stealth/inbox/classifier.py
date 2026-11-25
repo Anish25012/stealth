@@ -103,6 +103,13 @@ RULES = [
         2.0,
     ),
     _r(REMOVED, r"\b(opted|unsubscribed)\s+(you\s+)?out\b", 1.5),
+    # Marketing stopped: part of it, not erasure. Weak on its own, so it reads as unsure.
+    _r(REMOVED, r"\bno longer\s+(receive|be sent|get)\s+[\w\s]{0,20}(marketing|emails|mail)", 1.0),
+    _r(
+        REMOVED,
+        r"\b(unsubscribed|removed)\s+(you\s+)?from\s+[\w\s]{0,30}(list|emails|marketing)",
+        1.0,
+    ),
     _r(REMOVED, r"\bsuccessfully\s+(deleted|removed|erased)", 2.0),
     # Held nothing ---------------------------------------------------------------------------
     _r(
@@ -312,6 +319,14 @@ QUOTE_STARTS = [
 AUTO_SUBJECT = re.compile(
     r"^\s*(automatic reply|auto(matic)?[- ]?reply|auto:|out of (the )?office)", re.IGNORECASE
 )
+# An ID request that names actual documents: only the person decides whether to send those.
+DOCUMENTS = re.compile(
+    r"\b(passport|driv\w* licen[cs]e|utility bill|bank statement|council tax|birth certificate|"
+    r"(national )?(id|identity) card|proof of address|selfie|photo(graphic)? (id|identification)|"
+    r"government[- ]issued|(copy|scan|photo(graph)?|picture|image) of (your |an? )?(photo )?"
+    r"(id|identity|identification|documents?)\b)",
+    re.IGNORECASE,
+)
 URL_RE = re.compile(r"https?://[^\s<>\"')\]]+", re.IGNORECASE)
 
 
@@ -322,6 +337,7 @@ class Classification:
     quote: str = ""  # the sentence that decided it, for showing the person
     scores: dict[str, float] = field(default_factory=dict)
     urls: tuple[str, ...] = ()
+    documents: bool = False  # it asks for ID documents (passport, licence, bill...)
 
     @property
     def label(self) -> str:
@@ -411,8 +427,11 @@ def classify(subject: str, body: str, headers: Message | None = None) -> Classif
     kind, confident = _decide(scores, auto)
     if kind == VERIFY_LINK and not urls:
         confident = False  # "click the link below", and no link: a person looks
+    if kind == REMOVED and best.get(REMOVED, (0.0, ""))[0] < STRONG:
+        confident = False  # only "unsubscribed" or "no more marketing": not an erasure
     quote = best.get(kind, (0.0, ""))[1]
-    return Classification(kind, confident, _tidy(quote, words), scores, urls)
+    documents = DOCUMENTS.search(text) is not None
+    return Classification(kind, confident, _tidy(quote, words), scores, urls, documents)
 
 
 def _decide(scores: dict[str, float], auto: bool) -> tuple[str, bool]:

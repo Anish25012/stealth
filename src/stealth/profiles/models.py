@@ -37,6 +37,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     # turns it on. The app explains it once, the first time it opens.
     "autopilot": False,
     "autopilot_explained": False,
+    "autopilot_from": None,
 }
 
 
@@ -63,6 +64,7 @@ class Settings:
     auto_complaints: bool = False
     autopilot: bool = False
     autopilot_explained: bool = False
+    autopilot_from: str | None = None  # ISO date: no first letters or repeats before it
 
 
 @dataclass

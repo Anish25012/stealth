@@ -289,6 +289,8 @@ def summary_line(report: cycle.CycleReport, needs_you: int) -> str:
         parts.append(f"{len(report.inbox.bounces)} email(s) didn't arrive")
     if report.autopilot_sent:
         parts.append(f"{len(report.autopilot_sent)} sent by Autopilot")
+    if report.followups:
+        parts.append(f"{len(report.followups)} follow-up(s) sent by Autopilot")
     if len(report.send.sent) > len(report.autopilot_sent):
         parts.append(
             f"{len(report.send.sent) - len(report.autopilot_sent)} approved letter(s) sent"

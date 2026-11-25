@@ -11,6 +11,7 @@ import secrets
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import date
 from importlib import resources
 from typing import Any
 from urllib.parse import parse_qs, quote
@@ -498,9 +499,12 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
     @app.post("/settings/autopilot")
     async def autopilot_setting(request: Request) -> Response:
         form = await read_form(request)
+        start = _start_date(first(form, "autopilot_from"))
         with changing(state) as profile:
             profile.save_settings(
-                autopilot=first(form, "autopilot") == "yes", autopilot_explained=True
+                autopilot=first(form, "autopilot") == "yes",
+                autopilot_explained=True,
+                autopilot_from=start,
             )
         return redirect("/settings#autopilot-h")
 
@@ -698,6 +702,17 @@ def attachment(filename: str) -> str:
     return f'attachment; filename="{filename}"'
 
 
+def _start_date(value: str | None) -> str | None:
+    """A start date from the Settings form: an ISO date, or None for "straight away"."""
+    text = (value or "").strip()
+    if not text:
+        return None
+    try:
+        return date.fromisoformat(text).isoformat()
+    except ValueError as exc:
+        raise ProfileError("That start date isn't a date Stealth understands.") from exc
+
+
 def _cycle_summary(report: cycle.CycleReport) -> list[str]:
     lines = []
     for company, meaning in report.inbox.resolved:
@@ -721,6 +736,13 @@ def _cycle_summary(report: cycle.CycleReport) -> list[str]:
         lines.append(f"{report.complaints_held} complaint(s) held back by your daily limit.")
     if report.autopilot_sent:
         lines.append(f"Sent by Autopilot: {_names(report.autopilot_sent)}.")
+    if report.followups:
+        lines.append(f"Autopilot answered or chased: {_names(report.followups)}.")
+    if report.followups_failed:
+        lines.append(
+            f"Autopilot couldn't send a follow-up to: {_names(report.followups_failed)}. "
+            "It will try again at the next check."
+        )
     if report.complaints_waiting:
         lines.append(
             f"Deadline passed, complaint waiting for your OK: {_names(report.complaints_waiting)}."
