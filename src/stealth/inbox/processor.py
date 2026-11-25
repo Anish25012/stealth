@@ -6,6 +6,10 @@ letter (it's threaded to it, or quotes the case reference). Anyone can put a com
 a From header, so a reply matched only by its sender is never acted on: it waits for a person,
 with Stealth's best guess beside it. "We've received your request" and out-of-office replies are
 filed on the case without asking anyone to read them.
+
+On Autopilot, a "click the link to confirm your request" email may have its link visited, under the
+stricter rules in `verify` (the company's own HTTPS site, one plain visit, no CAPTCHA). A form
+case's legal clock starts once that's done.
 """
 
 from __future__ import annotations
@@ -20,11 +24,12 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from email.message import EmailMessage
 
-from stealth.cases.engine import OUTCOMES, apply_outcome, jurisdiction_of, save_message
+from stealth import autopilot
+from stealth.cases.engine import OUTCOMES, apply_outcome, jurisdiction_of, mark_sent, save_message
 from stealth.cases.state import TRANSITIONS, Case, Status, all_cases, transition
 from stealth.core import clock
 from stealth.db import events
-from stealth.inbox import classifier
+from stealth.inbox import classifier, verify
 from stealth.inbox.classifier import Classification
 from stealth.mail.base import Mailbox
 from stealth.profiles.store import Profile
@@ -38,6 +43,8 @@ FINAL_RECIPIENT = re.compile(r"^Final-Recipient:\s*[^;]*;\s*(\S+)", re.IGNORECAS
 
 AWAITING_REPLY = {Status.SENT, Status.EXTENDED, Status.ID_REQUESTED, Status.COMPLAINT_SENT}
 CAN_BOUNCE = {Status.SENT, Status.COMPLAINT_SENT}
+# Where a "click to confirm" link may be followed: waiting on a reply, or on a web form.
+CAN_VERIFY = AWAITING_REPLY | {Status.AWAITING_FORM, Status.REPLIED}
 # What Stealth may record by itself from a clear reply. Web forms and "more details" always go
 # to the person: they need something only the person can do.
 ACTS_ON = (
@@ -56,6 +63,7 @@ class InboxReport:
     unmatched: int = 0
     resolved: list[tuple[str, str]] = field(default_factory=list)  # (company, what it meant)
     acknowledged: list[str] = field(default_factory=list)  # filed: nothing to do
+    verified: list[str] = field(default_factory=list)  # confirmation links Autopilot opened
 
 
 def _body_text(message: EmailMessage) -> str:
@@ -158,8 +166,18 @@ def _earliest_date(profile: Profile, today: date) -> date:
     return datetime.fromisoformat(row["first"]).date() - timedelta(days=1)
 
 
-def process_inbox(profile: Profile, mailbox: Mailbox, brokers: dict[str, Broker]) -> InboxReport:
-    """Match new mail to cases. Safe to run repeatedly: each message is handled once."""
+def process_inbox(
+    profile: Profile,
+    mailbox: Mailbox,
+    brokers: dict[str, Broker],
+    *,
+    follow_links: bool = False,
+    get: verify.Get | None = None,
+) -> InboxReport:
+    """Match new mail to cases. Safe to run repeatedly: each message is handled once.
+
+    `follow_links` (Autopilot): open "click to confirm" links that pass `verify`'s rules.
+    """
     jurisdiction = jurisdiction_of(profile)
     account = profile.mail_account()
     own = account.address.lower() if account else ""
@@ -201,8 +219,45 @@ def process_inbox(profile: Profile, mailbox: Mailbox, brokers: dict[str, Broker]
             reading=reading.kind,
             confident=reading.confident,
         )
+        if follow_links and _verified(
+            profile, case, reading, proven, message, matcher.domains[case.id], get, report
+        ):
+            continue
         _act_on(profile, case, reading, proven, report)
     return report
+
+
+def _verified(
+    profile: Profile,
+    case: Case,
+    reading: Classification,
+    proven: bool,
+    message: EmailMessage,
+    domains: set[str],
+    get: verify.Get | None,
+    report: InboxReport,
+) -> bool:
+    """Follow a confirmation link if it's safe. True when that settled the email."""
+    if not (reading.kind == classifier.VERIFY_LINK and reading.confident):
+        return False
+    if case.status not in CAN_VERIFY:
+        return False
+    result = verify.follow(reading.urls, domains, message, get, proven=proven)
+    if not result.done:
+        events.append(
+            profile.conn,
+            "verify_skipped",
+            case_id=case.id,
+            actor=autopilot.ACTOR,
+            reason=result.why,
+            url=result.url or "",
+        )
+        return False  # the person gets it, with the reason on the case
+    autopilot.record(profile, case, "verify", result.why)
+    if case.status is Status.AWAITING_FORM:
+        mark_sent(profile, case, jurisdiction_of(profile), actor=autopilot.ACTOR)
+    report.verified.append(case.broker_name)
+    return True
 
 
 def _act_on(
