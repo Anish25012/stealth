@@ -254,6 +254,7 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
                 total=len(rows),
                 running=state.jobs.running(),
                 settings=profile.settings(),
+                autopilot_suggest=_suggested_start(profile, groups),
                 last_run=views.last_run(profile.settings()),
                 score=views.exposure(profile),
                 alerts=alerts.open_alerts(profile),
@@ -516,10 +517,12 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
     async def autopilot_choose(request: Request) -> Response:
         """The one-time explanation's answer: on or off, and don't explain again."""
         form = await read_form(request)
+        turn_on = first(form, "autopilot") == "yes"
+        start = _start_date(first(form, "autopilot_from"))
         with changing(state) as profile:
-            profile.save_settings(
-                autopilot=first(form, "autopilot") == "yes", autopilot_explained=True
-            )
+            if turn_on and "autopilot_from" in form:
+                profile.save_settings(autopilot_from=start)
+            profile.save_settings(autopilot=turn_on, autopilot_explained=True)
         return redirect("/")
 
     @app.get("/sent-automatically", response_class=HTMLResponse)
@@ -704,6 +707,16 @@ def _case(profile: Profile, broker_id: str) -> Any:
 
 def attachment(filename: str) -> str:
     return f'attachment; filename="{filename}"'
+
+
+def _suggested_start(profile: Profile, groups: dict[str, list[views.Row]]) -> str:
+    """For a profile with letters already waiting: the first of next month, so turning Autopilot
+    on doesn't send them all at the next check. Empty for a new profile."""
+    if profile.settings().autopilot_explained or not groups.get("approve"):
+        return ""
+    today = views.today_for(profile)
+    following = date(today.year + (today.month == 12), today.month % 12 + 1, 1)
+    return following.isoformat()
 
 
 def _start_date(value: str | None) -> str | None:

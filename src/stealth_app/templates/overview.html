@@ -25,8 +25,18 @@
     </div>
   </div>
   {% include "_autopilot_text.html" %}
-  <form method="post" action="/autopilot/choose" class="button-row">
+  <form method="post" action="/autopilot/choose">
     {{ csrf_field(csrf) }}
+    {% if not settings.autopilot %}
+    <div class="field">
+      <label for="f-intro-from">Start first letters on <span class="muted">(optional)</span></label>
+      <input id="f-intro-from" name="autopilot_from" type="date" value="{{ autopilot_suggest }}">
+      <p class="muted small">{% if autopilot_suggest %}You have letters waiting for your OK, so
+      Autopilot holds them until this date, then sends them in daily batches. Clear it to start
+      straight away.{% else %}Leave it empty to start straight away.{% endif %}</p>
+    </div>
+    {% endif %}
+    <div class="button-row">
     {% if settings.autopilot %}
     <button class="button" type="submit" name="autopilot" value="yes">Got it</button>
     <button class="button secondary" type="submit" name="autopilot" value="no">Turn Autopilot off</button>
@@ -34,6 +44,7 @@
     <button class="button" type="submit" name="autopilot" value="yes">Turn on Autopilot</button>
     <button class="button secondary" type="submit" name="autopilot" value="no">Not now</button>
     {% endif %}
+    </div>
   </form>
 </section>
 {% endif %}
