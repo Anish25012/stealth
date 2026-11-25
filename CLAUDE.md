@@ -101,13 +101,17 @@ A `v*` tag also makes a **draft** GitHub release; the maintainer publishes it by
 ## Where things stand
 
 - Phases 1, 2 and 3 are done (Phase 3: breach monitoring, credit report reminders, Cifas
-  tracking, recovery playbook, find my old accounts). v0.3.0 is a draft release (not
-  published); the old v0.1.0 and v0.2.0 drafts were deleted, but their git tags are kept.
+  tracking, recovery playbook, find my old accounts), and Autopilot (PRs #17 to #20).
+  v0.3.1 is the only draft release (not published); older drafts were deleted, their git tags
+  kept.
 - Google sign-in works (tested end to end: send, reply detected, case settled).
   `https://anish25012.github.io/` is verified in Google Search Console. To finish: save the
-  Branding page, publish the app (no verification), sign in again, then publish v0.3.0.
+  Branding page, publish the app (no verification), sign in again, then publish v0.3.1.
 - Not yet tried against the real services: HIBP breach checks. The Gmail sign-up scan has run
   on the maintainer's real inbox (183 companies found).
+- The maintainer's real profile: Autopilot off until they choose; `autopilot_from` is
+  2026-12-01 so its ~62 waiting drafts don't go before then. v0.3.0 can't open a profile that has
+  `autopilot_from` saved (unknown setting), so set it only once v0.3.1 is installed.
 - Next: Phase 4 is plan-only (ask before building).
 
 ## Quirks seen on the maintainer's Windows PC
