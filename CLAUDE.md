@@ -76,7 +76,9 @@ A `v*` tag also makes a **draft** GitHub release; the maintainer publishes it by
   made before it (the app explains it once). On Autopilot the app's daily check sends first
   letters to core companies in daily batches within the limit, repeat requests, and complaints
   after a missed deadline or a refusal, logging each as an `autopilot` event ("Sent
-  automatically"). Still the person's: ID documents, web forms/CAPTCHAs, deleting old accounts
+  automatically"). It also opens "click to confirm your request" links, only under the rules in
+  `inbox/verify.py` (company's own HTTPS domain, threaded or provider-vouched sender, one GET, page
+  says confirmed, no CAPTCHA); anything else goes to Needs you. Still the person's: ID documents, web forms/CAPTCHAs, deleting old accounts
   not marked Delete, replies Stealth can't read confidently, ICO complaints, extended-tier letters.
 - With Autopilot off, approve-before-send applies in the desktop app; the CLI's
   `send --live --yes` counts as approval. Complaints wait too (Needs you, or

@@ -280,6 +280,8 @@ def summary_line(report: cycle.CycleReport, needs_you: int) -> str:
     if report.inbox.resolved:
         settled = [name for name, _meaning in report.inbox.resolved]
         parts.append(f"{len(settled)} repl{'y' if len(settled) == 1 else 'ies'} read and recorded")
+    if report.inbox.verified:
+        parts.append(f"{len(report.inbox.verified)} confirmation link(s) opened")
     if report.inbox.replies:
         n = len(report.inbox.replies)
         parts.append(f"{n} new repl{'y' if n == 1 else 'ies'} to read")

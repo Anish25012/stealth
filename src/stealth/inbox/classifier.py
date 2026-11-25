@@ -23,6 +23,7 @@ ID_REQUESTED = "id_requested"
 INFO_REQUESTED = "info_requested"
 EXTENDED = "extended"
 FORM_REQUIRED = "form_required"
+VERIFY_LINK = "verify_link"  # "click the link to confirm your request"
 REFUSED = "refused"
 ACKNOWLEDGED = "acknowledged"  # "we've got it, we'll reply": nothing to do
 AUTO_REPLY = "auto_reply"  # out of office and the like: nothing to do
@@ -35,6 +36,7 @@ LABELS = {
     INFO_REQUESTED: "They want more details",
     EXTENDED: "They're taking extra time",
     FORM_REQUIRED: "They want you to use their web form",
+    VERIFY_LINK: "They want you to click a link to confirm",
     REFUSED: "They've refused",
     ACKNOWLEDGED: "Just confirming they got it",
     AUTO_REPLY: "An automatic reply",
@@ -46,6 +48,7 @@ OUTSTANDING_FIRST = [
     ID_REQUESTED,
     INFO_REQUESTED,
     FORM_REQUIRED,
+    VERIFY_LINK,
     REFUSED,
     EXTENDED,
     REMOVED,
@@ -197,6 +200,21 @@ RULES = [
         1.5,
         negatable=False,
     ),
+    # Click to confirm -----------------------------------------------------------------------
+    # The request, or the email address, must be confirmed by visiting a link. Not "verify your
+    # identity": that's proof of ID, above.
+    _r(
+        VERIFY_LINK,
+        r"\b(click|tap|follow|use|visit|open)\s+(on\s+)?(the|this|our)\s+(link|button|url)\b"
+        r"[\s\S]{0,60}?\b(confirm|verify|validate|complete|activate|finali[sz]e)\b",
+    ),
+    _r(
+        VERIFY_LINK,
+        r"\b(confirm|verify|validate)\s+(your\s+|this\s+|the\s+)?(email address|e-?mail|"
+        r"request|removal|opt[- ]?out|suppression|submission|deletion)\b[\s\S]{0,60}?"
+        r"\b(link|button|clicking|below)\b",
+    ),
+    _r(VERIFY_LINK, r"\b(verification|confirmation)\s+link\b", 1.5),
     # Refused --------------------------------------------------------------------------------
     _r(
         REFUSED,
@@ -234,6 +252,12 @@ RULES = [
         ACKNOWLEDGED,
         r"\b(we have|we've|we)\s+(successfully\s+)?received\s+your\s+(request|e-?mail|"
         r"message|enquiry|inquiry|correspondence)",
+        negatable=False,
+    ),
+    _r(
+        ACKNOWLEDGED,
+        r"\byour\s+(request|e-?mail|message|enquiry|inquiry|ticket)\b[\s\S]{0,30}?\b"
+        r"(has been|was)\s+(received|logged|registered|recorded)",
         negatable=False,
     ),
     _r(
@@ -385,6 +409,8 @@ def classify(subject: str, body: str, headers: Message | None = None) -> Classif
                     best[rule.kind] = (rule.weight, sentence)
                 break  # one hit per rule per sentence
     kind, confident = _decide(scores, auto)
+    if kind == VERIFY_LINK and not urls:
+        confident = False  # "click the link below", and no link: a person looks
     quote = best.get(kind, (0.0, ""))[1]
     return Classification(kind, confident, _tidy(quote, words), scores, urls)
 

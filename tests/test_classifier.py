@@ -238,6 +238,78 @@ REPLIES = [
         c.AUTO_REPLY,
         True,
     ),
+    # Click to confirm
+    (
+        "verify_people_search",
+        "Please verify your removal request",
+        "Hi,\n\nThanks for using our removal tool. To complete your request, please click the "
+        "link below to confirm:\n\nhttps://www.acme.example/remove/verify?token=8f2c91\n\n"
+        "If you didn't ask for this, you can ignore this email.",
+        c.VERIFY_LINK,
+        True,
+    ),
+    (
+        "verify_email_address",
+        "Action needed: confirm your email address",
+        "We received a privacy request from this email address. Please confirm your email address "
+        "by clicking the button below.\nhttps://privacy.acme.example/confirm/abc123",
+        c.VERIFY_LINK,
+        True,
+    ),
+    (
+        "verify_opt_out",
+        "Confirm your opt-out",
+        "Use this link to confirm your opt-out request: https://acme.example/optout/confirm?id=77",
+        c.VERIFY_LINK,
+        True,
+    ),
+    (
+        "verify_without_a_link",
+        "Confirm your request",
+        "Please click the link below to confirm your request.",
+        c.VERIFY_LINK,
+        False,
+    ),
+    (
+        "verify_and_id",
+        "Re: Erasure",
+        "Please click the link below to confirm your request. We also need a copy of your "
+        "passport to verify your identity. https://acme.example/confirm/1",
+        c.ID_REQUESTED,
+        False,
+    ),
+    # More real-world shapes
+    (
+        "ack_zendesk",
+        "[Acme Privacy] Re: Request STL-1A2B3C4D",
+        "Your request (48213) has been received and is being reviewed by our support staff. "
+        "To add additional comments, reply to this email.",
+        c.ACKNOWLEDGED,
+        True,
+    ),
+    (
+        "ack_onetrust",
+        "Data Subject Request Received",
+        "We have received your request. Your request ID is DSR-2026-00451. We will respond within "
+        "one month as required by law.",
+        c.ACKNOWLEDGED,
+        True,
+    ),
+    (
+        "removed_suppression_list",
+        "Re: Erasure request",
+        "Your details have been suppressed and you will no longer be included in any of our "
+        "marketing lists.",
+        c.REMOVED,
+        True,
+    ),
+    (
+        "no_data_search",
+        "Your request",
+        "We have searched our systems and no personal data matching your details was found.",
+        c.NO_DATA,
+        True,
+    ),
     # Mixed, or unreadable: a person decides
     (
         "partial",

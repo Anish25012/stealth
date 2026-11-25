@@ -121,6 +121,17 @@ def _never_have_i_been_pwned(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(hibp, "_urlopen", refuse)
 
 
+@pytest.fixture(autouse=True)
+def _never_a_real_confirmation_link(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No test opens a company's real website; tests that follow links pass a fake `get`."""
+    from stealth.inbox import verify
+
+    def refuse(_url: str, _domains: set[str]) -> object:
+        raise AssertionError("a test tried to open a real confirmation link")
+
+    monkeypatch.setattr(verify, "http_get", refuse)
+
+
 @pytest.fixture
 def store(tmp_path: Path) -> ProfileStore:
     return ProfileStore(MemoryStore(), home=tmp_path / "home")

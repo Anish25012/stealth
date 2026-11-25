@@ -407,6 +407,7 @@ def can_complain(case: Case, today: date) -> bool:
 EVENT_TEXT = {
     "case_created": "Stealth added this company",
     "reply_received": "Stealth found their reply",
+    "verify_skipped": "Autopilot left their confirmation link for you",
     "send_failed": "Sending failed",
     "ico_complaint_drafted": "ICO complaint drafted",
     "note": "Your note",
@@ -446,7 +447,8 @@ def timeline(profile: Profile, case: Case) -> list[Entry]:
             text, detail = _status_text(payload), str(payload.get("reason", ""))
         elif event["type"] == autopilot.EVENT:
             what = str(payload.get("what", ""))
-            text = f"Sent automatically: {autopilot.WHAT.get(what, what).lower()}"
+            done = "Done" if what == "verify" else "Sent"
+            text = f"{done} automatically: {autopilot.WHAT.get(what, what).lower()}"
             detail = str(payload.get("reason", ""))
         elif event["type"] == "reply_received" and payload.get("reading"):
             label = classifier.LABELS.get(str(payload["reading"]), "")

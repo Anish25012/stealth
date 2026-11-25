@@ -702,6 +702,8 @@ def _cycle_summary(report: cycle.CycleReport) -> list[str]:
     lines = []
     for company, meaning in report.inbox.resolved:
         lines.append(f"{company} replied: {meaning[0].lower()}{meaning[1:]}. Stealth recorded it.")
+    if report.inbox.verified:
+        lines.append(f"Confirmation links opened for: {_names(report.inbox.verified)}.")
     if report.inbox.acknowledged:
         lines.append(
             f"{_names(report.inbox.acknowledged)} confirmed they got your letter. "

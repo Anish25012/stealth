@@ -11,6 +11,9 @@ Still the person's, even on Autopilot: anything involving ID documents, web form
 accounts they haven't marked Delete, replies Stealth can't read with confidence, ICO complaints
 (the ICO only takes them through its own website), and letters to optional (extended) companies.
 
+It also opens a company's "click to confirm your request" link, under the strict rules in
+`inbox.verify`.
+
 Every letter Autopilot sends is in the audit trail as an `autopilot` event by `ACTOR`, which is
 what the "Sent automatically" list reads.
 """
@@ -35,7 +38,7 @@ WHAT = {
     "repeat": "Repeat request",
     "complaint": "Formal complaint",
     "response": "Follow-up letter",
-    "verify": "Verification link opened",
+    "verify": "Confirmation link opened",
     "custom": "Letter to a company you added",
 }
 

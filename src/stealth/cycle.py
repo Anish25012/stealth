@@ -150,7 +150,8 @@ def run_cycle(
     """A live cycle. See `engine.send_requests` for what `hold_for_approval` changes."""
     report = CycleReport()
     brokers = custom.with_custom(profile, brokers)
-    report.inbox = process_inbox(profile, mailbox, brokers)
+    on_autopilot = autopilot.is_on(profile.settings())
+    report.inbox = process_inbox(profile, mailbox, brokers, follow_links=on_autopilot)
     _update_states(profile, brokers, report, hold=hold_for_approval)
     _send_complaints(profile, transport, sleep, report)
     approved = _autopilot_batch(profile, brokers) if hold_for_approval else []

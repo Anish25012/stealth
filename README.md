@@ -274,8 +274,10 @@ You can change the repeat intervals and the ICO wait.
 **The desktop app does this for you.** Once a day (09:00 unless you change it in Settings) it reads
 new replies, spam included. With **Autopilot** on (the default for new profiles), it also sends
 first letters to the companies on your list in daily batches, repeat requests, and formal
-complaints to companies that miss their deadline or refuse, and lists all of it under **Sent
-automatically**. With Autopilot off, it sends only letters you've approved, and complaints wait for
+complaints to companies that miss their deadline or refuse. It opens a company's "click to
+confirm your request" link too, but only when the email is really theirs and the link is on their
+own website; one that asks for a CAPTCHA or a button press comes to you. All of it is listed under
+**Sent automatically**. With Autopilot off, it sends only letters you've approved, and complaints wait for
 your OK unless you turn on **Send complaints automatically**. Either way, ID documents, web forms,
 ICO complaints and replies it can't read stay with you. If the computer was off, it catches up
 shortly after it's next on, and the tray tells you when something needs you. Turn on **Start with
