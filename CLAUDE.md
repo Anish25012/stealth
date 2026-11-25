@@ -81,7 +81,11 @@ A `v*` tag also makes a **draft** GitHub release; the maintainer publishes it by
   says confirmed, no CAPTCHA); anything else goes to Needs you. Follow-ups (`followups.py`),
   once per round and only for proven replies: Article 12(6) pushback on ID requests that name no
   documents, the first letter's details on "more details", a chase on opt-out-only answers
-  (deadline unchanged). `autopilot_from` holds first letters and repeats until a date. Still the person's: ID documents, web forms/CAPTCHAs, deleting old accounts
+  (deadline unchanged). `autopilot_from` holds first letters and repeats until a date.
+  Companies the person adds (`custom/autosend.py`, issue #11) are written to straight away only if
+  all four checks pass (own privacy/contact page; the company's or a known parent's domain; a
+  privacy contact; not on PhishTank/OpenPhish, checked locally), with name and email only
+  (`engine._details`); otherwise they wait under Needs you with the reason. Still the person's: ID documents, web forms/CAPTCHAs, deleting old accounts
   not marked Delete, replies Stealth can't read confidently, ICO complaints, extended-tier letters.
 - With Autopilot off, approve-before-send applies in the desktop app; the CLI's
   `send --live --yes` counts as approval. Complaints wait too (Needs you, or

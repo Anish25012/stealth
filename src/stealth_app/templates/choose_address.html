@@ -9,6 +9,12 @@
   </div>
 </div>
 
+{% if company.auto_status == "held" %}
+<div class="notice action" role="note" data-auto-held>{{ icon("info") }}
+<p><strong>Not sent automatically.</strong> {{ company.auto_reason }} Check the address yourself
+before sending. The letter waits for your OK, as usual.</p></div>
+{% endif %}
+
 <form method="post" action="/companies/add/{{ company.id|urlencode }}">
   {{ csrf_field(csrf) }}
   <section class="card" aria-labelledby="address-h">

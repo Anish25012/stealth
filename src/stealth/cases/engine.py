@@ -227,13 +227,20 @@ def preview_requests(profile: Profile, brokers: dict[str, Broker]) -> SendReport
             tier=selection.tier,
             ref=new_ref(),
             today=today,
-            details=allowed.for_broker(broker, selection.tier),
+            details=_details(profile, broker.id, broker, selection.tier),
         )
         report.written.append(write_dry_run(profile, broker.id, message, "request"))
     return report
 
 
-def _create_for(profile: Profile, selection: Selection, *, hold: bool) -> Case:
+def _create_for(
+    profile: Profile,
+    selection: Selection,
+    *,
+    hold: bool,
+    actor: str = "stealth",
+    reason: str = "new broker",
+) -> Case:
     """Open a case for a broker. With `hold`, an email letter waits as a draft for approval."""
     broker = selection.broker
     listing = custom.get(profile, broker.id).listing_url if custom.is_custom(broker.id) else None
@@ -254,7 +261,17 @@ def _create_for(profile: Profile, selection: Selection, *, hold: bool) -> Case:
         return transition(profile.conn, case, Status.AWAITING_FORM, reason="web form only")
     if hold:
         return case  # cases start as drafts
-    return transition(profile.conn, case, Status.QUEUED, reason="new broker")
+    return transition(profile.conn, case, Status.QUEUED, actor=actor, reason=reason)
+
+
+def queue_one(profile: Profile, broker: Broker, *, actor: str, reason: str) -> Case:
+    """Open and queue a case for just this company, without approval. Others are untouched.
+
+    Only for letters Autopilot may send by itself to a company the person added (autosend).
+    """
+    if any(c.broker_id == broker.id for c in all_cases(profile.conn)):
+        raise ProfileError(f"Stealth is already writing to {broker.name}.")
+    return _create_for(profile, Selection(broker, "core"), hold=False, actor=actor, reason=reason)
 
 
 def open_cases(profile: Profile, brokers: dict[str, Broker], *, hold: bool = True) -> list[str]:
@@ -339,7 +356,7 @@ def send_requests(
             tier=case.tier,
             ref=case.ref,
             today=today,
-            details=allowed.for_broker(brokers.get(case.broker_id), case.tier),
+            details=_details(profile, case.broker_id, brokers.get(case.broker_id), case.tier),
             listing=case.custom_url,
         )
         try:
@@ -380,12 +397,19 @@ def approve(
     return approved
 
 
+def _details(profile: Profile, broker_id: str, broker: Broker | None, tier: str) -> allowed.Details:
+    """Every letter's details are chosen here, so one rule can't be skipped by another path."""
+    if custom.minimal_details(profile, broker_id):
+        return allowed.NAME_EMAIL  # Stealth wrote to them by itself: the least it can send
+    return allowed.for_broker(broker, tier)
+
+
 def details_for(
     profile: Profile, case: Case, brokers: dict[str, Broker] | None = None
 ) -> allowed.Details:
     """The details letters to this case's company may carry: its category's minimum."""
     known = custom.with_custom(profile, load_registry() if brokers is None else brokers)
-    return allowed.for_broker(known.get(case.broker_id), case.tier)
+    return _details(profile, case.broker_id, known.get(case.broker_id), case.tier)
 
 
 def draft_letter(profile: Profile, case: Case) -> EmailMessage:

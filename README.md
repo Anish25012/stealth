@@ -280,8 +280,10 @@ own website; one that asks for a CAPTCHA or a button press comes to you. Once pe
 pushes back politely on an ID request that names no documents, sends your details when a company
 asks for more, and chases a reply that only says you've been unsubscribed. It never sends ID
 documents: a request for a passport, licence or bill comes to you. You can give it a start date,
-before which it sends no first letters or repeats. All of it is listed under **Sent
-automatically**. With Autopilot off, it sends only letters you've approved, and complaints wait for
+before which it sends no first letters or repeats. A company you add yourself is written to
+straight away, with your name and email only, if Stealth found a privacy address on its own
+privacy page and the site isn't on a public scam list; otherwise it waits for you. All of it is
+listed under **Sent automatically**. With Autopilot off, it sends only letters you've approved, and complaints wait for
 your OK unless you turn on **Send complaints automatically**. Either way, ID documents, web forms,
 ICO complaints and replies it can't read stay with you. If the computer was off, it catches up
 shortly after it's next on, and the tray tells you when something needs you. Turn on **Start with

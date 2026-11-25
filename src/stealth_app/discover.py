@@ -12,9 +12,11 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from starlette.responses import Response
 
+from stealth import autopilot
 from stealth.cases import engine
 from stealth.cases.state import all_cases
 from stealth.core.errors import ProfileError, StealthError
+from stealth.custom import autosend
 from stealth.custom import store as custom
 from stealth.custom.email_extract import registrable
 from stealth.custom.policy_fetch import look_up, normalise_domain
@@ -65,8 +67,53 @@ def start_lookup(state: State, domain: str, *, listing: str | None, category: st
             job.lines.append(f"The likeliest privacy address is {found.best.address}.")
         else:
             job.lines.append("No email address was found. You can type one in.")
+        settings = profile.settings()
+        if autopilot.sends_letters(settings, views.today_for(profile)):
+            _auto_send(state, profile, company, job)
+        elif autopilot.is_on(settings):
+            job.lines.append(
+                "Autopilot hasn't reached its start date, so this letter waits for your OK."
+            )
 
     return start_job(state, f"Looking up {domain}", work, "/companies/add")
+
+
+def _auto_send(state: State, profile: Profile, company: custom.CustomCompany, job: Job) -> None:
+    """Autopilot is on: write to the company now if every check passes, or say why not."""
+    verdict = autosend.judge(
+        company,
+        parents=autosend.parent_groups(state.workspace.brokers().values()),
+        blocklist=state.workspace.blocklist(),
+    )
+    company, case = autosend.apply(profile, company, verdict)
+    if case is None:
+        job.lines.append(f"Not sent automatically: {verdict.reason}")
+        job.lines.append("It's waiting for you under Needs you, to check and choose an address.")
+        return
+    job.next_url = f"/cases/{quote(company.id)}"
+    job.lines.append(
+        f"All four checks passed, so Stealth is sending the letter to {verdict.address} by "
+        "itself, with your name and email only."
+    )
+    try:
+        transport, _mailbox = state.workspace.mail(profile)
+        report = engine.send_requests(
+            profile,
+            state.workspace.brokers(),
+            transport,
+            sleep=state.workspace.sleep,
+            only=company.id,
+            hold_for_approval=True,
+        )
+    except StealthError as exc:
+        job.lines.append(f"It couldn't go just now ({exc.message}). It'll go with the next check.")
+        return
+    if company.name in report.sent:
+        job.lines.append("Sent. It's listed under Sent automatically.")
+    elif report.held_back:
+        job.lines.append("Today's sending limit is reached, so it'll go tomorrow.")
+    else:
+        job.lines.append("It couldn't go just now. It'll go with the next check.")
 
 
 def _search_anywhere(profile: Profile) -> str:

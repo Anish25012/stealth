@@ -14,7 +14,7 @@
 </header>
 <main>
   <h1>Privacy policy</h1>
-  <p class="muted">Last updated 8 November 2026</p>
+  <p class="muted">Last updated 25 November 2026</p>
 
   <p>Stealth is a free, open-source desktop app that sends data-removal requests to companies for
   you. This policy explains what happens to your data when you use it. In short: <strong>Stealth
@@ -58,8 +58,13 @@
 
   <h2>What Stealth sends, and to whom</h2>
   <ul>
-    <li><strong>Removal requests</strong> go only to the companies you choose, and only when you
-    approve them. Each one contains only the details you entered that that kind of company needs
+    <li><strong>Removal requests</strong> go only to the companies on your list and the ones you add.
+    With <strong>Autopilot</strong> off, each one waits for your approval. With it on, Stealth
+    sends them by itself, along with repeat requests, formal complaints and short follow-up
+    letters, and lists everything it sent under "Sent automatically". A company you add yourself
+    is written to automatically only if Stealth found a privacy address on that company's own
+    website and it passed every safety check, and that letter contains only your name and email
+    address. Stealth never sends identity documents. Each letter contains only the details you entered that that kind of company needs
     to find and delete your records. UK companies and marketing lists get your name, email
     addresses, home addresses and phone numbers. Contact scrapers and people-search sites get your
     name, email and phone. Advertising, location-tracking and other data companies outside the UK
@@ -69,7 +74,12 @@
     <li><strong>GitHub:</strong> Stealth downloads its updated list of companies and checks for new
     versions from this project's page on GitHub. These requests contain no personal data.</li>
     <li><strong>Company websites:</strong> if you ask Stealth to look up a company, it visits that
-    company's website to find its privacy contact. These requests contain no personal data.</li>
+    company's website to find its privacy contact. These requests contain no personal data. With
+    Autopilot on, when a company emails you a "click to confirm your request" link on its own
+    website, Stealth may open that link once, as you would by clicking it.</li>
+    <li><strong>Scam and phishing lists:</strong> with Autopilot on, before writing to a company you
+    added, Stealth downloads the public lists from PhishTank and OpenPhish, whole, and checks them
+    on your computer. It never tells them which companies you deal with.</li>
   </ul>
 
   <h2>Your choices</h2>

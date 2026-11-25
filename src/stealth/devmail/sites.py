@@ -99,6 +99,14 @@ Officer at dpo [at] shopwise [dot] test, or write to ShopWise Ltd, 1 High Street
     "https://quietlist.test/privacy": """<html><head><title>Privacy</title></head><body>
 <p>To exercise your data protection rights, email
 <a href="mailto:privacy@quietlist.test">our privacy team</a>.</p></body></html>""",
+    # Auto-send holds these two: an address on the home page only, and a site on the demo's
+    # made-up scam list.
+    "https://chattybox.test/": """<html><head><title>ChattyBox</title></head><body>
+<p>Chat with friends. Questions? hello@chattybox.test</p></body></html>""",
+    "https://scam-shop.test/": """<html><head><title>Scam Shop</title></head><body>
+<p>Unbelievable prices. <a href="/privacy">Privacy</a></p></body></html>""",
+    "https://scam-shop.test/privacy": """<html><head><title>Privacy</title></head><body>
+<p>Data protection requests: privacy@scam-shop.test</p></body></html>""",
 }
 
 

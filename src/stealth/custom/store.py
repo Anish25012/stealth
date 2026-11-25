@@ -39,10 +39,19 @@ class CustomCompany:
     category: str
     listing_url: str | None
     added_at: str
+    auto_status: str | None = None  # "sent" or "held", when auto-send judged it
+    auto_reason: str | None = None  # why it was held
+    auto_checks: str | None = None  # JSON list of {"label", "ok", "detail"}
+    auto_page: str | None = None  # the page the address was found on
+    auto_at: str | None = None
 
     @property
     def ready(self) -> bool:
         return self.email is not None
+
+    @property
+    def checks(self) -> list[dict[str, object]]:
+        return json.loads(self.auto_checks) if self.auto_checks else []
 
 
 def company_id(domain: str) -> str:
@@ -179,3 +188,47 @@ def as_brokers(profile: Profile) -> dict[str, Broker]:
 
 def with_custom(profile: Profile, brokers: dict[str, Broker]) -> dict[str, Broker]:
     return {**brokers, **as_brokers(profile)}
+
+
+# Auto-send ----------------------------------------------------------------------------------
+
+
+def minimal_details(profile: Profile, broker_id: str) -> bool:
+    """True for a company Stealth wrote to by itself: its letters carry name and email only."""
+    if not is_custom(broker_id):
+        return False
+    row = profile.conn.execute(
+        "SELECT auto_status FROM custom_company WHERE id = ?", (broker_id,)
+    ).fetchone()
+    return row is not None and row["auto_status"] == "sent"
+
+
+def record_auto(
+    profile: Profile,
+    company: str,
+    *,
+    status: str,
+    reason: str | None,
+    checks: list[dict[str, object]],
+    page: str | None,
+) -> CustomCompany:
+    if status not in ("sent", "held"):
+        raise ValueError(status)
+    profile.conn.execute(
+        "UPDATE custom_company SET auto_status = ?, auto_reason = ?, auto_checks = ?, "
+        "auto_page = ?, auto_at = ? WHERE id = ?",
+        (status, reason, json.dumps(checks), page, clock.now().isoformat(), company),
+    )
+    return get(profile, company)
+
+
+def held_for_you(profile: Profile) -> list[CustomCompany]:
+    """Companies auto-send didn't write to, still waiting for the person to pick an address."""
+    return [c for c in all_companies(profile) if c.auto_status == "held" and not c.ready]
+
+
+def sent_automatically(profile: Profile) -> list[CustomCompany]:
+    rows = profile.conn.execute(
+        "SELECT * FROM custom_company WHERE auto_status = 'sent' ORDER BY auto_at DESC"
+    )
+    return [_row(r) for r in rows]

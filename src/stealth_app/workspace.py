@@ -21,8 +21,9 @@ from stealth.breaches.hibp import HibpProvider
 from stealth.breaches.provider import Breach, BreachProvider, FakeProvider
 from stealth.core import clock
 from stealth.core.errors import ProfileError, StealthError
-from stealth.core.paths import remove_folder
+from stealth.core.paths import app_home, remove_folder
 from stealth.core.secrets import KeyringStore, MemoryStore
+from stealth.custom.blocklist import Blocklist, FeedBlocklist, FixedBlocklist
 from stealth.custom.policy_fetch import Page, http_get
 from stealth.devmail.servers import LocalImap, LocalSmtp
 from stealth.devmail.sites import LocalPeopleSearch, demo_fetch
@@ -82,6 +83,8 @@ class Workspace(Protocol):
 
     def signup_source(self, profile: Profile) -> SignupSource: ...
 
+    def blocklist(self) -> Blocklist: ...
+
     def close(self) -> None: ...
 
 
@@ -121,6 +124,10 @@ class RealWorkspace:
 
     def breach_provider(self, api_key: str) -> BreachProvider:
         return HibpProvider(api_key, sleep=self.sleep)
+
+    def blocklist(self) -> Blocklist:
+        # Website names only, in Stealth's own folder (not a profile): nothing personal.
+        return FeedBlocklist(app_home() / "cache" / "blocklists")
 
     def signup_source(self, profile: Profile) -> SignupSource:
         _transport, mailbox = open_mail(profile)
@@ -190,6 +197,10 @@ class DemoWorkspace:
     def breach_provider(self, api_key: str) -> BreachProvider:
         # Made up, like everything in the demo: it never contacts Have I Been Pwned.
         return _DemoBreaches()
+
+    def blocklist(self) -> Blocklist:
+        # A made-up list: the demo never downloads the real ones.
+        return FixedBlocklist({"scam-shop.test"})
 
     def signup_source(self, profile: Profile) -> SignupSource:
         # Made-up sign-up emails: the demo's mailbox isn't Gmail, and nothing leaves.

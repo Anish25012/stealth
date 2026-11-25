@@ -12,7 +12,7 @@ import re
 import urllib.error
 import urllib.request
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from html import unescape
 from urllib.parse import urljoin, urlsplit
 from urllib.robotparser import RobotFileParser
@@ -170,7 +170,8 @@ def look_up(site: str, fetch: Fetch = http_get) -> Lookup:
         lookup.pages_checked.append(page.url)
         if url == home:
             lookup.name = _site_name(page.text, domain)
-        for candidate in find_addresses(page.text, domain):
+        for found in find_addresses(page.text, domain):
+            candidate = replace(found, page=page.url)
             known = next((c for c in lookup.candidates if c.address == candidate.address), None)
             if known is None or known.score < candidate.score:
                 lookup.candidates = [c for c in lookup.candidates if c is not known]

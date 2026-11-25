@@ -122,6 +122,17 @@ def _never_have_i_been_pwned(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
+def _never_the_real_blocklists(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No test downloads PhishTank or OpenPhish; tests that check the lists give a fake download."""
+    from stealth.custom import blocklist
+
+    def refuse(url: str) -> bytes:
+        raise AssertionError(f"a test tried to download a real blocklist: {url}")
+
+    monkeypatch.setattr(blocklist, "https_download", refuse)
+
+
+@pytest.fixture(autouse=True)
 def _never_a_real_confirmation_link(monkeypatch: pytest.MonkeyPatch) -> None:
     """No test opens a company's real website; tests that follow links pass a fake `get`."""
     from stealth.inbox import verify

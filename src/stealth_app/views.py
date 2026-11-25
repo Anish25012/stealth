@@ -27,6 +27,7 @@ from stealth.cases.state import TRANSITIONS, Case, Status, all_cases
 from stealth.core import clock
 from stealth.core.errors import ProfileError
 from stealth.core.jurisdictions import UK, Jurisdiction, for_country
+from stealth.custom import store as custom
 from stealth.db import events
 from stealth.inbox import classifier
 from stealth.inbox.responses import latest_reading, what_they_asked
@@ -282,6 +283,12 @@ def nav_counts(groups: dict[str, list[Row]]) -> dict[str, int]:
     return {"/needs": sum(len(groups[key]) for key in ("approve", "you", "problem"))}
 
 
+def needs_count(profile: Profile, groups: dict[str, list[Row]] | None = None) -> int:
+    """Everything waiting on the person, including companies Autopilot left for them."""
+    groups = grouped(rows(profile)) if groups is None else groups
+    return nav_counts(groups)["/needs"] + len(custom.held_for_you(profile))
+
+
 def today_for(profile: Profile) -> date:
     from stealth.cases.engine import jurisdiction_of
 
@@ -413,6 +420,7 @@ EVENT_TEXT = {
     "case_created": "Stealth added this company",
     "reply_received": "Stealth found their reply",
     "verify_skipped": "Autopilot left their confirmation link for you",
+    "auto_send_held": "Autopilot didn't write to them: a check didn't pass",
     "send_failed": "Sending failed",
     "ico_complaint_drafted": "ICO complaint drafted",
     "note": "Your note",

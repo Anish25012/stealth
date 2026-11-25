@@ -26,6 +26,7 @@ from stealth.cases import engine
 from stealth.cases.state import Status, find_case
 from stealth.core.errors import ProfileError, StealthError
 from stealth.core.logging_scrub import add_known_values
+from stealth.custom import store as custom
 from stealth.inbox import responses
 from stealth.mail import google_oauth
 from stealth.profiles.store import Profile
@@ -78,6 +79,7 @@ def render(
             context["nav_counts"] = views.nav_counts(views.grouped(views.rows(profile)))
         context["nav_counts"] = {
             **context["nav_counts"],
+            "/needs": context["nav_counts"]["/needs"] + len(custom.held_for_you(profile)),
             "/protect": len(alerts.open_alerts(profile)),
         }
     jurisdiction = views.jurisdiction_for(profile)
@@ -375,6 +377,8 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
             return render(
                 request,
                 "needs.html",
+                profile=profile,
+                held=custom.held_for_you(profile),
                 title="Needs you",
                 groups=groups,
                 group_text=views.GROUPS,
