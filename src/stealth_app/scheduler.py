@@ -263,7 +263,7 @@ class Scheduler:
                     result = f"Couldn't finish today's check: {exc.message}"
                     profile.save_settings(last_auto_run=now.isoformat(), last_auto_result=result)
                     return Outcome(profile_id, person.display_name, True, result, notify=True)
-                needs = views.nav_counts(views.grouped(views.rows(profile)))["/needs"]
+                needs = views.needs_count(profile)
                 result = summary_line(report, needs)
                 profile.save_settings(last_auto_run=now.isoformat(), last_auto_result=result)
                 self._retry_at.pop(profile_id, None)

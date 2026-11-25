@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from "_macros.html" import badge, help, icon, avatar %}
 {% block main %}
-{% set waiting = groups.approve|length + groups.you|length + groups.problem|length %}
+{% set waiting = groups.approve|length + groups.you|length + groups.problem|length + held|length %}
 <div class="page-head">
   <div>
     <h1>Needs you</h1>
@@ -10,6 +10,28 @@
 </div>
 
 {% if waiting %}
+{% if held %}
+<section class="card" aria-labelledby="held-h" id="held">
+  <div class="card-head">
+    <h2 id="held-h">Companies to check</h2>
+    <span class="count">{{ held|length }}</span>
+  </div>
+  <p class="muted">Auto-send didn't write to these, because one of its checks didn't pass. Check the
+  address and send the letter yourself, or leave them.</p>
+  <ul class="rows">
+    {% for c in held %}
+    <li><a class="row" href="/companies/add/{{ c.id|urlencode }}" data-held="{{ c.id }}">
+      {{ avatar(c.name) }}
+      <span class="row-main">
+        <span class="row-title">{{ c.name }}</span>
+        <span class="row-text">Not sent automatically: {{ c.auto_reason }}</span>
+      </span>
+      <span class="row-end">{{ badge({"tone": "action", "label": "Check it"}) }}{{ icon("chevron-right", "s chevron") }}</span>
+    </a></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
 {% if groups.approve %}
 <section class="card" aria-labelledby="approve-h">
   <div class="card-head">

@@ -688,6 +688,9 @@
   }
   details[open] > summary::after { transform: rotate(-135deg) translate(-2px, -2px); }
   details > :not(summary) { animation: reveal var(--dur-3) var(--ease-out); }
+  .auto-checks { padding: 0 var(--space-4) var(--space-3); }
+  .auto-checks ul { list-style: none; padding: 0; margin: 0; font-size: var(--text-footnote); }
+  .auto-checks li { display: flex; gap: var(--space-2); align-items: baseline; }
   @keyframes reveal { from { opacity: 0; transform: translateY(-.25rem); } }
   .faq details + details { border-top: 1px solid var(--separator); }
   .faq details p { color: var(--text-2); }

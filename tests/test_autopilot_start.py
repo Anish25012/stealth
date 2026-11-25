@@ -84,3 +84,30 @@ def test_a_bad_start_date_is_refused(client, demo):  # noqa: F811
     assert response.status_code in (400, 422) or "isn't a date" in response.text
     with demo.store.open() as profile:
         assert profile.settings().autopilot_from is None
+
+
+def test_the_one_time_card_suggests_holding_waiting_letters(client, demo):  # noqa: F811
+    # The demo has letters waiting for an OK, like a profile made before Autopilot.
+    page = client.get("/").text
+    assert 'id="f-intro-from"' in page and "Autopilot holds them until this date" in page
+    with demo.store.open() as profile:
+        expected = views.today_for(profile)
+    first_next = date(expected.year + (expected.month == 12), expected.month % 12 + 1, 1)
+    assert f'value="{first_next.isoformat()}"' in page
+    post(client, "/autopilot/choose", autopilot="yes", autopilot_from=first_next.isoformat())
+    with demo.store.open() as profile:
+        settings = profile.settings()
+    assert settings.autopilot and settings.autopilot_from == first_next.isoformat()
+
+
+def test_clearing_the_cards_date_starts_straight_away(client, demo):  # noqa: F811
+    post(client, "/autopilot/choose", autopilot="yes", autopilot_from="")
+    with demo.store.open() as profile:
+        assert profile.settings().autopilot_from is None
+
+
+def test_not_now_keeps_it_off_and_sets_no_date(client, demo):  # noqa: F811
+    post(client, "/autopilot/choose", autopilot="no", autopilot_from="2026-12-01")
+    with demo.store.open() as profile:
+        settings = profile.settings()
+    assert not settings.autopilot and settings.autopilot_from is None

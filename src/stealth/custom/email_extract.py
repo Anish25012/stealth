@@ -68,6 +68,7 @@ class Candidate:
     score: int
     context: str  # the words around it on the page
     same_site: bool
+    page: str = ""  # the page it was found on, once a lookup has placed it
 
     @property
     def reasons(self) -> list[str]:
