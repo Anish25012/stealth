@@ -11,6 +11,11 @@ Still the person's, even on Autopilot: anything involving ID documents, web form
 accounts they haven't marked Delete, replies Stealth can't read with confidence, ICO complaints
 (the ICO only takes them through its own website), and letters to optional (extended) companies.
 
+It answers or chases a company once per request (see `followups`): polite pushback on an ID
+request that names no documents, the first letter's details when asked for more, and a chase when
+a reply only confirms an opt-out. A start date (`autopilot_from`) holds first letters and repeats
+until that day; everything else carries on.
+
 It also opens a company's "click to confirm your request" link, under the strict rules in
 `inbox.verify`.
 

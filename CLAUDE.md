@@ -78,7 +78,10 @@ A `v*` tag also makes a **draft** GitHub release; the maintainer publishes it by
   after a missed deadline or a refusal, logging each as an `autopilot` event ("Sent
   automatically"). It also opens "click to confirm your request" links, only under the rules in
   `inbox/verify.py` (company's own HTTPS domain, threaded or provider-vouched sender, one GET, page
-  says confirmed, no CAPTCHA); anything else goes to Needs you. Still the person's: ID documents, web forms/CAPTCHAs, deleting old accounts
+  says confirmed, no CAPTCHA); anything else goes to Needs you. Follow-ups (`followups.py`),
+  once per round and only for proven replies: Article 12(6) pushback on ID requests that name no
+  documents, the first letter's details on "more details", a chase on opt-out-only answers
+  (deadline unchanged). `autopilot_from` holds first letters and repeats until a date. Still the person's: ID documents, web forms/CAPTCHAs, deleting old accounts
   not marked Delete, replies Stealth can't read confidently, ICO complaints, extended-tier letters.
 - With Autopilot off, approve-before-send applies in the desktop app; the CLI's
   `send --live --yes` counts as approval. Complaints wait too (Needs you, or
