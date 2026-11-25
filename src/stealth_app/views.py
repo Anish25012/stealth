@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode, urlsplit
 
-from stealth import __version__, score
+from stealth import __version__, autopilot, score
 from stealth.cases.state import TRANSITIONS, Case, Status, all_cases
 from stealth.core import clock
 from stealth.core.errors import ProfileError
@@ -30,6 +30,7 @@ from stealth.core.jurisdictions import UK, Jurisdiction, for_country
 from stealth.db import events
 from stealth.inbox import classifier
 from stealth.inbox.responses import latest_reading, what_they_asked
+from stealth.profiles.models import Settings
 from stealth.profiles.store import Profile
 from stealth.templates.render import format_date
 
@@ -117,6 +118,11 @@ LATE_ASK = (
 )
 # A missed deadline, when complaints wait for the person's OK (the default).
 COMPLAINT_WAITING = StatusInfo("Deadline passed", "you", "action")
+# On Autopilot: letters to core companies, and complaints after a refusal, go by themselves.
+AUTOPILOT_SENDS = StatusInfo("Autopilot sends soon", "progress", "waiting")
+AUTOPILOT_COMPLAINS = StatusInfo("Complaint going out", "progress", "waiting")
+AUTOPILOT_DRAFT = "Autopilot sends this letter at the next daily check, within your daily limit."
+AUTOPILOT_REFUSED = "They refused. Autopilot sends them a formal complaint at the next daily check."
 FORM_LATE = "Their time limit has passed, and they can only be chased through their website."
 
 
@@ -128,19 +134,28 @@ def overdue(case: Case, today: date) -> bool:
     )
 
 
-def status_info(case: Case, today: date, *, auto_complaints: bool) -> StatusInfo:
+def status_info(case: Case, today: date, settings: Settings) -> StatusInfo:
     """The badge and list for a case. A missed deadline needs the person, unless complaints
-    go automatically."""
-    if overdue(case, today) and case.contact and not auto_complaints:
+    go automatically; on Autopilot, core drafts and refusals don't need them either."""
+    if overdue(case, today) and case.contact and not autopilot.complaints_automatic(settings):
         return COMPLAINT_WAITING
+    if autopilot.handles_draft(settings, case):
+        return AUTOPILOT_SENDS
+    if autopilot.is_on(settings) and case.status is Status.REFUSED and case.contact:
+        return AUTOPILOT_COMPLAINS
     return STATUS[case.status]
 
 
-def explain(case: Case, today: date, *, auto_complaints: bool = False) -> str:
+def explain(case: Case, today: date, settings: Settings | None = None) -> str:
     """One sentence on where a case stands and what happens next."""
     text = EXPLAIN[case.status]
-    if overdue(case, today):
-        text = LATE if auto_complaints or not case.contact else LATE_ASK
+    automatic = settings is not None and autopilot.complaints_automatic(settings)
+    if settings is not None and autopilot.handles_draft(settings, case):
+        text = AUTOPILOT_DRAFT
+    elif settings is not None and autopilot.is_on(settings) and case.status is Status.REFUSED:
+        text = AUTOPILOT_REFUSED if case.contact else text
+    elif overdue(case, today):
+        text = LATE if automatic or not case.contact else LATE_ASK
     elif case.status is Status.NEEDS_YOU and (case.method == "form" or not case.contact):
         text = FORM_LATE
     return text.format(deadline=_on(case.deadline_on), next=_on(case.next_action_on))
@@ -162,16 +177,16 @@ READS_REPLIES = (Status.REPLIED, Status.NEEDS_YOU)
 
 def rows(profile: Profile) -> list[Row]:
     today = today_for(profile)
-    auto = profile.settings().auto_complaints
+    settings = profile.settings()
     result = []
     for case in all_cases(profile.conn):
         late = overdue(case, today)
-        explanation = explain(case, today, auto_complaints=auto)
+        explanation = explain(case, today, settings)
         if case.status in READS_REPLIES:
             reading = latest_reading(profile, case)
             if reading and reading.kind != classifier.UNKNOWN:
                 explanation = f"Stealth's reading: {reading.label.lower()}. Check it and confirm."
-        info = status_info(case, today, auto_complaints=auto)
+        info = status_info(case, today, settings)
         result.append(Row(case, info, explanation, late))
     return result
 
@@ -429,6 +444,10 @@ def timeline(profile: Profile, case: Case) -> list[Entry]:
         payload = event["payload"]
         if event["type"] == "status_changed":
             text, detail = _status_text(payload), str(payload.get("reason", ""))
+        elif event["type"] == autopilot.EVENT:
+            what = str(payload.get("what", ""))
+            text = f"Sent automatically: {autopilot.WHAT.get(what, what).lower()}"
+            detail = str(payload.get("reason", ""))
         elif event["type"] == "reply_received" and payload.get("reading"):
             label = classifier.LABELS.get(str(payload["reading"]), "")
             text, detail = EVENT_TEXT["reply_received"], f"Stealth's reading: {label}"

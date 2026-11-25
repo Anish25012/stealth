@@ -72,6 +72,26 @@
   </div>
 </section>
 
+<section class="card" aria-labelledby="autopilot-h">
+  <div class="card-head">
+    <span class="glyph tone-accent">{{ icon("send") }}</span>
+    <div>
+      <h2 id="autopilot-h">Autopilot</h2>
+      <p class="muted">Let Stealth send, repeat and chase by itself at the daily check.</p>
+    </div>
+  </div>
+  {% include "_autopilot_text.html" %}
+  <form method="post" action="/settings/autopilot">
+    {{ csrf_field(csrf) }}
+    <div class="toggle-row">
+      <label for="f-autopilot">Autopilot</label>
+      <input type="checkbox" class="switch" role="switch" id="f-autopilot" name="autopilot" value="yes"{% if settings.autopilot %} checked{% endif %}>
+    </div>
+    <div class="button-row"><button class="button secondary" type="submit">Save</button>
+    <a class="button secondary" href="/sent-automatically">Sent automatically</a></div>
+  </form>
+</section>
+
 <section class="card" aria-labelledby="complaints-h">
   <div class="card-head">
     <span class="glyph tone-accent">{{ icon("flag") }}</span>
@@ -86,8 +106,10 @@
     <div class="toggle-row">
       <div>
         <label for="f-auto_complaints">Send complaints automatically</label>
-        <p class="muted small">When this is on, the daily check sends the complaint as soon as a
-        deadline passes, without asking you first. Complaints after a refusal always wait for you.</p>
+        <p class="muted small">{% if settings.autopilot %}Autopilot is on, so complaints already go
+        automatically.{% else %}When this is on, the daily check sends the complaint as soon as a
+        deadline passes, without asking you first. Complaints after a refusal still wait for you
+        unless Autopilot is on.{% endif %}</p>
       </div>
       <input type="checkbox" class="switch" role="switch" id="f-auto_complaints" name="auto_complaints" value="yes"{% if settings.auto_complaints %} checked{% endif %}>
     </div>

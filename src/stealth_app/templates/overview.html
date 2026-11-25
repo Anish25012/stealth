@@ -15,6 +15,29 @@
 <div class="notice" role="status">{{ icon("refresh-cw") }}<p>Stealth is working: <a href="/jobs/{{ running.id }}">{{ running.title }}</a>.</p></div>
 {% endif %}
 
+{% if not settings.autopilot_explained %}
+<section class="card" aria-labelledby="autopilot-intro-h" data-autopilot-intro>
+  <div class="card-head">
+    <span class="glyph tone-accent">{{ icon("send") }}</span>
+    <div>
+      <h2 id="autopilot-intro-h">{% if settings.autopilot %}Autopilot is on{% else %}Let Stealth run itself?{% endif %}</h2>
+      <p class="muted">{% if settings.autopilot %}Stealth looks after your requests by itself, once a day.{% else %}With Autopilot, Stealth looks after your requests by itself, once a day. It's off for you at the moment, so nothing goes without your OK.{% endif %}</p>
+    </div>
+  </div>
+  {% include "_autopilot_text.html" %}
+  <form method="post" action="/autopilot/choose" class="button-row">
+    {{ csrf_field(csrf) }}
+    {% if settings.autopilot %}
+    <button class="button" type="submit" name="autopilot" value="yes">Got it</button>
+    <button class="button secondary" type="submit" name="autopilot" value="no">Turn Autopilot off</button>
+    {% else %}
+    <button class="button" type="submit" name="autopilot" value="yes">Turn on Autopilot</button>
+    <button class="button secondary" type="submit" name="autopilot" value="no">Not now</button>
+    {% endif %}
+  </form>
+</section>
+{% endif %}
+
 <section class="card hero" aria-labelledby="status-h">
   {{ ring(summary.percent, summary.percent ~ "%", "removed",
           label=summary.removed ~ " of " ~ summary.active ~ " companies have removed your data",
@@ -104,9 +127,11 @@
 <p><strong>The ring</strong> shows how many companies have removed your data, or said they held
 none, out of every company Stealth is dealing with.</p>
 <p><strong>Run cycle now</strong> does everything that's due: it reads your mailbox for replies,
-lists any company that missed its legal deadline under Needs you, with a formal complaint ready to
-send, and sends letters you've approved.{% if settings.auto_complaints %} You've chosen to send
-those complaints automatically, so it sends them too.{% endif %} It sends at most {{ settings.daily_send_limit }} emails a day, so your email provider
+spam included.{% if settings.autopilot %} Autopilot is on, so it also sends today's batch of first
+letters, any repeat requests, and formal complaints to companies that missed their deadline or
+refused.{% else %} It lists any company that missed its legal deadline under Needs you, with a
+formal complaint ready to send, and sends letters you've approved.{% if settings.auto_complaints %}
+You've chosen to send those complaints automatically, so it sends them too.{% endif %}{% endif %} It sends at most {{ settings.daily_send_limit }} emails a day, so your email provider
 doesn't mistake you for a spammer. Anything over that goes the next day.</p>
 <p><strong>Needs you</strong> lists things only you can do. Stealth never decides on its own that
 a company has removed you: you read their reply and say what it meant.</p>

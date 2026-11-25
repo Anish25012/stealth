@@ -525,7 +525,12 @@ REFUSED = "You have refused my request, and I do not accept your reasons for doi
 
 
 def send_complaint(
-    profile: Profile, case: Case, transport: Transport, *, grievance: str = NO_REPLY
+    profile: Profile,
+    case: Case,
+    transport: Transport,
+    *,
+    grievance: str = NO_REPLY,
+    actor: str = "stealth",
 ) -> Case:
     person, account, jurisdiction = profile.person(), _account(profile), jurisdiction_of(profile)
     if not case.contact:
@@ -542,6 +547,7 @@ def send_complaint(
         profile.conn,
         case,
         Status.COMPLAINT_SENT,
+        actor=actor,
         reason="formal complaint sent",
         complaint_on=today,
         next_action_on=deadlines.ico_ready_on(today, profile.settings()),

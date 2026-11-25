@@ -38,6 +38,7 @@ def new_profile(
     with store.open(profile_id) as profile:
         profile.save_person(person)
         profile.save_mail_account(account, password=password)
+        profile.save_settings(autopilot=True)  # new profiles run themselves (stealth.autopilot)
         if consent is not None:
             profile.record_consent(
                 person.display_name,

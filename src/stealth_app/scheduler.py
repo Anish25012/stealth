@@ -285,8 +285,12 @@ def summary_line(report: cycle.CycleReport, needs_you: int) -> str:
         parts.append(f"{n} new repl{'y' if n == 1 else 'ies'} to read")
     if report.inbox.bounces:
         parts.append(f"{len(report.inbox.bounces)} email(s) didn't arrive")
-    if report.send.sent:
-        parts.append(f"{len(report.send.sent)} approved letter(s) sent")
+    if report.autopilot_sent:
+        parts.append(f"{len(report.autopilot_sent)} sent by Autopilot")
+    if len(report.send.sent) > len(report.autopilot_sent):
+        parts.append(
+            f"{len(report.send.sent) - len(report.autopilot_sent)} approved letter(s) sent"
+        )
     if report.complaints:
         parts.append(f"{len(report.complaints)} formal complaint(s) sent")
     if report.complaints_waiting:

@@ -20,7 +20,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from jinja2 import Environment, PackageLoader, select_autoescape
 from starlette.responses import Response
 
-from stealth import __version__, alerts, cycle
+from stealth import __version__, alerts, autopilot, cycle
 from stealth.cases import engine
 from stealth.cases.state import Status, find_case
 from stealth.core.errors import ProfileError, StealthError
@@ -118,6 +118,11 @@ EMPTY_PAGES: dict[str, tuple[str, str, str]] = {
     "/needs": ("Needs you", "Replies to read and letters to approve.", "inbox"),
     "/approve": ("Waiting for your OK", "Letters Stealth has written for you to read.", "mail"),
     "/reports": ("Reports", "Monthly reports, your exposure score and evidence.", "file-text"),
+    "/sent-automatically": (
+        "Sent automatically",
+        "Everything Autopilot sent without asking you.",
+        "send",
+    ),
 }
 
 
@@ -279,15 +284,15 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
             asked = views.can_respond(profile, case)
             draft = responses.response_message(profile, case, asked) if asked else None
             today = views.today_for(profile)
-            auto = profile.settings().auto_complaints
+            settings = profile.settings()
             return render(
                 request,
                 "case.html",
                 profile=profile,
                 title=case.broker_name,
                 case=case,
-                info=views.status_info(case, today, auto_complaints=auto),
-                explanation=views.explain(case, today, auto_complaints=auto),
+                info=views.status_info(case, today, settings),
+                explanation=views.explain(case, today, settings),
                 timeline=views.timeline(profile, case),
                 outcomes=views.outcomes_for(case),
                 reply=views.latest_reply(profile, case),
@@ -336,9 +341,13 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
         with opened(state) as profile:
             if profile is None:
                 return not_set_up(request)
-            drafts = engine.drafts_waiting(profile)
-            letters = [(case, engine.draft_letter(profile, case)) for case in drafts]
             settings = profile.settings()
+            drafts = [  # on Autopilot, letters to core companies don't wait for an OK
+                c
+                for c in engine.drafts_waiting(profile)
+                if not autopilot.handles_draft(settings, c)
+            ]
+            letters = [(case, engine.draft_letter(profile, case)) for case in drafts]
             return render(
                 request,
                 "approve.html",
@@ -485,6 +494,39 @@ def install(app: FastAPI, real: Workspace | None = None) -> State:
             )
         autostart.set_enabled(first(form, "autostart") == "yes")
         return redirect("/settings")
+
+    @app.post("/settings/autopilot")
+    async def autopilot_setting(request: Request) -> Response:
+        form = await read_form(request)
+        with changing(state) as profile:
+            profile.save_settings(
+                autopilot=first(form, "autopilot") == "yes", autopilot_explained=True
+            )
+        return redirect("/settings#autopilot-h")
+
+    @app.post("/autopilot/choose")
+    async def autopilot_choose(request: Request) -> Response:
+        """The one-time explanation's answer: on or off, and don't explain again."""
+        form = await read_form(request)
+        with changing(state) as profile:
+            profile.save_settings(
+                autopilot=first(form, "autopilot") == "yes", autopilot_explained=True
+            )
+        return redirect("/")
+
+    @app.get("/sent-automatically", response_class=HTMLResponse)
+    def sent_automatically(request: Request) -> Response:
+        with opened(state) as profile:
+            if profile is None:
+                return not_set_up(request)
+            return render(
+                request,
+                "sent_automatically.html",
+                profile=profile,
+                title="Sent automatically",
+                done=autopilot.sent_automatically(profile),
+                settings=profile.settings(),
+            )
 
     @app.post("/settings/complaints")
     async def complaint_setting(request: Request) -> Response:
@@ -675,6 +717,8 @@ def _cycle_summary(report: cycle.CycleReport) -> list[str]:
         lines.append(f"Formal complaints sent to: {_names(report.complaints)}.")
     if report.complaints_held:
         lines.append(f"{report.complaints_held} complaint(s) held back by your daily limit.")
+    if report.autopilot_sent:
+        lines.append(f"Sent by Autopilot: {_names(report.autopilot_sent)}.")
     if report.complaints_waiting:
         lines.append(
             f"Deadline passed, complaint waiting for your OK: {_names(report.complaints_waiting)}."

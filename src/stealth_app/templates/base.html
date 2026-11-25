@@ -29,7 +29,7 @@
           ("/protect", "Protect yourself", "shield", ["/protect", "/recovery", "/old-accounts"]),
           ("/needs", "Needs you", "inbox", ["/needs", "/approve"]),
           ("/reports", "Reports", "file-text", ["/reports"]),
-          ("/settings", "Settings", "settings", ["/settings", "/people"]),
+          ("/settings", "Settings", "settings", ["/settings", "/people", "/sent-automatically"]),
           ("/help", "Help", "circle-help", ["/help", "/styleguide"]),
         ] %}
         {% set ns = namespace(current=(path == "/")) if href == "/" else namespace(current=False) %}

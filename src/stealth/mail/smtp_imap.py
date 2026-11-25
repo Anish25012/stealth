@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import contextlib
 import imaplib
+import re
 import smtplib
 import ssl
 from collections.abc import Callable
 from datetime import date
 from email.message import EmailMessage
+from typing import Any
 
 from stealth.core import tls
 from stealth.core.errors import MailAuthError, MailConnectionError, MailSendError
@@ -152,7 +154,10 @@ class ImapMailbox:
         self._in_folder(lambda _server: [])
 
     def fetch_since(self, since: date) -> list[IncomingMail]:
-        return self._in_folder(lambda server: self._fetch(server, since))
+        """The folder's mail since `since`, plus the spam folder's: replies filed as spam count."""
+        return self._in_folder(
+            lambda server: self._fetch(server, since) + self._fetch_junk(server, since)
+        )
 
     def _in_folder(self, work: Callable[[imaplib.IMAP4], list[IncomingMail]]) -> list[IncomingMail]:
         try:
@@ -176,6 +181,18 @@ class ImapMailbox:
             with contextlib.suppress(imaplib.IMAP4.error, OSError):
                 server.logout()
 
+    @classmethod
+    def _fetch_junk(cls, server: imaplib.IMAP4, since: date) -> list[IncomingMail]:
+        """Mail in the folder the server marks as junk. Best effort: not every server has one."""
+        try:
+            name = junk_folder(server.list()[1])
+            if name is None:
+                return []
+            status, _ = server.select(f'"{name}"', readonly=True)
+            return cls._fetch(server, since) if status == "OK" else []
+        except (imaplib.IMAP4.error, OSError, ValueError):
+            return []
+
     @staticmethod
     def _fetch(server: imaplib.IMAP4, since: date) -> list[IncomingMail]:
         stamp = f"{since.day}-{since.strftime('%b-%Y')}"
@@ -187,6 +204,23 @@ class ImapMailbox:
                 if isinstance(part, tuple):
                     found.append(IncomingMail(raw=part[1]))
         return found
+
+
+LIST_LINE = re.compile(rb'^\((?P<flags>[^)]*)\) (?:"[^"]*"|NIL) (?P<name>.+)$')
+
+
+def junk_folder(listing: list[Any]) -> str | None:
+    """The folder flagged \\Junk (RFC 6154) in a LIST reply, such as Gmail's "[Gmail]/Spam"."""
+    for line in listing or []:
+        if not isinstance(line, bytes):
+            continue
+        match = LIST_LINE.match(line)
+        if match and b"\\junk" in match["flags"].lower():
+            name = match["name"].strip()
+            if name.startswith(b'"') and name.endswith(b'"'):
+                name = name[1:-1]
+            return name.decode("utf-8", "replace")
+    return None
 
 
 def check_connection(account: MailAccount, password: str) -> None:
