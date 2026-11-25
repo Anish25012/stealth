@@ -15,7 +15,7 @@ from typing import Annotated, Any, ParamSpec, TypeVar
 
 import typer
 
-from stealth import __version__, checklist, cycle
+from stealth import __version__, autopilot, checklist, cycle
 from stealth.cases import engine
 from stealth.cases.state import Case, Status, all_cases
 from stealth.core import paths
@@ -252,6 +252,7 @@ def init() -> None:
             send_delay_seconds=int(delay),
             daily_send_limit=int(limit),
             skip_brokers=[s.strip() for s in skip.split(",") if s.strip()],
+            autopilot=True,  # for the desktop app's daily check; see `stealth autopilot`
         )
         if for_someone_else:
             given_by = typer.prompt("Who agreed to this? (their name)", default=name)
@@ -575,6 +576,30 @@ def ico(broker: str, profile_id: ProfileOption = None) -> None:
         path = engine.draft_ico_complaint(profile, broker)
     typer.echo(f"Draft written to {path}")
     typer.echo("Once you've submitted it: stealth confirm <broker> escalated")
+
+
+@app.command("autopilot")
+@guarded
+def autopilot_command(
+    turn: Annotated[str | None, typer.Argument(help="on or off. Leave out to see it.")] = None,
+    profile_id: ProfileOption = None,
+) -> None:
+    """See or change Autopilot, and what it has sent. It runs in the desktop app's daily check."""
+    with _profile(profile_id) as profile:
+        if turn is not None:
+            if turn not in ("on", "off"):
+                raise StealthError("Say `stealth autopilot on` or `stealth autopilot off`.")
+            profile.save_settings(autopilot=turn == "on", autopilot_explained=True)
+        on = profile.settings().autopilot
+        done = autopilot.sent_automatically(profile, limit=10)
+    typer.echo(f"Autopilot is {'on' if on else 'off'}.")
+    if on:
+        typer.echo("The desktop app's daily check sends first letters, repeats and complaints.")
+    if done:
+        typer.echo("\nSent automatically (latest first):")
+        for item in done:
+            when = item.at.astimezone().strftime("%Y-%m-%d %H:%M")
+            typer.echo(f"  {when}  {item.case.broker_name}: {item.label.lower()} ({item.detail})")
 
 
 @app.command("cycle")

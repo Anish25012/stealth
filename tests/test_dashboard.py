@@ -139,6 +139,7 @@ def test_with_no_profile_the_welcome_page_offers_the_demo(client):
         ("/needs", "Needs you"),
         ("/approve", "Waiting for your OK"),
         ("/reports", "Reports"),
+        ("/sent-automatically", "Sent automatically"),
     ],
 )
 def test_with_no_profile_every_tab_opens_and_says_why_its_empty(client, url, title):

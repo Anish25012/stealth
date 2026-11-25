@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block main %}
+<div class="page-head">
+  <div>
+    <h1>Sent automatically</h1>
+    <p>Everything Autopilot sent or did without asking you, newest first. Autopilot is
+    <strong>{{ "on" if settings.autopilot else "off" }}</strong>: <a href="/settings#autopilot-h">change it in Settings</a>.</p>
+  </div>
+</div>
+<section class="card" aria-labelledby="sent-h">
+  <h2 id="sent-h" class="visually-hidden">Sent automatically</h2>
+  {% if done %}
+  <table>
+    <thead><tr><th scope="col">When</th><th scope="col">Company</th><th scope="col">What</th><th scope="col">Why</th></tr></thead>
+    <tbody>
+    {% for item in done %}
+      <tr data-autopilot="{{ item.case.broker_id }}">
+        <td>{{ item.at.astimezone().strftime("%d %b %Y, %H:%M") }}</td>
+        <td><a href="/cases/{{ item.case.broker_id|urlencode }}">{{ item.case.broker_name }}</a></td>
+        <td>{{ item.label }}</td>
+        <td>{{ item.detail }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Nothing sent automatically yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

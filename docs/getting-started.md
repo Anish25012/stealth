@@ -108,12 +108,14 @@ Once a day (9am, unless you change it in **Settings**), Stealth:
 
 - reads new replies in the inbox (it only reads, and never deletes or moves your email);
 - records clear answers, like "we've deleted your data", by itself;
-- lists any company that missed its one-month deadline under **Needs you**, with a formal
-  complaint ready for you to send (or sends it straight away, if you turn on **Send complaints
-  automatically** in Settings);
+- with **Autopilot** on (the default for new profiles), sends first letters in daily batches
+  within your limit, repeat requests, and formal complaints to companies that miss their deadline
+  or refuse, all listed under **Sent automatically**;
+- with Autopilot off, lists any company that missed its one-month deadline under **Needs you**,
+  with a formal complaint ready for you to send, and sends only letters you've approved;
 - asks companies again every two or three months, because brokers re-list people.
 
-It never sends a new letter without your OK. If the computer was off at 9am, it catches up soon
+Even on Autopilot, ID documents, web forms, ICO complaints and replies it can't read stay with you. If the computer was off at 9am, it catches up soon
 after it's next on. Turn on **Start with Windows** in Settings so this happens even if nobody opens
 Stealth. Its icon sits in the system tray (by the clock), and it pops up a notice when something
 needs you.

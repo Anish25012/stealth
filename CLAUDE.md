@@ -72,10 +72,15 @@ A `v*` tag also makes a **draft** GitHub release; the maintainer publishes it by
   details you don't already hold" line.
 - ICO complaint is ready 30 days after a formal complaint, or straight away after a refusal.
 - People-search scan is assisted: the person runs the search, Stealth captures it.
-- Approve-before-send applies in the desktop app; the CLI's `send --live --yes` counts as approval.
-  Formal complaints after a missed deadline wait for approval too (Needs you, or
-  `stealth complain <id>`), unless the person turns on "Send complaints automatically"
-  (`auto_complaints`, off by default).
+- Autopilot (`stealth/autopilot.py`, setting `autopilot`): on for new profiles, off for profiles
+  made before it (the app explains it once). On Autopilot the app's daily check sends first
+  letters to core companies in daily batches within the limit, repeat requests, and complaints
+  after a missed deadline or a refusal, logging each as an `autopilot` event ("Sent
+  automatically"). Still the person's: ID documents, web forms/CAPTCHAs, deleting old accounts
+  not marked Delete, replies Stealth can't read confidently, ICO complaints, extended-tier letters.
+- With Autopilot off, approve-before-send applies in the desktop app; the CLI's
+  `send --live --yes` counts as approval. Complaints wait too (Needs you, or
+  `stealth complain <id>`), unless "Send complaints automatically" (`auto_complaints`) is on.
 - macOS is untested and its window smoke check may fail (issue #1). Don't fix unless asked.
 - Other countries (EU/EEA, Switzerland, California, Canada, Australia) get lighter, clearly
   labelled letters. Quebec isn't covered.

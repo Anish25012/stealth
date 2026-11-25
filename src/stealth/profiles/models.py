@@ -32,6 +32,11 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "last_breach_result": "",  # one plain-English line about it
     # Formal complaints after a missed deadline wait for the person's OK unless this is on.
     "auto_complaints": False,
+    # Autopilot: Stealth sends, repeats and complains by itself (see stealth.autopilot). New
+    # profiles start with it on; profiles made before it existed keep it off until the person
+    # turns it on. The app explains it once, the first time it opens.
+    "autopilot": False,
+    "autopilot_explained": False,
 }
 
 
@@ -56,6 +61,8 @@ class Settings:
     last_breach_check: str | None = None
     last_breach_result: str = ""
     auto_complaints: bool = False
+    autopilot: bool = False
+    autopilot_explained: bool = False
 
 
 @dataclass

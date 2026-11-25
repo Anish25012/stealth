@@ -487,6 +487,7 @@ def test_a_missed_deadline_waits_until_you_run_complain(ready):
     from stealth.core import clock
 
     clock.set_time(datetime(2026, 1, 15, 10, tzinfo=UTC))
+    assert "Autopilot is off." in run("autopilot", "off").output  # new profiles start with it on
     with LocalSmtp() as smtp, LocalImap("app-password") as imap:
         _point_at(ready, smtp, imap)
         assert run("send", "--live", "--yes", "--only", "experian-uk").exit_code == 0

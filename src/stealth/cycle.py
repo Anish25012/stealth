@@ -12,9 +12,10 @@ from datetime import date
 from email.message import EmailMessage
 from pathlib import Path
 
+from stealth import autopilot
 from stealth.cases import engine
 from stealth.cases.engine import NO_REPLY, Sleep, jurisdiction_of
-from stealth.cases.state import Case, Status, all_cases, transition
+from stealth.cases.state import Case, Status, all_cases, find_case, transition
 from stealth.core import clock
 from stealth.core.errors import MailSendError
 from stealth.custom import store as custom
@@ -30,6 +31,7 @@ class CycleReport:
     complaints: list[str] = field(default_factory=list)
     complaints_held: int = 0
     complaints_waiting: list[str] = field(default_factory=list)  # due, waiting for your OK
+    autopilot_sent: list[str] = field(default_factory=list)  # requests Autopilot sent
     ico_ready: list[str] = field(default_factory=list)
     needs_you: list[str] = field(default_factory=list)
     resends: list[str] = field(default_factory=list)
@@ -110,20 +112,30 @@ def _send_complaints(
     jurisdiction = jurisdiction_of(profile)
     settings = profile.settings()
     due = complaints_awaiting_approval(profile)
-    if not settings.auto_complaints:
+    if not autopilot.complaints_automatic(settings):
         report.complaints_waiting = [c.broker_name for c in due]
         return
+    on_autopilot = autopilot.is_on(settings)
+    if on_autopilot:
+        # A refusal gets the same formal complaint, with the refusal as the grievance.
+        refused = [c for c in all_cases(profile.conn) if c.status is Status.REFUSED and c.contact]
+        due = refused + due
     remaining = max(0, settings.daily_send_limit - engine.sent_today(profile, jurisdiction))
     report.complaints_held = max(0, len(due) - remaining)
     for index, case in enumerate(due[:remaining]):
         if index:
             sleep(settings.send_delay_seconds)
+        grievance = engine.REFUSED if case.status is Status.REFUSED else NO_REPLY
+        actor = autopilot.ACTOR if on_autopilot else "stealth"
         try:
-            engine.send_complaint(profile, case, transport, grievance=NO_REPLY)
+            sent = engine.send_complaint(profile, case, transport, grievance=grievance, actor=actor)
         except MailSendError:
             report.complaints_held += 1
             continue
         report.complaints.append(case.broker_name)
+        if on_autopilot:
+            reason = "they refused" if grievance == engine.REFUSED else "no reply by the deadline"
+            autopilot.record(profile, sent, "complaint", reason)
 
 
 def run_cycle(
@@ -141,10 +153,37 @@ def run_cycle(
     report.inbox = process_inbox(profile, mailbox, brokers)
     _update_states(profile, brokers, report, hold=hold_for_approval)
     _send_complaints(profile, transport, sleep, report)
+    approved = _autopilot_batch(profile, brokers) if hold_for_approval else []
     report.send = engine.send_requests(
         profile, brokers, transport, sleep=sleep, hold_for_approval=hold_for_approval
     )
+    for case in approved:
+        sent = find_case(profile.conn, case.broker_id)
+        if sent.status is Status.SENT and sent.last_request_on:
+            what = "repeat" if sent.round > 1 else "request"
+            autopilot.record(profile, sent, what, f"sent to {sent.contact}")
+            report.autopilot_sent.append(sent.broker_name)
     return report
+
+
+def _autopilot_batch(profile: Profile, brokers: dict[str, Broker]) -> list[Case]:
+    """On Autopilot, approve today's batch of core drafts: as many as today's limit has room for.
+
+    Only that many, so turning Autopilot off leaves the rest waiting rather than already queued.
+    """
+    settings = profile.settings()
+    if not autopilot.is_on(settings):
+        return []
+    engine.open_cases(profile, brokers, hold=True)
+    jurisdiction = jurisdiction_of(profile)
+    queued = sum(1 for c in all_cases(profile.conn) if c.status is Status.QUEUED)
+    room = settings.daily_send_limit - engine.sent_today(profile, jurisdiction) - queued
+    drafts = [c for c in engine.drafts_waiting(profile) if autopilot.handles_draft(settings, c)]
+    batch = drafts[: max(0, room)]
+    engine.approve(
+        profile, [c.broker_id for c in batch], actor=autopilot.ACTOR, reason="approved by Autopilot"
+    )
+    return batch
 
 
 @dataclass
