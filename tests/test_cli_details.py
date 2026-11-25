@@ -100,3 +100,13 @@ def test_repeats_and_spacing_are_tidied(ready):  # noqa: F811
 def test_nothing_to_change(ready):  # noqa: F811
     result = run("details", "--name", "Test Person", "--yes")
     assert result.exit_code == 0 and "Nothing to change." in result.output
+
+
+def test_autopilot_start_date_from_the_command_line(ready):  # noqa: F811
+    result = run("autopilot", "--from", "2026-12-01")
+    assert result.exit_code == 0, result.output
+    assert "First letters and repeats start on 2026-12-01." in result.output
+    assert "isn't a date" in run("autopilot", "--from", "soon").output
+    assert "start on" not in run("autopilot", "--from", "now").output
+    off = run("autopilot", "off", "--from", "2026-12-01").output
+    assert "Autopilot is off." in off and "2026-12-01" in off

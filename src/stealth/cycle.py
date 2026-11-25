@@ -12,7 +12,7 @@ from datetime import date
 from email.message import EmailMessage
 from pathlib import Path
 
-from stealth import autopilot
+from stealth import autopilot, followups
 from stealth.cases import engine
 from stealth.cases.engine import NO_REPLY, Sleep, jurisdiction_of
 from stealth.cases.state import Case, Status, all_cases, find_case, transition
@@ -32,6 +32,8 @@ class CycleReport:
     complaints_held: int = 0
     complaints_waiting: list[str] = field(default_factory=list)  # due, waiting for your OK
     autopilot_sent: list[str] = field(default_factory=list)  # requests Autopilot sent
+    followups: list[str] = field(default_factory=list)  # Autopilot answered or chased them
+    followups_failed: list[str] = field(default_factory=list)
     ico_ready: list[str] = field(default_factory=list)
     needs_you: list[str] = field(default_factory=list)
     resends: list[str] = field(default_factory=list)
@@ -152,6 +154,8 @@ def run_cycle(
     brokers = custom.with_custom(profile, brokers)
     on_autopilot = autopilot.is_on(profile.settings())
     report.inbox = process_inbox(profile, mailbox, brokers, follow_links=on_autopilot)
+    if on_autopilot:
+        report.followups, report.followups_failed = followups.send_due(profile, transport, sleep)
     _update_states(profile, brokers, report, hold=hold_for_approval)
     _send_complaints(profile, transport, sleep, report)
     approved = _autopilot_batch(profile, brokers) if hold_for_approval else []
@@ -173,10 +177,10 @@ def _autopilot_batch(profile: Profile, brokers: dict[str, Broker]) -> list[Case]
     Only that many, so turning Autopilot off leaves the rest waiting rather than already queued.
     """
     settings = profile.settings()
-    if not autopilot.is_on(settings):
-        return []
-    engine.open_cases(profile, brokers, hold=True)
     jurisdiction = jurisdiction_of(profile)
+    if not autopilot.sends_letters(settings, clock.local_date(jurisdiction.tz)):
+        return []  # off, or before the start date the person chose
+    engine.open_cases(profile, brokers, hold=True)
     queued = sum(1 for c in all_cases(profile.conn) if c.status is Status.QUEUED)
     room = settings.daily_send_limit - engine.sent_today(profile, jurisdiction) - queued
     drafts = [c for c in engine.drafts_waiting(profile) if autopilot.handles_draft(settings, c)]

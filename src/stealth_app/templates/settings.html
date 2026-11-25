@@ -87,6 +87,12 @@
       <label for="f-autopilot">Autopilot</label>
       <input type="checkbox" class="switch" role="switch" id="f-autopilot" name="autopilot" value="yes"{% if settings.autopilot %} checked{% endif %}>
     </div>
+    <div class="field">
+      <label for="f-autopilot_from">Start first letters on <span class="muted">(optional)</span></label>
+      <input id="f-autopilot_from" name="autopilot_from" type="date" value="{{ settings.autopilot_from or "" }}">
+      <p class="muted small">Until then, Autopilot sends no first letters or repeat requests. Replies,
+      confirmation links and complaints carry on as normal. Leave it empty to start straight away.</p>
+    </div>
     <div class="button-row"><button class="button secondary" type="submit">Save</button>
     <a class="button secondary" href="/sent-automatically">Sent automatically</a></div>
   </form>

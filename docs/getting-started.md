@@ -111,7 +111,10 @@ Once a day (9am, unless you change it in **Settings**), Stealth:
 - with **Autopilot** on (the default for new profiles), sends first letters in daily batches
   within your limit, repeat requests, and formal complaints to companies that miss their deadline
   or refuse, and opens "click to confirm your request" links that are safely on the company's own
-  website, all listed under **Sent automatically**;
+  website, and, once per request, answers a general ID request with polite pushback, sends your
+  details when a company asks for more, and chases a reply that only says you've been
+  unsubscribed, all listed under **Sent automatically**. Settings › Autopilot › **Start first
+  letters on** holds new letters until a date you choose;
 - with Autopilot off, lists any company that missed its one-month deadline under **Needs you**,
   with a formal complaint ready for you to send, and sends only letters you've approved;
 - asks companies again every two or three months, because brokers re-list people.

@@ -151,7 +151,12 @@ def explain(case: Case, today: date, settings: Settings | None = None) -> str:
     text = EXPLAIN[case.status]
     automatic = settings is not None and autopilot.complaints_automatic(settings)
     if settings is not None and autopilot.handles_draft(settings, case):
-        text = AUTOPILOT_DRAFT
+        start = autopilot.starts_on(settings)
+        text = (
+            f"Autopilot sends this letter from {format_date(start)}, within your daily limit."
+            if start and start > today
+            else AUTOPILOT_DRAFT
+        )
     elif settings is not None and autopilot.is_on(settings) and case.status is Status.REFUSED:
         text = AUTOPILOT_REFUSED if case.contact else text
     elif overdue(case, today):

@@ -481,7 +481,12 @@ def apply_outcome(
 
 
 def _clock_restarted(
-    profile: Profile, case: Case, jurisdiction: Jurisdiction, *, reason: str = "ID supplied"
+    profile: Profile,
+    case: Case,
+    jurisdiction: Jurisdiction,
+    *,
+    reason: str = "ID supplied",
+    actor: str = "you",
 ) -> Case:
     today = clock.local_date(jurisdiction.tz)
     deadline = deadlines.response_deadline(today, jurisdiction)
@@ -489,7 +494,7 @@ def _clock_restarted(
         profile.conn,
         case,
         Status.SENT,
-        actor="you",
+        actor=actor,
         reason=f"{reason}, clock restarted, reply due {deadline.isoformat()}",
         relevant_time=today,
         deadline_on=deadline,

@@ -210,7 +210,7 @@ def process_inbox(
             report.unmatched += 1
             continue
         reading = classifier.classify(str(message.get("Subject", "")), text, message)
-        _record(profile, case, item.raw, message_id, sender, message, "reply", reading)
+        _record(profile, case, item.raw, message_id, sender, message, "reply", reading, proven)
         events.append(
             profile.conn,
             "reply_received",
@@ -297,6 +297,7 @@ def _record(
     message: EmailMessage,
     kind: str,
     reading: Classification | None = None,
+    proven: bool = False,
 ) -> None:
     save_message(
         profile,
@@ -307,14 +308,17 @@ def _record(
         rfc_message_id=message_id,
         sender=sender,
         subject=str(message.get("Subject", "")),
-        classification=json.dumps(_stored(reading)) if reading else None,
+        classification=json.dumps(_stored(reading, proven)) if reading else None,
     )
 
 
-def _stored(reading: Classification) -> dict[str, object]:
+def _stored(reading: Classification, proven: bool = False) -> dict[str, object]:
     return {
         "kind": reading.kind,
         "confident": reading.confident,
         "quote": reading.quote,
         "urls": list(reading.urls),
+        "scores": reading.scores,
+        "documents": reading.documents,
+        "proven": proven,
     }
